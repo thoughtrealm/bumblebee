@@ -1,0 +1,7 @@
+**/testfiles
+**/.idea
+docs/*
+bee*
+tests/distributions/distributions
+
+**/.DS_Store

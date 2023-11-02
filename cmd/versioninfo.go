@@ -32,7 +32,7 @@ var (
 	AppShortBuildTime = "[sbt]"
 	AppLongBuildTime  = "[lbt]"
 	AppProject        = "GITHUB https://github.com/thoughtrealm/bumblebee"
-	AppLicense        = "MIT License - https://github.com/thoughtrealm/bumblebee/LICENSE"
+	AppLicense        = "MIT License https://github.com/thoughtrealm/bumblebee/blob/main/LICENSE"
 )
 
 func printVersionInfo(inPromptMode bool) {

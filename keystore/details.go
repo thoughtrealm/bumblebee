@@ -28,3 +28,11 @@ func (sd *StoreDetails) Clone() *StoreDetails {
 		IsDirty: sd.IsDirty,
 	}
 }
+
+func (sks *SimpleKeyStore) GetDetails() *StoreDetails {
+	if sks.Details == nil {
+		return nil
+	}
+
+	return sks.Details.Clone()
+}

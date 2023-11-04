@@ -253,11 +253,7 @@ func (kps *SimpleKeyPairStore) CreateNewKeyPair(name string) (*KeyPairInfo, erro
 		return nil, err
 	}
 
-	kpi = &KeyPairInfo{
-		Name: name,
-		Seed: string(seed), // fmt.Sprintf("%x", seed),
-	}
-
+	kpi = NewKeyPairInfo(name, string(seed))
 	kps.addKeyPairInfo(kpi)
 	return kpi, nil
 }

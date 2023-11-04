@@ -14,11 +14,10 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
-	"os"
-	"strconv"
 )
 
 // Expect pattern:
@@ -38,42 +37,15 @@ func main() {
 		err error
 	)
 
-	defer fmt.Println("\nDistributions analysis complete")
+	flag.IntVar(&testCount, "count", 0, "The count of iterations for distribution analsysis")
+	flag.IntVar(&testMsecs, "msecs", 1000, "The msecs to run the timed test")
+	flag.IntVar(&testProcs, "procs", 1, "The number of procs to use for the timed test")
+	flag.IntVar(&testDataSize, "datasize", 1000, "The size in bytes to encrypt in the timed test")
+
+	flag.Parse()
 
 	fmt.Println("Distributions analysis for Bumblebee constructions")
 	fmt.Println("")
-
-	// os.Args should be 3... 1 for the os app ref, then 2 for our arguments
-
-	if len(os.Args) != 5 {
-		fmt.Printf("Error: Expected three arguments.  Got %d arguments\n", len(os.Args))
-		fmt.Println("Input format: \"distributions <count> <msecs> <procs> <data-size>\"")
-		return
-	}
-
-	testCount, err = strconv.Atoi(os.Args[1])
-	if err != nil {
-		fmt.Printf("Test count value \"%s\" is not a valid integer\n", os.Args[1])
-		return
-	}
-
-	testMsecs, err = strconv.Atoi(os.Args[2])
-	if err != nil {
-		fmt.Printf("Test msecs value \"%s\" is not a valid integer\n", os.Args[2])
-		return
-	}
-
-	testProcs, err = strconv.Atoi(os.Args[3])
-	if err != nil {
-		fmt.Printf("Test procs value \"%s\" is not a valid integer\n", os.Args[3])
-		return
-	}
-
-	testDataSize, err = strconv.Atoi(os.Args[4])
-	if err != nil {
-		fmt.Printf("Test data size value \"%s\" is not a valid integer\n", os.Args[4])
-		return
-	}
 
 	p := message.NewPrinter(language.English)
 
@@ -99,4 +71,9 @@ func main() {
 
 	fmt.Println("")
 	mgr.printStats()
+
+	fmt.Println("\nTimed test complete")
+	fmt.Println("")
+
+	fmt.Println("** Distribution analysis not yet implemented **")
 }

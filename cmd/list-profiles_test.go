@@ -14,18 +14,15 @@
 package cmd
 
 import (
-	"bytes"
-	"fmt"
-	"os"
 	"testing"
 )
 
 func TestListProfiles(t *testing.T) {
-	outputBuff := bytes.NewBuffer(nil)
-	rootCmd.SetOut(outputBuff)
+	//outputBuff := bytes.NewBuffer(nil)
+	//rootCmd.SetOut(outputBuff)
 	rootCmd.SetArgs([]string{"show", "profile", "alice"})
-	rootCmd.Execute()
-	fmt.Println("captured output")
-	fmt.Println("===========================")
-	fmt.Fprint(os.Stdout, outputBuff)
+	_ = rootCmd.Execute()
+	//fmt.Println("captured output")
+	//fmt.Println("===========================")
+	//fmt.Fprint(os.Stdout, outputBuff)
 }

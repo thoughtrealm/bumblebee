@@ -16,7 +16,6 @@ package keystore
 import (
 	"fmt"
 	"github.com/stretchr/testify/suite"
-	"log"
 	"testing"
 )
 
@@ -38,8 +37,7 @@ func (s *KeyStoreIOTestSuite) Test64BitLen() {
 	s.Assert().Equal(4000000000, len(byteSlice))
 }
 
-/*
-func (s *KeyStoreIOTestSuite) TestSimplexKeyStore_ReadWriteMemoryCycle_OneEntity_MsgPack() {
+func (s *KeyStoreIOTestSuite) TestSimplexKeyStore_ReadWriteMemoryCycle_OneEntity() {
 	bytesStore, err := s.testStore.WriteToMemory()
 	if !s.Assert().Nil(err) {
 		return
@@ -53,23 +51,23 @@ func (s *KeyStoreIOTestSuite) TestSimplexKeyStore_ReadWriteMemoryCycle_OneEntity
 	}
 
 	// Compare store details
-	s.Assert().Equal(s.testStore.Details.Name, newStore.Details.Name)
-	s.Assert().Equal(s.testStore.Details.Owner, newStore.Details.Owner)
-	s.Assert().Equal(s.testStore.Details.IsLocal, newStore.Details.IsLocal)
+	s.Assert().Equal(s.testStore.Details.Name, newStore.GetDetails().Name)
+	s.Assert().Equal(s.testStore.Details.Owner, newStore.GetDetails().Owner)
+	s.Assert().Equal(s.testStore.Details.IsLocal, newStore.GetDetails().IsLocal)
 
 	// Compare store server info
-	s.Assert().Equal(s.testStore.Server.Name, newStore.Server.Name)
-	s.Assert().Equal(s.testStore.Server.Address, newStore.Server.Address)
-	s.Assert().Equal(s.testStore.Server.Port, newStore.Server.Port)
-	s.Assert().Equal(s.testStore.Server.Key.Name, newStore.Server.Key.Name)
-	s.Assert().Equal(s.testStore.Server.Key.KeyType, newStore.Server.Key.KeyType)
-	s.Assert().Equal(s.testStore.Server.Key.IsDefault, newStore.Server.Key.IsDefault)
-	s.Assert().Equal(s.testStore.Server.Key.KeyData, newStore.Server.Key.KeyData)
+	s.Assert().Equal(s.testStore.Server.Name, newStore.GetServerInfo().Name)
+	s.Assert().Equal(s.testStore.Server.Address, newStore.GetServerInfo().Address)
+	s.Assert().Equal(s.testStore.Server.Port, newStore.GetServerInfo().Port)
+	s.Assert().Equal(s.testStore.Server.Key.Name, newStore.GetServerInfo().Key.Name)
+	s.Assert().Equal(s.testStore.Server.Key.KeyType, newStore.GetServerInfo().Key.KeyType)
+	s.Assert().Equal(s.testStore.Server.Key.IsDefault, newStore.GetServerInfo().Key.IsDefault)
+	s.Assert().Equal(s.testStore.Server.Key.KeyData, newStore.GetServerInfo().Key.KeyData)
 
 	// Compare store entities
-	s.Assert().Equal(len(s.testStore.Entities), len(newStore.Entities))
+	s.Assert().Equal(len(s.testStore.Entities), newStore.Count())
 	for _, entity := range s.testStore.Entities {
-		newEntity := newStore.GetEntity(true, entity.Name)
+		newEntity := newStore.GetKey(entity.Name)
 		s.Assert().Equal(entity.Name, newEntity.Name)
 		s.Assert().Equal(entity.Key.Name, newEntity.Key.Name)
 		s.Assert().Equal(entity.Key.KeyType, newEntity.Key.KeyType)
@@ -77,9 +75,7 @@ func (s *KeyStoreIOTestSuite) TestSimplexKeyStore_ReadWriteMemoryCycle_OneEntity
 		s.Assert().Equal(entity.Key.KeyData, newEntity.Key.KeyData)
 	}
 }
-*/
 
-/*
 func (s *KeyStoreIOTestSuite) TestSimplexKeyStore_ReadWriteMemoryCycle_1000Entities() {
 	testStore := buildTestStoreMultiEntity(1000)
 
@@ -97,23 +93,23 @@ func (s *KeyStoreIOTestSuite) TestSimplexKeyStore_ReadWriteMemoryCycle_1000Entit
 	}
 
 	// Compare store details
-	s.Assert().Equal(testStore.Details.Name, newStore.Details.Name)
-	s.Assert().Equal(testStore.Details.Owner, newStore.Details.Owner)
-	s.Assert().Equal(testStore.Details.IsLocal, newStore.Details.IsLocal)
+	s.Assert().Equal(testStore.Details.Name, newStore.GetDetails().Name)
+	s.Assert().Equal(testStore.Details.Owner, newStore.GetDetails().Owner)
+	s.Assert().Equal(testStore.Details.IsLocal, newStore.GetDetails().IsLocal)
 
 	// Compare store server info
-	s.Assert().Equal(testStore.Server.Name, newStore.Server.Name)
-	s.Assert().Equal(testStore.Server.Address, newStore.Server.Address)
-	s.Assert().Equal(testStore.Server.Port, newStore.Server.Port)
-	s.Assert().Equal(testStore.Server.Key.Name, newStore.Server.Key.Name)
-	s.Assert().Equal(testStore.Server.Key.KeyType, newStore.Server.Key.KeyType)
-	s.Assert().Equal(testStore.Server.Key.IsDefault, newStore.Server.Key.IsDefault)
-	s.Assert().Equal(testStore.Server.Key.KeyData, newStore.Server.Key.KeyData)
+	s.Assert().Equal(testStore.Server.Name, newStore.GetServerInfo().Name)
+	s.Assert().Equal(testStore.Server.Address, newStore.GetServerInfo().Address)
+	s.Assert().Equal(testStore.Server.Port, newStore.GetServerInfo().Port)
+	s.Assert().Equal(testStore.Server.Key.Name, newStore.GetServerInfo().Key.Name)
+	s.Assert().Equal(testStore.Server.Key.KeyType, newStore.GetServerInfo().Key.KeyType)
+	s.Assert().Equal(testStore.Server.Key.IsDefault, newStore.GetServerInfo().Key.IsDefault)
+	s.Assert().Equal(testStore.Server.Key.KeyData, newStore.GetServerInfo().Key.KeyData)
 
 	// Compare store entities
-	s.Assert().Equal(len(testStore.Entities), len(newStore.Entities))
+	s.Assert().Equal(len(testStore.Entities), newStore.Count())
 	for _, entity := range testStore.Entities {
-		newEntity := newStore.GetEntity(true, entity.Name)
+		newEntity := newStore.GetKey(entity.Name)
 		s.Assert().Equal(entity.Name, newEntity.Name)
 		s.Assert().Equal(entity.Key.Name, newEntity.Key.Name)
 		s.Assert().Equal(entity.Key.KeyType, newEntity.Key.KeyType)
@@ -121,9 +117,7 @@ func (s *KeyStoreIOTestSuite) TestSimplexKeyStore_ReadWriteMemoryCycle_1000Entit
 		s.Assert().Equal(entity.Key.KeyData, newEntity.Key.KeyData)
 	}
 }
-*/
 
-/*
 func (s *KeyStoreIOTestSuite) TestSimplexKeyStore_ReadWriteMemoryCycle_1000000Entities() {
 	testStore := buildTestStoreMultiEntity(1000000)
 
@@ -141,164 +135,27 @@ func (s *KeyStoreIOTestSuite) TestSimplexKeyStore_ReadWriteMemoryCycle_1000000En
 	}
 
 	// Compare store details
-	s.Assert().Equal(testStore.Details.Name, newStore.Details.Name)
-	s.Assert().Equal(testStore.Details.Owner, newStore.Details.Owner)
-	s.Assert().Equal(testStore.Details.IsLocal, newStore.Details.IsLocal)
+	s.Assert().Equal(testStore.Details.Name, newStore.GetDetails().Name)
+	s.Assert().Equal(testStore.Details.Owner, newStore.GetDetails().Owner)
+	s.Assert().Equal(testStore.Details.IsLocal, newStore.GetDetails().IsLocal)
 
 	// Compare store server info
-	s.Assert().Equal(testStore.Server.Name, newStore.Server.Name)
-	s.Assert().Equal(testStore.Server.Address, newStore.Server.Address)
-	s.Assert().Equal(testStore.Server.Port, newStore.Server.Port)
-	s.Assert().Equal(testStore.Server.Key.Name, newStore.Server.Key.Name)
-	s.Assert().Equal(testStore.Server.Key.KeyType, newStore.Server.Key.KeyType)
-	s.Assert().Equal(testStore.Server.Key.IsDefault, newStore.Server.Key.IsDefault)
-	s.Assert().Equal(testStore.Server.Key.KeyData, newStore.Server.Key.KeyData)
+	s.Assert().Equal(testStore.Server.Name, newStore.GetServerInfo().Name)
+	s.Assert().Equal(testStore.Server.Address, newStore.GetServerInfo().Address)
+	s.Assert().Equal(testStore.Server.Port, newStore.GetServerInfo().Port)
+	s.Assert().Equal(testStore.Server.Key.Name, newStore.GetServerInfo().Key.Name)
+	s.Assert().Equal(testStore.Server.Key.KeyType, newStore.GetServerInfo().Key.KeyType)
+	s.Assert().Equal(testStore.Server.Key.IsDefault, newStore.GetServerInfo().Key.IsDefault)
+	s.Assert().Equal(testStore.Server.Key.KeyData, newStore.GetServerInfo().Key.KeyData)
 
 	// Compare store entities
-	s.Assert().Equal(len(testStore.Entities), len(newStore.Entities))
+	s.Assert().Equal(len(testStore.Entities), newStore.Count())
 	for _, entity := range testStore.Entities {
-		newEntity := newStore.GetEntity(true, entity.Name)
+		newEntity := newStore.GetKey(entity.Name)
 		s.Assert().Equal(entity.Name, newEntity.Name)
 		s.Assert().Equal(entity.Key.Name, newEntity.Key.Name)
 		s.Assert().Equal(entity.Key.KeyType, newEntity.Key.KeyType)
 		s.Assert().Equal(entity.Key.IsDefault, newEntity.Key.IsDefault)
 		s.Assert().Equal(entity.Key.KeyData, newEntity.Key.KeyData)
 	}
-}
-*/
-
-func BenchmarkWriteToMemoryMsgPack(b *testing.B) {
-	entityCounts := []struct {
-		entities int
-	}{
-		{1},
-		{100},
-		{1000},
-		{5000},
-		{10000},
-		{100000},
-		{1000000},
-	}
-
-	for idx, entityCount := range entityCounts {
-		testStore := buildTestStoreMultiEntity(entityCount.entities)
-
-		b.Run(fmt.Sprintf("[%d of %d] WriteToMemory_StoreOf_%d_Entities", idx+1, len(entityCounts), entityCount.entities), func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
-				_, _ = testStore.WriteToMemory()
-			}
-		})
-	}
-}
-
-func BenchmarkReadFromMemoryWithMsgPack(b *testing.B) {
-	entityCounts := []struct {
-		entities int
-	}{
-		{1},
-		{100},
-		{1000},
-		{5000},
-		{10000},
-		{100000},
-		{1000000},
-	}
-
-	for idx, entityCount := range entityCounts {
-		testStore := buildTestStoreMultiEntity(entityCount.entities)
-		bytesStore, _ := testStore.WriteToMemory()
-
-		b.Run(fmt.Sprintf("[%d of %d] ReadFromMemory_StoreOf_%d_Entities", idx+1, len(entityCounts), entityCount.entities), func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
-				_, err := NewFromMemory(bytesStore)
-				if err != nil {
-					b.Fatalf("failed create new store: %s", err)
-				}
-			}
-		})
-	}
-}
-
-func BenchmarkGetEntity_OneEntity_NoLock(b *testing.B) {
-	const ENTITIES = 1
-
-	log.Printf("Building store with %d entities", ENTITIES)
-	testStore := buildTestStoreMultiEntity(1000000)
-
-	log.Println("Building prebuilt search key array")
-	prebuiltSearchKeys := [ENTITIES]string{}
-	for count := 0; count < ENTITIES; count++ {
-		prebuiltSearchKeys[count] = fmt.Sprintf("BOB-%d", count)
-	}
-
-	log.Println("Running test")
-	searchInt := 0
-	b.Run(fmt.Sprintf("GetEntity_StoreOf_%d_Entities", ENTITIES), func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			entity := testStore.GetEntity(prebuiltSearchKeys[searchInt])
-			if entity == nil {
-				b.Fatalf("No entity found")
-			}
-			searchInt += 1
-			if searchInt >= ENTITIES {
-				searchInt = 0
-			}
-		}
-	})
-}
-
-func BenchmarkGetEntity_1000Entities_NoLock(b *testing.B) {
-	const ENTITIES = 1000
-
-	log.Printf("Building store with %d entities", ENTITIES)
-	testStore := buildTestStoreMultiEntity(1000000)
-
-	log.Println("Building prebuilt search key array")
-	prebuiltSearchKeys := [ENTITIES]string{}
-	for count := 0; count < ENTITIES; count++ {
-		prebuiltSearchKeys[count] = fmt.Sprintf("BOB-%d", count)
-	}
-
-	log.Println("Running test")
-	searchInt := 0
-	b.Run(fmt.Sprintf("GetEntity_StoreOf_%d_Entities", ENTITIES), func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			entity := testStore.GetEntity(prebuiltSearchKeys[searchInt])
-			if entity == nil {
-				b.Fatalf("No entity found")
-			}
-			searchInt += 1
-			if searchInt >= ENTITIES {
-				searchInt = 0
-			}
-		}
-	})
-}
-
-func BenchmarkGetEntity_1000000Entities_NoLock(b *testing.B) {
-	const ENTITIES = 1000000
-
-	log.Printf("Building store with %d entities", ENTITIES)
-	testStore := buildTestStoreMultiEntity(1000000)
-
-	log.Println("Building prebuilt search key array")
-	prebuiltSearchKeys := [ENTITIES]string{}
-	for count := 0; count < ENTITIES; count++ {
-		prebuiltSearchKeys[count] = fmt.Sprintf("BOB-%d", count)
-	}
-
-	log.Println("Running test")
-	searchInt := 0
-	b.Run(fmt.Sprintf("GetEntity_StoreOf_%d_Entities", ENTITIES), func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			entity := testStore.GetEntity(prebuiltSearchKeys[searchInt])
-			if entity == nil {
-				b.Fatalf("No entity found")
-			}
-			searchInt += 1
-			if searchInt >= ENTITIES {
-				searchInt = 0
-			}
-		}
-	})
 }

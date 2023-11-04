@@ -29,6 +29,13 @@ type KeyPairInfo struct {
 	Seed string
 }
 
+func NewKeyPairInfo(name, seed string) *KeyPairInfo {
+	return &KeyPairInfo{
+		Name: name,
+		Seed: seed,
+	}
+}
+
 func (kpi *KeyPairInfo) Clone() *KeyPairInfo {
 	return &KeyPairInfo{
 		Name: kpi.Name,

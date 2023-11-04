@@ -45,9 +45,11 @@ var GlobalKeyStore KeyStore
 type KeyStore interface {
 	AddKey(name string, publickey []byte) error
 	Count() int
+	GetDetails() *StoreDetails
 	GetKey(name string) *security.Entity
 	RenameEntity(oldName, newName string) (bool, error)
 	RemoveEntity(name string) (found bool, err error)
+	GetServerInfo() *ServerInfo
 	UpdatePublicKey(name string, publicKey string) (found bool, err error)
 	Walk(info *WalkInfo) error
 	WalkCount(nameMatchFilter string, walkFilterFunc KeyStoreWalkFilterFunc) (count int, err error)

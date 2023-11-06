@@ -19,6 +19,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/thoughtrealm/bumblebee/bootstrap"
 	"github.com/thoughtrealm/bumblebee/helpers"
+	"github.com/thoughtrealm/bumblebee/keypairs"
+	"github.com/thoughtrealm/bumblebee/keystore"
 	logger "github.com/thoughtrealm/bumblebee/logger"
 	"os"
 )
@@ -59,6 +61,9 @@ func Execute() {
 			}
 		}
 	}()
+
+	defer keypairs.WipeGlobalKeyPairsIfValid()
+	defer keystore.WipeGlobalKeystoreIfValid()
 
 	err := rootCmd.Execute()
 	if err != nil {

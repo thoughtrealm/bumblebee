@@ -32,6 +32,7 @@ type KeyPairStore interface {
 	SaveKeyPairStoreToOrigin(key []byte) error
 	SetPassword(newPassword []byte)
 	Walk(sort bool, walkFunc KeyPairStoreWalkFunc)
+	WipeData()
 }
 
 func NewKeypairStore() KeyPairStore {
@@ -62,4 +63,11 @@ func NewKeypairStoreFromFile(key []byte, filePath string) (KeyPairStore, error) 
 	}
 
 	return kps, nil
+}
+
+func WipeGlobalKeyPairsIfValid() {
+	if GlobalKeyPairStore != nil {
+		GlobalKeyPairStore.WipeData()
+		GlobalKeyPairStore = nil
+	}
 }

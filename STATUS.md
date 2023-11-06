@@ -14,14 +14,20 @@ paths are complete.
 ## What's left to do
 - Add more debug output
 - Add more unit tests for not critical paths 
+- Support verify command
+- Support backup and restore commands
 - Add unit tests for failure and error flows
-- Add unit tests to validate all encodings, which were validated manually for now
+- Add unit tests to validate all encodings, which have been manually validated
 - Finish distribution analysis utility to confirm that output emissions do not favor specific binary 
-patterns or byte location biases 
+patterns or byte values relating to location biases 
 - Installers for each supported platform
+- Scan code for missing wipes where sensitive values are handled... should be covered, but maybe double/triple check
+- Currently, Bee only supports a single file or text input.  Probably, it should support encrypting whole directories.
+Or maybe just multiple secrets per bundle in some form. Due to certain complexities, 
+that may be in a follow-on version.  
 
 ## Known issues
 Issues with "make" utility on Windows. Possible workarounds...
 - Run builds on Windows from WSL -- **Not tested**
-- Run builds on Windows using "go build" commands, but no metadata inserted into version structure
+- Run builds on Windows using "go build" commands, but no metadata injected into version structure
 - Maybe provide a batch file or script of some type for building without MAKEFILE

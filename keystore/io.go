@@ -33,24 +33,28 @@ func (sks *SimpleKeyStore) ReadFromFile(filePath string) error {
 	if kpiRead == nil {
 		return errors.New("keypair for keystore reads was not found in the global keypair store")
 	}
+	defer kpiRead.Wipe()
 
 	// Convert the read kpi to a receiver kpi for the cipher reader
-	newKPIReceiver, err := security.NewKeyInfo(false, security.KeyTypeSeed, "reader", []byte(kpiRead.Seed))
+	newKPIReceiver, err := security.NewKeyInfo(false, security.KeyTypeSeed, "reader", kpiRead.Seed)
 	if err != nil {
 		return fmt.Errorf("unable to transform read keypair info to receiver info: %w", err)
 	}
+	defer newKPIReceiver.Wipe()
 
 	// Now get the write KPI from the keypair store
 	kpiWrite := keypairs.GlobalKeyPairStore.GetKeyPairInfo(helpers.KeyPairNameForKeyStoreWrites)
 	if kpiWrite == nil {
 		return errors.New("keypair for keystore writes not found in the global keypair store")
 	}
+	defer kpiWrite.Wipe()
 
 	// now, extract the writer KP from the seed
 	kpWrite, err := nkeys.FromSeed([]byte(kpiWrite.Seed))
 	if err != nil {
 		return fmt.Errorf("unable to transform write keypair info to keypair: %w", err)
 	}
+	defer kpWrite.Wipe()
 
 	// now get the writer public key from the KP for writes
 	pubKey, err := kpWrite.PublicKey()
@@ -60,11 +64,13 @@ func (sks *SimpleKeyStore) ReadFromFile(filePath string) error {
 
 	// Now build the sender KPI for the cipher reader
 	newKPISender, err := security.NewKeyInfo(false, security.KeyTypePublic, "writer", []byte(pubKey))
+	defer newKPISender.Wipe()
 
 	cfr, err := cipherio.NewCipherFileReader(newKPIReceiver, newKPISender)
 	if err != nil {
 		return fmt.Errorf("unable to create instance of cipher reader: %w", err)
 	}
+	defer cfr.Wipe()
 
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -78,12 +84,14 @@ func (sks *SimpleKeyStore) ReadFromFile(filePath string) error {
 	if err != nil {
 		return fmt.Errorf("unable to read keystore data from file: %w", err)
 	}
+	defer security.Wipe(storeBytes)
 
 	sourceKeyStore := &SimpleKeyStore{}
 	err = msgpack.Unmarshal(storeBytes, sourceKeyStore)
 	if err != nil {
 		return fmt.Errorf("failed interpreting keystore byte sequence: %w", err)
 	}
+	defer sourceKeyStore.WipeData()
 
 	// Update the current keystore with the memKeyStore data
 	sks.Load(sourceKeyStore)
@@ -96,12 +104,14 @@ func (sks *SimpleKeyStore) initializeCipherWriter() (*cipherio.CipherWriter, err
 	if kpiRead == nil {
 		return nil, errors.New("keypair for keystore reads was not found in the global keypair store")
 	}
+	defer kpiRead.Wipe()
 
 	// now, extract the reader KP from the seed
 	kpRead, err := nkeys.FromSeed([]byte(kpiRead.Seed))
 	if err != nil {
 		return nil, fmt.Errorf("unable to transform read keypair info to keypair: %w", err)
 	}
+	defer kpRead.Wipe()
 
 	// now get the reader public key from the KP for reads
 	pubKey, err := kpRead.PublicKey()
@@ -120,6 +130,7 @@ func (sks *SimpleKeyStore) initializeCipherWriter() (*cipherio.CipherWriter, err
 	if kpiWrite == nil {
 		return nil, errors.New("keypair for keystore writes not found in the global keypair store")
 	}
+	defer kpiWrite.Wipe()
 
 	// Now build the sender KPI for the cipher reader
 	newKPISender, err := security.NewKeyInfo(false, security.KeyTypeSeed, "writer", []byte(kpiWrite.Seed))
@@ -156,9 +167,10 @@ func (sks *SimpleKeyStore) WriteToFile(filePath string) error {
 	if err != nil {
 		return fmt.Errorf("unable to serialize keystore data: %w", err)
 	}
+	defer security.Wipe(bytesStore)
 
-	outputBuffer := bytes.NewBuffer(bytesStore)
-	_, err = cfw.WriteToCombinedFileFromReader(useFilePath, outputBuffer)
+	readBuffer := bytes.NewReader(bytesStore)
+	_, err = cfw.WriteToCombinedFileFromReader(useFilePath, readBuffer)
 	if err != nil {
 		return fmt.Errorf("unable to write keystore to file: %w", err)
 	}
@@ -170,43 +182,3 @@ func (sks *SimpleKeyStore) WriteToFile(filePath string) error {
 func (sks *SimpleKeyStore) WriteToMemory() (bytesStore []byte, err error) {
 	return msgpack.Marshal(sks)
 }
-
-/*
-// LoadFromMemory updates the current sks using data from the streamed key store.
-//   - It should check to see if the stream is encrypted if checkForEncryption is set.
-//   - If it is NOT encrypted, then the leading byte will be a 0 marker.
-//   - If it is encrypted, then the first byte will be anything other than 0.
-//   - If it is encrypted, then the key should be in sks.KeyPairStoreKey.
-func (sks *SimpleKeyStore) LoadFromMemory(bytesStore []byte, checkForEncryption bool) error {
-	if len(bytesStore) == 0 {
-		return errors.New("no data provided: bytesStore has length 0")
-	}
-
-	memKeyStore := &SimpleKeyStore{}
-
-	var storeBytesToUse []byte
-	var err error
-
-	saltLen := bytesStore[0]
-	if checkForEncryption && saltLen != 0 {
-		saltVal := bytesStore[1 : saltLen+1]
-		storeBytesToUse, err = cipher.DecryptBytes(bytesStore[saltLen+1:], sks.KeyPairStoreKey, saltVal)
-		if err != nil {
-			return fmt.Errorf("unable to decrypt store data: %s", err)
-		}
-
-	} else {
-		// Need to remove the 0 value salt len marker
-		storeBytesToUse = bytesStore[1:]
-	}
-
-	err = msgpack.Unmarshal(storeBytesToUse, memKeyStore)
-	if err != nil {
-		return fmt.Errorf("failed interpreting byte sequence: %s", err)
-	}
-
-	// Update the current keystore with the memKeyStore data
-	sks.Load(memKeyStore)
-	return nil
-}
-*/

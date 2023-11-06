@@ -14,9 +14,13 @@
 package keypairs
 
 import (
+	"bytes"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"github.com/nats-io/nkeys"
+	"github.com/thoughtrealm/bumblebee/security"
+	"io"
 )
 
 // KeyPairInfo defines the local environment's keypairs created for sending and receiving bundles
@@ -26,25 +30,25 @@ type KeyPairInfo struct {
 	Name string
 
 	// Seed is stored as NATS base32 string
-	Seed string
+	Seed []byte
 }
 
-func NewKeyPairInfo(name, seed string) *KeyPairInfo {
+func NewKeyPairInfo(name string, seed []byte) *KeyPairInfo {
 	return &KeyPairInfo{
 		Name: name,
-		Seed: seed,
+		Seed: bytes.Clone(seed),
 	}
 }
 
 func (kpi *KeyPairInfo) Clone() *KeyPairInfo {
 	return &KeyPairInfo{
 		Name: kpi.Name,
-		Seed: kpi.Seed,
+		Seed: bytes.Clone(kpi.Seed),
 	}
 }
 
 func (kpi *KeyPairInfo) PrivateKey() ([]byte, error) {
-	if kpi.Seed == "" {
+	if len(kpi.Seed) == 0 {
 		return nil, errors.New("seed value is empty")
 	}
 
@@ -52,6 +56,7 @@ func (kpi *KeyPairInfo) PrivateKey() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to derive keypair: %w", err)
 	}
+	defer kp.Wipe()
 
 	privateKey, err := kp.PrivateKey()
 	if err != nil {
@@ -62,7 +67,7 @@ func (kpi *KeyPairInfo) PrivateKey() ([]byte, error) {
 }
 
 func (kpi *KeyPairInfo) PublicKey() ([]byte, error) {
-	if kpi.Seed == "" {
+	if len(kpi.Seed) == 0 {
 		return nil, errors.New("seed value is empty")
 	}
 
@@ -70,6 +75,7 @@ func (kpi *KeyPairInfo) PublicKey() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to derive keypair: %w", err)
 	}
+	defer kp.Wipe()
 
 	publicKey, err := kp.PublicKey()
 	if err != nil {
@@ -84,6 +90,7 @@ func (kpi *KeyPairInfo) Print(headerText string, showAll bool) error {
 	if err != nil {
 		return fmt.Errorf("unable to retrieve keypair from seed: %w", err)
 	}
+	defer kp.Wipe()
 
 	publicKey, err := kp.PublicKey()
 	if err != nil {
@@ -97,6 +104,7 @@ func (kpi *KeyPairInfo) Print(headerText string, showAll bool) error {
 			return fmt.Errorf("unable to extract private key from keypair: %w", err)
 		}
 	}
+	defer security.Wipe(privateKey)
 
 	if headerText != "" {
 		fmt.Println(headerText)
@@ -117,4 +125,10 @@ func (kpi *KeyPairInfo) Print(headerText string, showAll bool) error {
 	fmt.Printf("Public Key  : %s\n", publicKey)
 
 	return nil
+}
+
+func (kpi *KeyPairInfo) Wipe() {
+	if len(kpi.Seed) != 0 {
+		_, _ = io.ReadFull(rand.Reader, kpi.Seed[:])
+	}
 }

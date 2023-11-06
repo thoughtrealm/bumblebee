@@ -84,8 +84,9 @@ func addNewKey(keyName, publicKey string) {
 	}
 
 	err = keystore.GlobalKeyStore.AddKey(keyName, []byte(publicKey))
-
 	if err != nil {
 		fmt.Printf("Unable to add new key: %v\n", errors.Unwrap(err))
 	}
+
+	fmt.Println("New key stored to file")
 }

@@ -2,6 +2,7 @@
 **/.idea
 docs/*
 bee*
+bumblebee
 tests/distributions/distributions
 
 **/.DS_Store

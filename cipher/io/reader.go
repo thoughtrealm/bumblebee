@@ -85,6 +85,7 @@ func (cfr *CipherReader) ReadCombinedFileToBytes(combinedFilePath string) ([]byt
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve bundle from input: %w", err)
 	}
+	defer bundleInfo.Wipe()
 
 	outputBuffer := bytes.NewBuffer(nil)
 	_, err = cfr.readBundleDataTo(bundleInfo, fileIn, outputBuffer)
@@ -135,11 +136,13 @@ func (cfr *CipherReader) readBundleHeaderFrom(r io.Reader) (*BundleInfo, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed extracting seed from receiver kp: %w", err)
 	}
+	defer security.Wipe(receiverSeed)
 
 	nc, err := cipher.NewNKeysCipherDecrypter(receiverSeed, cfr.SenderPubKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed creating nkeys cipher: %w", err)
 	}
+	defer nc.Wipe()
 
 	bundleDecryptReader := bytes.NewBuffer(encryptedBundleBytes)
 	bundleDecryptWriter := bytes.NewBuffer(nil)
@@ -184,6 +187,7 @@ func (cfr *CipherReader) ReadCombinedFileToWriter(combinedFilePath string, w io.
 	if err != nil {
 		return 0, fmt.Errorf("unable to retrieve bundle header from input: %w", err)
 	}
+	defer bundleInfo.Wipe()
 
 	bytesWritten, err := cfr.readBundleDataTo(bundleInfo, fileIn, w)
 	if err != nil {
@@ -208,6 +212,7 @@ func (cfr *CipherReader) ReadCombinedFileToPath(combinedFilePath, outputPath str
 	if err != nil {
 		return 0, fmt.Errorf("unable to retrieve bundle header from input: %w", err)
 	}
+	defer bundleInfo.Wipe()
 
 	var outputFilePath string
 	if bundleInfo.OriginalFileName == "" {
@@ -240,6 +245,7 @@ func (cfr *CipherReader) ReadStreamToPath(reader io.Reader, outputPath string) (
 	if err != nil {
 		return 0, fmt.Errorf("unable to retrieve bundle header from input: %w", err)
 	}
+	defer bundleInfo.Wipe()
 
 	var outputFilePath string
 	if bundleInfo.OriginalFileName == "" {
@@ -281,6 +287,7 @@ func (cfr *CipherReader) ReadCombinedFileToFile(combinedFilePath, outputFilePath
 	if err != nil {
 		return 0, fmt.Errorf("unable to retrieve bundle header from input: %w", err)
 	}
+	defer bundleInfo.Wipe()
 
 	fileOut, err := os.Create(outputFilePath)
 	if err != nil {
@@ -300,6 +307,7 @@ func (cfr *CipherReader) ReadStreamToFile(reader io.Reader, outputFilePath strin
 	if err != nil {
 		return 0, fmt.Errorf("unable to retrieve bundle header from input: %w", err)
 	}
+	defer bundleInfo.Wipe()
 
 	fileOut, err := os.Create(outputFilePath)
 	if err != nil {
@@ -329,6 +337,7 @@ func (cfr *CipherReader) ReadSplitFilesToWriter(bundleHeaderFilePath, bundleData
 	if err != nil {
 		return 0, fmt.Errorf("unable to retrieve bundle header from input: %w", err)
 	}
+	defer bundleInfo.Wipe()
 
 	fileDataIn, err := os.Open(bundleDataFilePath)
 	if err != nil {
@@ -362,6 +371,7 @@ func (cfr *CipherReader) ReadSplitFilesToPath(bundleHeaderFilePath, bundleDataFi
 	if err != nil {
 		return 0, fmt.Errorf("unable to retrieve bundle header from input: %w", err)
 	}
+	defer bundleInfo.Wipe()
 
 	var outputFilePath string
 	if bundleInfo.OriginalFileName == "" {
@@ -413,6 +423,7 @@ func (cfr *CipherReader) ReadSplitFilesToFile(bundleHeaderFilePath, bundleDataFi
 	if err != nil {
 		return 0, fmt.Errorf("unable to retrieve bundle header from input: %w", err)
 	}
+	defer bundleInfo.Wipe()
 
 	fileOut, err := os.Create(outputFilePath)
 	if err != nil {
@@ -445,6 +456,7 @@ func (cfr *CipherReader) ReadCombinedStreamToWriter(r io.Reader, w io.Writer) (i
 	if err != nil {
 		return 0, fmt.Errorf("unable to retrieve bundle from input: %w", err)
 	}
+	defer bundleInfo.Wipe()
 
 	bytesWritten, err := cfr.readBundleDataTo(bundleInfo, r, w)
 	if err != nil {
@@ -459,6 +471,7 @@ func (cfr *CipherReader) ReadSplitStreamsToWriter(readerHdr io.Reader, readerDat
 	if err != nil {
 		return 0, fmt.Errorf("unable to retrieve bundle hdr from input: %w", err)
 	}
+	defer bundleInfo.Wipe()
 
 	bytesWritten, err := cfr.readBundleDataTo(bundleInfo, readerData, w)
 	if err != nil {
@@ -473,6 +486,7 @@ func (cfr *CipherReader) ReadCombinedStreamToFile(r io.Reader, outputFilePath st
 	if err != nil {
 		return 0, fmt.Errorf("unable to retrieve bundle from input: %w", err)
 	}
+	defer bundleInfo.Wipe()
 
 	bytesWritten, err := cfr.readBundleDataTo(bundleInfo, r, nil)
 	if err != nil {
@@ -480,4 +494,10 @@ func (cfr *CipherReader) ReadCombinedStreamToFile(r io.Reader, outputFilePath st
 	}
 
 	return bytesWritten, nil
+}
+
+func (cfr *CipherReader) Wipe() {
+	if cfr.ReceiverKP != nil {
+		cfr.ReceiverKP.Wipe()
+	}
 }

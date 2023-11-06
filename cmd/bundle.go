@@ -144,6 +144,8 @@ func bundleData() {
 		helpers.ExitCode = helpers.ExitCodeInvalidInput
 		return
 	}
+	defer localBundleSettings.senderKey.Wipe()
+	defer localBundleSettings.receiverKey.Wipe()
 
 	if localBundleCommandVals.inputTypeText == "" {
 		fmt.Println("No input-type provided.  --input-type is required.")
@@ -237,6 +239,7 @@ func bundleData() {
 		helpers.ExitCode = helpers.ExitCodeCipherError
 		return
 	}
+	defer localBundleSettings.cipherWriter.Wipe()
 
 	reader, err := getInputReader()
 	if err != nil {
@@ -301,6 +304,7 @@ func getKeysForBundle() (receiverKI, senderKI *security.KeyInfo, err error) {
 	if senderKPI == nil {
 		return nil, nil, fmt.Errorf("Unable to locate sender's keypair for name \"%s\"\n", useSenderName)
 	}
+	defer senderKPI.Wipe()
 
 	if strings.ToLower(senderKPI.Name) == "default" {
 		// now that we have retrieved the sender's key, we can set the sender name to
@@ -313,7 +317,7 @@ func getKeysForBundle() (receiverKI, senderKI *security.KeyInfo, err error) {
 		}
 	}
 
-	senderKI, err = security.NewKeyInfo(false, security.KeyTypeSeed, senderKPI.Name, []byte(senderKPI.Seed))
+	senderKI, err = security.NewKeyInfo(false, security.KeyTypeSeed, senderKPI.Name, senderKPI.Seed)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to build new sender keyinfo: %w", err)
 	}
@@ -324,7 +328,7 @@ func getKeysForBundle() (receiverKI, senderKI *security.KeyInfo, err error) {
 	}
 	receiverKI = receiverEntity.Key
 
-	return receiverKI.Clone(), senderKI, nil
+	return receiverKI.Clone(), senderKI.Clone(), nil
 }
 
 // getLocalKeysForBundleWrite will return a set of keys using the default read and write keypairs in the profile's keypair store

@@ -14,15 +14,17 @@ for the encrypting and decrypting of data.
 
 - Provide an encrypting/decrypting system that has the following properties:
   - Utilizes both symmetric and asymmetric encryption
+  - Provides data authentication inherently
   - The user should not have to know or provide the symmetric key components, something like
   an offline TLS.
-  - The user should only have to exchange public keys with other users in order to securely share secrets.
+  - The user should only have to exchange public keys with other users to securely share secrets.
   - Private keys should never be transmitted and should be stored only in a protected 
   space in their local environment.
   - It should support encrypting of large streams, such as gigabyte length files.
 
 - Allow the user to securely and easily maintain a store of public keys for exchanging
 data with other users.
+- Local key data storage should provide option to support user provided key for encrypting key data 
 - The user should have the option of providing a symmetric key for encrypting the storage of
 key sets.  This key would have to be input every time the app runs, or it would have to be provided
 via some alternate input like an environment variable, etc.
@@ -88,6 +90,6 @@ or via a native library like Fyne.  This is TBD.  But a major goal here, should 
 be utilized, would be security.  Maybe, the CLI spawns a local web UI and communicates over a
 web socket.  That approach should be considered along with native libs.
 
-## Phase 4 - Mobile Support
+## Phase 5 - Mobile Support
 Phase 4 will provide the Bee feature set on mobile platforms.  The exact solution and
 requirements are TBD.

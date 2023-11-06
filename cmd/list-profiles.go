@@ -61,9 +61,11 @@ func listProfiles() {
 		return false
 	})
 
+	fmt.Println("")
 	fmt.Printf("Total Profiles Loaded: %d\n", len(configClone.Profiles))
 	fmt.Println("============================================================")
 	for idx, profile := range configClone.Profiles {
 		fmt.Printf("Profile %2d: %s\n", idx+1, profile.Name)
 	}
+	fmt.Println("")
 }

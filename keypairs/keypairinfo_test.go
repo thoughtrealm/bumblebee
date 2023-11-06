@@ -6,17 +6,17 @@ import (
 )
 
 func TestNewKeyPairInfo(t *testing.T) {
-	kpi := NewKeyPairInfo("testname", "testseed")
+	kpi := NewKeyPairInfo("testname", []byte("testseed"))
 	if !assert.NotNil(t, kpi) {
 		return
 	}
 
 	assert.Equal(t, "testname", kpi.Name)
-	assert.Equal(t, "testseed", kpi.Seed)
+	assert.Equal(t, []byte("testseed"), kpi.Seed)
 }
 
 func TestKeyPairInfo_Clone(t *testing.T) {
-	kpi := NewKeyPairInfo("testname", "testseed")
+	kpi := NewKeyPairInfo("testname", []byte("testseed"))
 	if !assert.NotNil(t, kpi) {
 		return
 	}

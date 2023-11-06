@@ -20,7 +20,7 @@ import (
 	"testing"
 )
 
-func TestNKeysCipher(t *testing.T) {
+func TestNKeysCipher_SuccessOnNormalOperation(t *testing.T) {
 	receiverKP, err := nkeys.CreateCurveKeys()
 	assert.Nil(t, err)
 	assert.NotNil(t, receiverKP)
@@ -65,4 +65,67 @@ func TestNKeysCipher(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, secretBytes, decryptWriteBuffer.Bytes())
+}
+
+func TestNKeysCipher_FailOnRogueSender(t *testing.T) {
+	receiverKP, err := nkeys.CreateCurveKeys()
+	assert.Nil(t, err)
+	assert.NotNil(t, receiverKP)
+
+	receiverSeed, err := receiverKP.Seed()
+	assert.Nil(t, err)
+	assert.NotNil(t, receiverSeed)
+
+	receiverPubKey, err := receiverKP.PublicKey()
+	assert.Nil(t, err)
+	assert.NotEmpty(t, receiverPubKey)
+
+	senderGoodKP, err := nkeys.CreateCurveKeys()
+	assert.Nil(t, err)
+	assert.NotNil(t, senderGoodKP)
+
+	senderGoodSeed, err := senderGoodKP.Seed()
+	assert.Nil(t, err)
+	assert.NotNil(t, senderGoodSeed)
+
+	senderGoodPubKey, err := senderGoodKP.PublicKey()
+	assert.Nil(t, err)
+	assert.NotEmpty(t, senderGoodPubKey)
+
+	senderEvilKP, err := nkeys.CreateCurveKeys()
+	assert.Nil(t, err)
+	assert.NotNil(t, senderEvilKP)
+
+	senderEvilSeed, err := senderEvilKP.Seed()
+	assert.Nil(t, err)
+	assert.NotNil(t, senderEvilSeed)
+
+	senderEvilPubKey, err := senderEvilKP.PublicKey()
+	assert.Nil(t, err)
+	assert.NotEmpty(t, senderEvilPubKey)
+
+	nkeysEncrypterEvil, err := NewNKeysCipherEncrypter(receiverPubKey, senderEvilSeed)
+	assert.Nil(t, err)
+	assert.NotNil(t, nkeysEncrypterEvil)
+
+	nkeysDecrypter, err := NewNKeysCipherDecrypter(receiverSeed, senderGoodPubKey)
+	assert.Nil(t, err)
+	assert.NotNil(t, nkeysDecrypter)
+
+	secretBytes := werner_bytes
+	encryptReadBuffer := bytes.NewBuffer(secretBytes)
+	encryptWriteBuffer := bytes.NewBuffer(nil)
+	_, err = nkeysEncrypterEvil.Encrypt(encryptReadBuffer, encryptWriteBuffer)
+	assert.Nil(t, err)
+
+	decryptReadBuffer := bytes.NewBuffer(encryptWriteBuffer.Bytes())
+	decryptWriteBuffer := bytes.NewBuffer(nil)
+	_, err = nkeysDecrypter.Decrypt(decryptReadBuffer, decryptWriteBuffer)
+	assert.Nil(t, err)
+
+	assert.Equal(t, secretBytes, decryptWriteBuffer.Bytes())
+}
+
+func TestSigningSuccess(t *testing.T) {
+	// signKeySender := nkeys.CreatePairWithRand()
 }

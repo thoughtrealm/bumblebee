@@ -31,7 +31,7 @@ func (ec EntityCollection) Clone() EntityCollection {
 	ecOutput := NewEntities()
 
 	for id, entity := range ec {
-		ecOutput[id] = entity
+		ecOutput[id] = entity.Clone()
 	}
 
 	return ecOutput
@@ -98,7 +98,17 @@ func (sks *SimpleKeyStore) GetEntity(name string) (outEntity *security.Entity) {
 	sks.SyncStore.Lock()
 	defer sks.SyncStore.Unlock()
 
-	return sks.getEntity(name)
+	actualEntity := sks.getEntity(name)
+	if actualEntity == nil {
+		return actualEntity
+	}
+
+	outEntity = &security.Entity{
+		Name: actualEntity.Name,
+		Key:  actualEntity.Key.Clone(),
+	}
+
+	return outEntity
 }
 
 func (sks *SimpleKeyStore) getEntity(name string) (outEntity *security.Entity) {

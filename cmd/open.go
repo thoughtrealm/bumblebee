@@ -225,6 +225,7 @@ func openBundle() {
 		helpers.ExitCode = helpers.ExitCodeRequestFailed
 		return
 	}
+	defer localOpenSettings.cipherReader.Wipe()
 
 	var (
 		writerErr    error
@@ -759,6 +760,7 @@ func getBundleDetailsFromReader(r io.Reader, sourceSize int64) error {
 	if err != nil {
 		return fmt.Errorf("unable to get bundle details from input stream: %w", err)
 	}
+	defer bundleInfo.Wipe()
 
 	fmt.Println("")
 	fmt.Println("Bundle Details")
@@ -774,7 +776,7 @@ func getBundleDetailsFromReader(r io.Reader, sourceSize int64) error {
 	if localOpenCommandVals.showAll {
 
 		fmt.Printf("Payload Symmetric Key : %s\n", base64.RawStdEncoding.EncodeToString(bundleInfo.SymmetricKey))
-		fmt.Printf("Payload Salt          : %s\n", base64.RawStdEncoding.EncodeToString(bundleInfo.Salt))
+		fmt.Printf("Payload RandomInput          : %s\n", base64.RawStdEncoding.EncodeToString(bundleInfo.Salt))
 	}
 
 	fmt.Println("")

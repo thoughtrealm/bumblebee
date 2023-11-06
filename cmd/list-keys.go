@@ -27,7 +27,6 @@ var listKeysCmd = &cobra.Command{
 	Short: "Displays a list of all keys",
 	Long:  "Displays a list of all keys",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("useProfile: \"%s\"\n", sharedRootCommandVals.useProfile)
 		err := startBootStrap(true, true)
 		if err != nil {
 			// startBootstrap prints messages, so nothing to print here, just bail

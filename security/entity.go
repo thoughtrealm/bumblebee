@@ -35,3 +35,10 @@ func (e *Entity) Print() {
 	fmt.Printf("Value: %s\n", value)
 	fmt.Println()
 }
+
+func (e *Entity) Clone() *Entity {
+	return &Entity{
+		Name: e.Name,
+		Key:  e.Key.Clone(),
+	}
+}

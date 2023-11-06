@@ -15,6 +15,7 @@ package io
 
 import (
 	cryptorand "crypto/rand"
+	"github.com/thoughtrealm/bumblebee/security"
 	"time"
 )
 
@@ -47,6 +48,7 @@ type BundleInfo struct {
 	OriginalFileDate string // RFC3339
 	ToName           string
 	FromName         string
+	SenderSig        []byte
 }
 
 // NewBundle returns a BundleInfo that is pre-populated with a random symmetric key
@@ -64,4 +66,18 @@ func NewBundle() (*BundleInfo, error) {
 	}
 
 	return newBundle, nil
+}
+
+func (bundle *BundleInfo) Wipe() {
+	if len(bundle.SymmetricKey) != 0 {
+		security.Wipe(bundle.SymmetricKey)
+	}
+
+	if len(bundle.Salt) != 0 {
+		security.Wipe(bundle.Salt)
+	}
+
+	if len(bundle.SenderSig) != 0 {
+		security.Wipe(bundle.SenderSig)
+	}
 }

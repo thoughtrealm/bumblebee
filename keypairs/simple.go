@@ -21,6 +21,7 @@ import (
 	"github.com/thoughtrealm/bumblebee/cipher"
 	cipherio "github.com/thoughtrealm/bumblebee/cipher/io"
 	"github.com/thoughtrealm/bumblebee/helpers"
+	"github.com/thoughtrealm/bumblebee/logger"
 	"github.com/vmihailenco/msgpack/v5"
 	"os"
 	"sort"
@@ -224,14 +225,14 @@ func (kps *SimpleKeyPairStore) getKeyPairInfo(name string) *KeyPairInfo {
 		return nil
 	}
 
-	return kpi
+	return kpi.Clone()
 }
 
 func (kps *SimpleKeyPairStore) addKeyPairInfo(kpi *KeyPairInfo) {
 	// We do not lock the store here.  Internal callers lock the store first
 	// as needed.
 
-	kps.KeyPairs[strings.ToUpper(kpi.Name)] = kpi
+	kps.KeyPairs[strings.ToUpper(kpi.Name)] = kpi.Clone()
 }
 
 func (kps *SimpleKeyPairStore) CreateNewKeyPair(name string) (*KeyPairInfo, error) {
@@ -253,7 +254,7 @@ func (kps *SimpleKeyPairStore) CreateNewKeyPair(name string) (*KeyPairInfo, erro
 		return nil, err
 	}
 
-	kpi = NewKeyPairInfo(name, string(seed))
+	kpi = NewKeyPairInfo(name, seed)
 	kps.addKeyPairInfo(kpi)
 	return kpi, nil
 }
@@ -355,4 +356,19 @@ func (kps *SimpleKeyPairStore) Walk(sortInfo bool, walkFunc KeyPairStoreWalkFunc
 
 func (kps *SimpleKeyPairStore) SetPassword(newPassword []byte) {
 	kps.StoreKey = newPassword
+}
+
+func (kps *SimpleKeyPairStore) WipeData() {
+	defer func() {
+		// since this is called in possibly unstable scenarios, like during failed shutdown scenarios,
+		// or just during delayed unrolling of runtime teardown,
+		// let's assume that this process could always induce panics and suppress accordingly
+		if r := recover(); r != nil {
+			logger.Debugf("Panic in SimpleKeyPairStore WipeData(): %s", r)
+		}
+	}()
+
+	for _, kpi := range kps.KeyPairs {
+		kpi.Wipe()
+	}
 }

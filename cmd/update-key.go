@@ -18,7 +18,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/thoughtrealm/bumblebee/helpers"
 	"github.com/thoughtrealm/bumblebee/keystore"
-	"github.com/thoughtrealm/bumblebee/security"
 )
 
 // updateKeyCmd represents the key command
@@ -95,22 +94,14 @@ func updateKey(keyName, publicKey string) {
 		return
 	}
 
-	entity := keystore.GlobalKeyStore.GetKey(keyName)
-	if entity == nil {
+	found, err := keystore.GlobalKeyStore.UpdatePublicKey(keyName, publicKey)
+	if !found {
 		fmt.Printf("Unable to update key: key not found with name \"%s\"\n", keyName)
 		helpers.ExitCode = helpers.ExitCodeInvalidInput
 		return
 	}
 
-	if entity.Key.KeyType != security.KeyTypePublic {
-		// We only support public keys right now, so... this is not really needed.
-		// But for future sake, in case we support a different key type, check anyway
-		fmt.Println("Unable to update key: key type is not of type PUBLIC")
-		helpers.ExitCode = helpers.ExitCodeInvalidInput
-		return
-	}
-
-	entity.Key.KeyData = []byte(publicKey)
+	// Save the change key store
 	err = keystore.GlobalKeyStore.WriteToFile("")
 	if err != nil {
 		fmt.Printf("Unable to update key: keystore could not update the file: %s\n", err)

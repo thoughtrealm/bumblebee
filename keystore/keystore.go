@@ -53,6 +53,7 @@ type KeyStore interface {
 	UpdatePublicKey(name string, publicKey string) (found bool, err error)
 	Walk(info *WalkInfo) error
 	WalkCount(nameMatchFilter string, walkFilterFunc KeyStoreWalkFilterFunc) (count int, err error)
+	WipeData()
 	WriteToFile(filePath string) error
 }
 
@@ -94,4 +95,11 @@ func NewFromMemory(bytesStore []byte) (newKeyStore KeyStore, err error) {
 // The key sequence is used if the file is encrypted.  If it is not encrypted, the key is ignored.
 func NewFromFile(storeKey []byte, filePath string) (newKeyStore KeyStore, err error) {
 	return newSimpleKeyStoreFromFile(filePath)
+}
+
+func WipeGlobalKeystoreIfValid() {
+	if GlobalKeyStore != nil {
+		GlobalKeyStore.WipeData()
+		GlobalKeyStore = nil
+	}
 }

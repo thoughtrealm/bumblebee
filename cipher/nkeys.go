@@ -170,3 +170,13 @@ func (nk *NKeysCipher) Encrypt(r io.Reader, w io.Writer) (int, error) {
 
 	return bytesWritten, nil
 }
+
+func (nk *NKeysCipher) Wipe() {
+	if nk.SenderKP != nil {
+		nk.SenderKP.Wipe()
+	}
+
+	if nk.ReceiverKP != nil {
+		nk.ReceiverKP.Wipe()
+	}
+}

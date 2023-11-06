@@ -202,11 +202,14 @@ func (cfw *CipherWriter) WriteBundleHeader(writer io.Writer) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("failed serializing bundle info: %s", err)
 	}
+	defer cfw.OutputBundleInfo.Wipe()
+	defer security.Wipe(bundleBytes)
 
 	senderSeed, err := cfw.SenderKP.Seed()
 	if err != nil {
 		return 0, fmt.Errorf("failed extracting sender seed: %s", err)
 	}
+	defer security.Wipe(senderSeed)
 
 	bundleWriterBuff := bytes.NewBuffer(nil)
 	bundleReaderBuff := bytes.NewBuffer(bundleBytes)
@@ -214,6 +217,7 @@ func (cfw *CipherWriter) WriteBundleHeader(writer io.Writer) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("failed creating new nkeys sc encrypter: %s", err)
 	}
+	defer nc.Wipe()
 
 	_, err = nc.Encrypt(bundleReaderBuff, bundleWriterBuff)
 	if err != nil {
@@ -321,4 +325,10 @@ func WriteUint16Marker(val int, w io.Writer) (n int, err error) {
 	}
 
 	return n, nil
+}
+
+func (cfw *CipherWriter) Wipe() {
+	if cfw.SenderKP != nil {
+		cfw.SenderKP.Wipe()
+	}
 }

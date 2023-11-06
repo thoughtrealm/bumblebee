@@ -38,6 +38,6 @@ var globalListSubCommandVals = &listSubCommandVals{}
 func init() {
 	rootCmd.AddCommand(listCmd)
 	listCmd.PersistentFlags().StringVarP(&globalListSubCommandVals.match, "match", "m", "", "A pattern for matching names. See docs for pattern.")
-	listCmd.PersistentFlags().BoolVarP(&globalListSubCommandVals.sort, "sort", "s", false, "Indicates if results should be sorted or not.")
+	listCmd.PersistentFlags().BoolVarP(&globalListSubCommandVals.sort, "sort", "s", true, "Indicates if results should be sorted or not.")
 	listCmd.PersistentFlags().IntVarP(&globalListSubCommandVals.pageSize, "page-size", "p", 5, "Number of entities per page view.  If 0, not view break occurs.")
 }

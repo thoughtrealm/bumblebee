@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"github.com/nats-io/nkeys"
 	"github.com/thoughtrealm/bumblebee/helpers"
+	"github.com/thoughtrealm/bumblebee/logger"
 	"github.com/thoughtrealm/bumblebee/security"
 	"github.com/vmihailenco/msgpack/v5"
 	"sort"
@@ -63,10 +64,6 @@ func newSimpleKeyStoreFromFile(filePath string) (newKeyStore *SimpleKeyStore, er
 	}
 	newKeyStore.SourceFilePath = filePath
 	return newKeyStore, nil
-}
-
-func (sks *SimpleKeyStore) LoadKeyInfo(keySource int) (ki *security.KeyInfo, err error) {
-	return nil, errors.New("LoadKeyInfo not supported")
 }
 
 func (sks *SimpleKeyStore) NewKeyPair() (kp nkeys.KeyPair, err error) {
@@ -241,4 +238,25 @@ func (sks *SimpleKeyStore) Walk(walkInfo *WalkInfo) (err error) {
 	}
 
 	return nil
+}
+
+func (sks *SimpleKeyStore) WipeData() {
+	defer func() {
+		// since this is called in possibly unstable scenarios, like during failed shutdown scenarios,
+		// or just during delayed unrolling of runtime teardown,
+		// let's assume that this process could always induce panics and suppress accordingly
+		if r := recover(); r != nil {
+			logger.Debugf("Panic in SimpleKeyStore WipeData(): %s", r)
+		}
+	}()
+
+	if sks == nil {
+		return
+	}
+
+	for _, entity := range sks.Entities {
+		if entity.Key != nil {
+			entity.Key.Wipe()
+		}
+	}
 }

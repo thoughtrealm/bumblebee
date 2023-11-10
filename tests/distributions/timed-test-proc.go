@@ -17,7 +17,6 @@ import (
 	"bytes"
 	"crypto/rand"
 	"fmt"
-	"github.com/nats-io/nkeys"
 	cipherio "github.com/thoughtrealm/bumblebee/cipher/io"
 	"github.com/thoughtrealm/bumblebee/security"
 	"io"
@@ -31,7 +30,7 @@ type timedTestProc struct {
 	outputBuffer *bytes.Buffer
 	mgr          *timedTestMgr
 	receiverKI   *security.KeyInfo
-	senderKI     *security.KeyInfo
+	senderKPI    *security.KeyPairInfo
 	cw           *cipherio.CipherWriter
 }
 
@@ -55,7 +54,7 @@ func (ttp *timedTestProc) init(dataSize int) {
 		panic(fmt.Sprintf("error creating keypairs in ttp.init: %s", err))
 	}
 
-	ttp.cw, err = cipherio.NewCipherWriter(ttp.receiverKI, ttp.senderKI)
+	ttp.cw, err = cipherio.NewCipherWriter(ttp.receiverKI, ttp.senderKPI)
 	if err != nil {
 		panic(fmt.Sprintf("error creating new cipher writer in ttp.init: %s", err))
 	}
@@ -103,45 +102,24 @@ func (ttp *timedTestProc) doTest() {
 }
 
 func (ttp *timedTestProc) createKeypairs() (err error) {
-	var (
-		receiverKP        nkeys.KeyPair
-		receiverPublicKey string
-		senderKP          nkeys.KeyPair
-		senderSeed        []byte
-	)
-
-	receiverKP, err = nkeys.CreateCurveKeys()
+	receiverKPI, err := security.NewKeyPairInfoWithSeeds("receiver")
 	if err != nil {
-		return fmt.Errorf("failed creating receiver kp: %s\n", err)
+		return fmt.Errorf("failed creating receiver kpi: %s\n", err)
 	}
 
-	receiverPublicKey, err = receiverKP.PublicKey()
+	receiverCipherPublicKey, receiverSigningPublicKey, err := receiverKPI.PublicKeys()
 	if err != nil {
-		return fmt.Errorf("failed creating reciever public key: %s", err)
+		return fmt.Errorf("failed retrieving receiver public keys: %s\n", err)
 	}
 
-	ttp.receiverKI = &security.KeyInfo{
-		IsDefault: false,
-		KeyType:   security.KeyTypePublic,
-		Name:      "receiver",
-		KeyData:   []byte(receiverPublicKey),
-	}
-
-	senderKP, err = nkeys.CreateCurveKeys()
+	ttp.receiverKI, err = security.NewKeyInfo("receiver", receiverCipherPublicKey, receiverSigningPublicKey)
 	if err != nil {
-		return fmt.Errorf("failed creating sender kp: %s\n", err)
+		return fmt.Errorf("failed create new receiver KI: %s\n", err)
 	}
 
-	senderSeed, err = senderKP.Seed()
+	ttp.senderKPI, err = security.NewKeyPairInfoWithSeeds("sender")
 	if err != nil {
-		return fmt.Errorf("failed creating sender private key: %s", err)
-	}
-
-	ttp.senderKI = &security.KeyInfo{
-		IsDefault: false,
-		KeyType:   security.KeyTypeSeed,
-		Name:      "sender",
-		KeyData:   senderSeed,
+		return fmt.Errorf("failed creating sender key pair: %s", err)
 	}
 
 	return nil

@@ -17,7 +17,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/nats-io/nkeys"
 	cipherio "github.com/thoughtrealm/bumblebee/cipher/io"
 	"github.com/thoughtrealm/bumblebee/helpers"
 	"github.com/thoughtrealm/bumblebee/keypairs"
@@ -28,45 +27,33 @@ import (
 
 // ReadFromFile will call the cipher IO to decrypt the combined bundle stream from the keystore file
 func (sks *SimpleKeyStore) ReadFromFile(filePath string) error {
-	// we need to get the read kpi from the global keypair store
+	// We need to get the read kpi from the global keypair store, which we store in the cipher reader,
+	// so we dont wipe it here.  It's a clone, so it will be wiped later with cipher file reader.
 	kpiRead := keypairs.GlobalKeyPairStore.GetKeyPairInfo(helpers.KeyPairNameForKeyStoreReads)
 	if kpiRead == nil {
-		return errors.New("keypair for keystore reads was not found in the global keypair store")
+		return errors.New("keypair info for keystore reads was not found in the global keypair store")
 	}
-	defer kpiRead.Wipe()
 
-	// Convert the read kpi to a receiver kpi for the cipher reader
-	newKPIReceiver, err := security.NewKeyInfo(false, security.KeyTypeSeed, "reader", kpiRead.Seed)
-	if err != nil {
-		return fmt.Errorf("unable to transform read keypair info to receiver info: %w", err)
-	}
-	defer newKPIReceiver.Wipe()
-
-	// Now get the write KPI from the keypair store
+	// Now get the writer KPI from the keypair store
 	kpiWrite := keypairs.GlobalKeyPairStore.GetKeyPairInfo(helpers.KeyPairNameForKeyStoreWrites)
 	if kpiWrite == nil {
-		return errors.New("keypair for keystore writes not found in the global keypair store")
+		return errors.New("keypair info for keystore writes not found in the global keypair store")
 	}
 	defer kpiWrite.Wipe()
 
 	// now, extract the writer KP from the seed
-	kpWrite, err := nkeys.FromSeed([]byte(kpiWrite.Seed))
+	writerCipherPubKey, writerSigningPubKey, err := kpiWrite.PublicKeys()
 	if err != nil {
-		return fmt.Errorf("unable to transform write keypair info to keypair: %w", err)
-	}
-	defer kpWrite.Wipe()
-
-	// now get the writer public key from the KP for writes
-	pubKey, err := kpWrite.PublicKey()
-	if err != nil {
-		return fmt.Errorf("unable to extract public key from write keypair: %w", err)
+		return fmt.Errorf("unable to retrieve pubkeys from writer kpi: %w", err)
 	}
 
 	// Now build the sender KPI for the cipher reader
-	newKPISender, err := security.NewKeyInfo(false, security.KeyTypePublic, "writer", []byte(pubKey))
-	defer newKPISender.Wipe()
+	newKISender, err := security.NewKeyInfo("writer", writerCipherPubKey, writerSigningPubKey)
+	if err != nil {
+		return fmt.Errorf("unable to construct sender keyinfo from writer pubkeys: %w", err)
+	}
 
-	cfr, err := cipherio.NewCipherFileReader(newKPIReceiver, newKPISender)
+	cfr, err := cipherio.NewCipherFileReader(kpiRead, newKISender)
 	if err != nil {
 		return fmt.Errorf("unable to create instance of cipher reader: %w", err)
 	}
@@ -91,7 +78,6 @@ func (sks *SimpleKeyStore) ReadFromFile(filePath string) error {
 	if err != nil {
 		return fmt.Errorf("failed interpreting keystore byte sequence: %w", err)
 	}
-	defer sourceKeyStore.WipeData()
 
 	// Update the current keystore with the memKeyStore data
 	sks.Load(sourceKeyStore)
@@ -106,23 +92,15 @@ func (sks *SimpleKeyStore) initializeCipherWriter() (*cipherio.CipherWriter, err
 	}
 	defer kpiRead.Wipe()
 
-	// now, extract the reader KP from the seed
-	kpRead, err := nkeys.FromSeed([]byte(kpiRead.Seed))
+	cipherPubKey, signingPubKey, err := kpiRead.PublicKeys()
 	if err != nil {
-		return nil, fmt.Errorf("unable to transform read keypair info to keypair: %w", err)
-	}
-	defer kpRead.Wipe()
-
-	// now get the reader public key from the KP for reads
-	pubKey, err := kpRead.PublicKey()
-	if err != nil {
-		return nil, fmt.Errorf("unable to extract public key from read keypair: %w", err)
+		return nil, fmt.Errorf("unable to extract pub keys from reader kpi: %w", err)
 	}
 
-	// Convert the read kpi to a receiver kpi for the cipher reader
-	newKPIReceiver, err := security.NewKeyInfo(false, security.KeyTypePublic, "reader", []byte(pubKey))
+	// Convert the read kpi to a receiver ki for the cipher reader
+	newKIReceiver, err := security.NewKeyInfo("reader", cipherPubKey, signingPubKey)
 	if err != nil {
-		return nil, fmt.Errorf("unable to transform read keypair info to receiver info: %w", err)
+		return nil, fmt.Errorf("unable to transform read pubkeys to receiver keyinfo: %w", err)
 	}
 
 	// Now get the write KPI from the keypair store
@@ -132,10 +110,7 @@ func (sks *SimpleKeyStore) initializeCipherWriter() (*cipherio.CipherWriter, err
 	}
 	defer kpiWrite.Wipe()
 
-	// Now build the sender KPI for the cipher reader
-	newKPISender, err := security.NewKeyInfo(false, security.KeyTypeSeed, "writer", []byte(kpiWrite.Seed))
-
-	cfw, err := cipherio.NewCipherWriter(newKPIReceiver, newKPISender)
+	cfw, err := cipherio.NewCipherWriter(newKIReceiver, kpiWrite)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create instance of cipher writer: %w", err)
 	}

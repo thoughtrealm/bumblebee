@@ -43,17 +43,18 @@ import "github.com/thoughtrealm/bumblebee/security"
 var GlobalKeyStore KeyStore
 
 type KeyStore interface {
-	AddKey(name string, publickey []byte) error
+	AddKey(name, cipherPubKey, signingPubKey string) error
 	Count() int
 	GetDetails() *StoreDetails
 	GetKey(name string) *security.Entity
 	RenameEntity(oldName, newName string) (bool, error)
 	RemoveEntity(name string) (found bool, err error)
 	GetServerInfo() *ServerInfo
-	UpdatePublicKey(name string, publicKey string) (found bool, err error)
+	UpdateCipherPublicKey(name, cipherPublicKey string) (found bool, err error)
+	UpdatePublicKeys(name, cipherPpublicKey, signingPublicKey string) (found bool, err error)
+	UpdateSigningPublicKey(name, signingPublicKey string) (found bool, err error)
 	Walk(info *WalkInfo) error
 	WalkCount(nameMatchFilter string, walkFilterFunc KeyStoreWalkFilterFunc) (count int, err error)
-	WipeData()
 	WriteToFile(filePath string) error
 }
 
@@ -95,11 +96,4 @@ func NewFromMemory(bytesStore []byte) (newKeyStore KeyStore, err error) {
 // The key sequence is used if the file is encrypted.  If it is not encrypted, the key is ignored.
 func NewFromFile(storeKey []byte, filePath string) (newKeyStore KeyStore, err error) {
 	return newSimpleKeyStoreFromFile(filePath)
-}
-
-func WipeGlobalKeystoreIfValid() {
-	if GlobalKeyStore != nil {
-		GlobalKeyStore.WipeData()
-		GlobalKeyStore = nil
-	}
 }

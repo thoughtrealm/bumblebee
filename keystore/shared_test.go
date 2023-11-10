@@ -21,23 +21,29 @@ import (
 func buildTestStore() (newStore *SimpleKeyStore) {
 	newStore = newSimpleKeyStore("local", "local", true)
 
+	storeKPI, _ := security.NewKeyPairInfoWithSeeds("store")
+	storeCipherPubKey, storeSigningPubKey, _ := storeKPI.PublicKeys()
+
+	entityKPI, _ := security.NewKeyPairInfoWithSeeds("entity")
+	entityCipherPubKey, entitySigningPubKey, _ := entityKPI.PublicKeys()
+	entityKI, _ := security.NewKeyInfo(
+		"entityKI",
+		entityCipherPubKey,
+		entitySigningPubKey,
+	)
+
 	newStore.SetServerInfo(
 		"name",
 		"localhost",
 		"16222",
 		&security.KeyInfo{
-			IsDefault: true,
-			KeyType:   security.KeyTypeSeed,
-			Name:      "root",
-			KeyData:   []byte("SXAIBZV5ONCL446HGD2OTR3NVMFY2XKXZVXQX7ARKGBJMM32WG2G2BHXYU"),
-		})
+			Name:          "root",
+			CipherPubKey:  storeCipherPubKey,
+			SigningPubKey: storeSigningPubKey,
+		},
+	)
 
-	_ = newStore.AddEntity("bob", &security.KeyInfo{
-		IsDefault: true,
-		KeyType:   security.KeyTypePublic,
-		Name:      "mykey",
-		KeyData:   []byte("iso public"),
-	})
+	_ = newStore.AddEntity("bob", entityKI)
 
 	return
 }
@@ -45,24 +51,30 @@ func buildTestStore() (newStore *SimpleKeyStore) {
 func buildTestStoreMultiEntity(countOfEntities int) (newStore *SimpleKeyStore) {
 	newStore = newSimpleKeyStore("local", "local", true)
 
+	storeKPI, _ := security.NewKeyPairInfoWithSeeds("store")
+	storeCipherPubKey, storeSigningPubKey, _ := storeKPI.PublicKeys()
+
 	newStore.SetServerInfo(
 		"name",
 		"localhost",
 		"16222",
 		&security.KeyInfo{
-			IsDefault: true,
-			KeyType:   security.KeyTypeSeed,
-			Name:      "root",
-			KeyData:   []byte("SXAIBZV5ONCL446HGD2OTR3NVMFY2XKXZVXQX7ARKGBJMM32WG2G2BHXYU"),
-		})
+			Name:          "root",
+			CipherPubKey:  storeCipherPubKey,
+			SigningPubKey: storeSigningPubKey,
+		},
+	)
 
 	for count := 0; count < countOfEntities; count++ {
-		_ = newStore.AddEntity(fmt.Sprintf("bob-%d", count), &security.KeyInfo{
-			IsDefault: true,
-			KeyType:   security.KeyTypePublic,
-			Name:      fmt.Sprintf("mykey-%d", count),
-			KeyData:   []byte(fmt.Sprintf("iso public-%d", count)),
-		})
+		entityKPI, _ := security.NewKeyPairInfoWithSeeds(fmt.Sprintf("mykey-%d", count))
+		entityCipherPubKey, entitySigningPubKey, _ := entityKPI.PublicKeys()
+		entityKI, _ := security.NewKeyInfo(
+			fmt.Sprintf("mykey-%d", count),
+			entityCipherPubKey,
+			entitySigningPubKey,
+		)
+
+		_ = newStore.AddEntity(fmt.Sprintf("bob-%d", count), entityKI)
 	}
 
 	return

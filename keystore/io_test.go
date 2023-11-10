@@ -60,19 +60,15 @@ func (s *KeyStoreIOTestSuite) TestSimplexKeyStore_ReadWriteMemoryCycle_OneEntity
 	s.Assert().Equal(s.testStore.Server.Address, newStore.GetServerInfo().Address)
 	s.Assert().Equal(s.testStore.Server.Port, newStore.GetServerInfo().Port)
 	s.Assert().Equal(s.testStore.Server.Key.Name, newStore.GetServerInfo().Key.Name)
-	s.Assert().Equal(s.testStore.Server.Key.KeyType, newStore.GetServerInfo().Key.KeyType)
-	s.Assert().Equal(s.testStore.Server.Key.IsDefault, newStore.GetServerInfo().Key.IsDefault)
-	s.Assert().Equal(s.testStore.Server.Key.KeyData, newStore.GetServerInfo().Key.KeyData)
+	s.Assert().True(s.testStore.Server.Key.IsSameData(newStore.GetServerInfo().Key))
 
 	// Compare store entities
 	s.Assert().Equal(len(s.testStore.Entities), newStore.Count())
 	for _, entity := range s.testStore.Entities {
 		newEntity := newStore.GetKey(entity.Name)
 		s.Assert().Equal(entity.Name, newEntity.Name)
-		s.Assert().Equal(entity.Key.Name, newEntity.Key.Name)
-		s.Assert().Equal(entity.Key.KeyType, newEntity.Key.KeyType)
-		s.Assert().Equal(entity.Key.IsDefault, newEntity.Key.IsDefault)
-		s.Assert().Equal(entity.Key.KeyData, newEntity.Key.KeyData)
+		s.Assert().Equal(entity.PublicKeys.Name, newEntity.PublicKeys.Name)
+		s.Assert().True(entity.PublicKeys.IsSameData(newEntity.PublicKeys))
 	}
 }
 
@@ -102,19 +98,15 @@ func (s *KeyStoreIOTestSuite) TestSimplexKeyStore_ReadWriteMemoryCycle_1000Entit
 	s.Assert().Equal(testStore.Server.Address, newStore.GetServerInfo().Address)
 	s.Assert().Equal(testStore.Server.Port, newStore.GetServerInfo().Port)
 	s.Assert().Equal(testStore.Server.Key.Name, newStore.GetServerInfo().Key.Name)
-	s.Assert().Equal(testStore.Server.Key.KeyType, newStore.GetServerInfo().Key.KeyType)
-	s.Assert().Equal(testStore.Server.Key.IsDefault, newStore.GetServerInfo().Key.IsDefault)
-	s.Assert().Equal(testStore.Server.Key.KeyData, newStore.GetServerInfo().Key.KeyData)
+	s.Assert().True(testStore.Server.Key.IsSameData(newStore.GetServerInfo().Key))
 
 	// Compare store entities
 	s.Assert().Equal(len(testStore.Entities), newStore.Count())
 	for _, entity := range testStore.Entities {
 		newEntity := newStore.GetKey(entity.Name)
 		s.Assert().Equal(entity.Name, newEntity.Name)
-		s.Assert().Equal(entity.Key.Name, newEntity.Key.Name)
-		s.Assert().Equal(entity.Key.KeyType, newEntity.Key.KeyType)
-		s.Assert().Equal(entity.Key.IsDefault, newEntity.Key.IsDefault)
-		s.Assert().Equal(entity.Key.KeyData, newEntity.Key.KeyData)
+		s.Assert().Equal(entity.PublicKeys.Name, newEntity.PublicKeys.Name)
+		s.Assert().True(entity.PublicKeys.IsSameData(newEntity.PublicKeys))
 	}
 }
 
@@ -144,18 +136,14 @@ func (s *KeyStoreIOTestSuite) TestSimplexKeyStore_ReadWriteMemoryCycle_1000000En
 	s.Assert().Equal(testStore.Server.Address, newStore.GetServerInfo().Address)
 	s.Assert().Equal(testStore.Server.Port, newStore.GetServerInfo().Port)
 	s.Assert().Equal(testStore.Server.Key.Name, newStore.GetServerInfo().Key.Name)
-	s.Assert().Equal(testStore.Server.Key.KeyType, newStore.GetServerInfo().Key.KeyType)
-	s.Assert().Equal(testStore.Server.Key.IsDefault, newStore.GetServerInfo().Key.IsDefault)
-	s.Assert().Equal(testStore.Server.Key.KeyData, newStore.GetServerInfo().Key.KeyData)
+	s.Assert().True(testStore.Server.Key.IsSameData(newStore.GetServerInfo().Key))
 
 	// Compare store entities
 	s.Assert().Equal(len(testStore.Entities), newStore.Count())
 	for _, entity := range testStore.Entities {
 		newEntity := newStore.GetKey(entity.Name)
 		s.Assert().Equal(entity.Name, newEntity.Name)
-		s.Assert().Equal(entity.Key.Name, newEntity.Key.Name)
-		s.Assert().Equal(entity.Key.KeyType, newEntity.Key.KeyType)
-		s.Assert().Equal(entity.Key.IsDefault, newEntity.Key.IsDefault)
-		s.Assert().Equal(entity.Key.KeyData, newEntity.Key.KeyData)
+		s.Assert().Equal(entity.PublicKeys.Name, newEntity.PublicKeys.Name)
+		s.Assert().True(entity.PublicKeys.IsSameData(newEntity.PublicKeys))
 	}
 }

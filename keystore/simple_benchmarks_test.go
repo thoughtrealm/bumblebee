@@ -75,7 +75,7 @@ func BenchmarkGetEntity_OneEntity_NoLock(b *testing.B) {
 	const ENTITIES = 1
 
 	log.Printf("Building store with %d entities", ENTITIES)
-	testStore := buildTestStoreMultiEntity(1000000)
+	testStore := buildTestStoreMultiEntity(ENTITIES)
 
 	log.Println("Building prebuilt search key array")
 	prebuiltSearchKeys := [ENTITIES]string{}
@@ -103,7 +103,7 @@ func BenchmarkGetEntity_1000Entities_NoLock(b *testing.B) {
 	const ENTITIES = 1000
 
 	log.Printf("Building store with %d entities", ENTITIES)
-	testStore := buildTestStoreMultiEntity(1000000)
+	testStore := buildTestStoreMultiEntity(ENTITIES)
 
 	log.Println("Building prebuilt search key array")
 	prebuiltSearchKeys := [ENTITIES]string{}
@@ -131,7 +131,7 @@ func BenchmarkGetEntity_1000000Entities_NoLock(b *testing.B) {
 	const ENTITIES = 1000000
 
 	log.Printf("Building store with %d entities", ENTITIES)
-	testStore := buildTestStoreMultiEntity(1000000)
+	testStore := buildTestStoreMultiEntity(ENTITIES)
 
 	log.Println("Building prebuilt search key array")
 	prebuiltSearchKeys := [ENTITIES]string{}

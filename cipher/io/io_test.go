@@ -15,7 +15,6 @@ package io
 
 import (
 	"bytes"
-	"github.com/nats-io/nkeys"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"github.com/thoughtrealm/bumblebee/helpers"
@@ -71,16 +70,21 @@ func (s *CipherIOTestSuite) TestCipherFileWriter_WriteToCombinedFileFromReader()
 	secretBytes := werner_bytes
 	readerBuff := bytes.NewBuffer(secretBytes)
 
-	receiverKP, _ := nkeys.CreateCurveKeys()
-	senderKP, _ := nkeys.CreateCurveKeys()
+	receiverKPI, _ := security.NewKeyPairInfoWithSeeds("receiverKPI")
+	receiverCipherPublicKey, receiverSigningPublicKey, err := receiverKPI.PublicKeys()
+	if !assert.Nil(s.T(), err) {
+		return
+	}
+	receiverKI, _ := security.NewKeyInfo("receiverKI", receiverCipherPublicKey, receiverSigningPublicKey)
 
-	receiverPublicKey, _ := receiverKP.PublicKey()
-	senderSeed, _ := senderKP.Seed()
+	senderKPI, _ := security.NewKeyPairInfoWithSeeds("senderKPI")
+	senderCipherPublicKey, senderSigningPublicKey, err := senderKPI.PublicKeys()
+	if !assert.Nil(s.T(), err) {
+		return
+	}
+	senderKI, _ := security.NewKeyInfo("senderKI", senderCipherPublicKey, senderSigningPublicKey)
 
-	encryptReceiverKey, _ := security.NewKeyInfo(false, security.KeyTypePublic, "", []byte(receiverPublicKey))
-	encryptSenderKey, _ := security.NewKeyInfo(false, security.KeyTypeSeed, "", senderSeed)
-
-	cfw, err := NewCipherWriter(encryptReceiverKey, encryptSenderKey)
+	cfw, err := NewCipherWriter(receiverKI, senderKPI)
 	if !assert.Nil(s.T(), err) {
 		return
 	}
@@ -91,13 +95,7 @@ func (s *CipherIOTestSuite) TestCipherFileWriter_WriteToCombinedFileFromReader()
 	}
 
 	// now, we want to decrypt the file
-	receiverSeed, _ := receiverKP.Seed()
-	senderPubKey, _ := senderKP.PublicKey()
-
-	decryptReceiverKey, _ := security.NewKeyInfo(false, security.KeyTypeSeed, "", receiverSeed)
-	decryptSenderKey, _ := security.NewKeyInfo(false, security.KeyTypePublic, "", []byte(senderPubKey))
-
-	cfr, err := NewCipherFileReader(decryptReceiverKey, decryptSenderKey)
+	cfr, err := NewCipherFileReader(receiverKPI, senderKI)
 	if !assert.Nil(s.T(), err) {
 		return
 	}
@@ -142,16 +140,21 @@ func (s *CipherIOTestSuite) TestCipherFileWriter_WriteToSplitFilesFromReader() {
 	secretBytes := werner_bytes
 	readerBuff := bytes.NewBuffer(secretBytes)
 
-	receiverKP, _ := nkeys.CreateCurveKeys()
-	senderKP, _ := nkeys.CreateCurveKeys()
+	receiverKPI, _ := security.NewKeyPairInfoWithSeeds("receiverKPI")
+	receiverCipherPublicKey, receiverSigningPublicKey, err := receiverKPI.PublicKeys()
+	if !assert.Nil(s.T(), err) {
+		return
+	}
+	receiverKI, _ := security.NewKeyInfo("receiverKI", receiverCipherPublicKey, receiverSigningPublicKey)
 
-	receiverPublicKey, _ := receiverKP.PublicKey()
-	senderSeed, _ := senderKP.Seed()
+	senderKPI, _ := security.NewKeyPairInfoWithSeeds("senderKPI")
+	senderCipherPublicKey, senderSigningPublicKey, err := senderKPI.PublicKeys()
+	if !assert.Nil(s.T(), err) {
+		return
+	}
+	senderKI, _ := security.NewKeyInfo("senderKI", senderCipherPublicKey, senderSigningPublicKey)
 
-	encryptReceiverKey, _ := security.NewKeyInfo(false, security.KeyTypePublic, "", []byte(receiverPublicKey))
-	encryptSenderKey, _ := security.NewKeyInfo(false, security.KeyTypeSeed, "", senderSeed)
-
-	cfw, err := NewCipherWriter(encryptReceiverKey, encryptSenderKey)
+	cfw, err := NewCipherWriter(receiverKI, senderKPI)
 	if !assert.Nil(s.T(), err) {
 		return
 	}
@@ -162,13 +165,7 @@ func (s *CipherIOTestSuite) TestCipherFileWriter_WriteToSplitFilesFromReader() {
 	}
 
 	// now, we want to decrypt the file
-	receiverSeed, _ := receiverKP.Seed()
-	senderPubKey, _ := senderKP.PublicKey()
-
-	decryptReceiverKey, _ := security.NewKeyInfo(false, security.KeyTypeSeed, "", receiverSeed)
-	decryptSenderKey, _ := security.NewKeyInfo(false, security.KeyTypePublic, "", []byte(senderPubKey))
-
-	cfr, err := NewCipherFileReader(decryptReceiverKey, decryptSenderKey)
+	cfr, err := NewCipherFileReader(receiverKPI, senderKI)
 	if !assert.Nil(s.T(), err) {
 		return
 	}
@@ -192,16 +189,21 @@ func (s *CipherIOTestSuite) TestCipherFileWriter_WriteToCombinedStreamFromReader
 	readerBuff := bytes.NewBuffer(secretBytes)
 	encryptedBuff := bytes.NewBuffer(nil)
 
-	receiverKP, _ := nkeys.CreateCurveKeys()
-	senderKP, _ := nkeys.CreateCurveKeys()
+	receiverKPI, _ := security.NewKeyPairInfoWithSeeds("receiverKPI")
+	receiverCipherPublicKey, receiverSigningPublicKey, err := receiverKPI.PublicKeys()
+	if !assert.Nil(s.T(), err) {
+		return
+	}
+	receiverKI, _ := security.NewKeyInfo("receiverKI", receiverCipherPublicKey, receiverSigningPublicKey)
 
-	receiverPublicKey, _ := receiverKP.PublicKey()
-	senderSeed, _ := senderKP.Seed()
+	senderKPI, _ := security.NewKeyPairInfoWithSeeds("senderKPI")
+	senderCipherPublicKey, senderSigningPublicKey, err := senderKPI.PublicKeys()
+	if !assert.Nil(s.T(), err) {
+		return
+	}
+	senderKI, _ := security.NewKeyInfo("senderKI", senderCipherPublicKey, senderSigningPublicKey)
 
-	encryptReceiverKey, _ := security.NewKeyInfo(false, security.KeyTypePublic, "", []byte(receiverPublicKey))
-	encryptSenderKey, _ := security.NewKeyInfo(false, security.KeyTypeSeed, "", senderSeed)
-
-	cfw, err := NewCipherWriter(encryptReceiverKey, encryptSenderKey)
+	cfw, err := NewCipherWriter(receiverKI, senderKPI)
 	if !assert.Nil(s.T(), err) {
 		return
 	}
@@ -212,13 +214,7 @@ func (s *CipherIOTestSuite) TestCipherFileWriter_WriteToCombinedStreamFromReader
 	}
 
 	// now, we want to decrypt the buffer
-	receiverSeed, _ := receiverKP.Seed()
-	senderPubKey, _ := senderKP.PublicKey()
-
-	decryptReceiverKey, _ := security.NewKeyInfo(false, security.KeyTypeSeed, "", receiverSeed)
-	decryptSenderKey, _ := security.NewKeyInfo(false, security.KeyTypePublic, "", []byte(senderPubKey))
-
-	cfr, err := NewCipherFileReader(decryptReceiverKey, decryptSenderKey)
+	cfr, err := NewCipherFileReader(receiverKPI, senderKI)
 	if !assert.Nil(s.T(), err) {
 		return
 	}
@@ -240,16 +236,21 @@ func (s *CipherIOTestSuite) TestCipherFileWriter_WriteToCombinedStreamFromReader
 	readerBuff := bytes.NewBuffer(secretBytes)
 	encryptedBuff := bytes.NewBuffer(nil)
 
-	receiverKP, _ := nkeys.CreateCurveKeys()
-	senderKP, _ := nkeys.CreateCurveKeys()
+	receiverKPI, _ := security.NewKeyPairInfoWithSeeds("receiverKPI")
+	receiverCipherPublicKey, receiverSigningPublicKey, err := receiverKPI.PublicKeys()
+	if !assert.Nil(s.T(), err) {
+		return
+	}
+	receiverKI, _ := security.NewKeyInfo("receiverKI", receiverCipherPublicKey, receiverSigningPublicKey)
 
-	receiverPublicKey, _ := receiverKP.PublicKey()
-	senderSeed, _ := senderKP.Seed()
+	senderKPI, _ := security.NewKeyPairInfoWithSeeds("senderKPI")
+	senderCipherPublicKey, senderSigningPublicKey, err := senderKPI.PublicKeys()
+	if !assert.Nil(s.T(), err) {
+		return
+	}
+	senderKI, _ := security.NewKeyInfo("senderKI", senderCipherPublicKey, senderSigningPublicKey)
 
-	encryptReceiverKey, _ := security.NewKeyInfo(false, security.KeyTypePublic, "", []byte(receiverPublicKey))
-	encryptSenderKey, _ := security.NewKeyInfo(false, security.KeyTypeSeed, "", senderSeed)
-
-	cfw, err := NewCipherWriter(encryptReceiverKey, encryptSenderKey)
+	cfw, err := NewCipherWriter(receiverKI, senderKPI)
 	if !assert.Nil(s.T(), err) {
 		return
 	}
@@ -260,13 +261,7 @@ func (s *CipherIOTestSuite) TestCipherFileWriter_WriteToCombinedStreamFromReader
 	}
 
 	// now, we want to decrypt the buffer
-	receiverSeed, _ := receiverKP.Seed()
-	senderPubKey, _ := senderKP.PublicKey()
-
-	decryptReceiverKey, _ := security.NewKeyInfo(false, security.KeyTypeSeed, "", receiverSeed)
-	decryptSenderKey, _ := security.NewKeyInfo(false, security.KeyTypePublic, "", []byte(senderPubKey))
-
-	cfr, err := NewCipherFileReader(decryptReceiverKey, decryptSenderKey)
+	cfr, err := NewCipherFileReader(receiverKPI, senderKI)
 	if !assert.Nil(s.T(), err) {
 		return
 	}
@@ -288,16 +283,21 @@ func (s *CipherIOTestSuite) TestCipherFileWriter_WriteToSplitStreamsFromReader()
 	encryptedBuffHdr := bytes.NewBuffer(nil)
 	encryptedBuffData := bytes.NewBuffer(nil)
 
-	receiverKP, _ := nkeys.CreateCurveKeys()
-	senderKP, _ := nkeys.CreateCurveKeys()
+	receiverKPI, _ := security.NewKeyPairInfoWithSeeds("receiverKPI")
+	receiverCipherPublicKey, receiverSigningPublicKey, err := receiverKPI.PublicKeys()
+	if !assert.Nil(s.T(), err) {
+		return
+	}
+	receiverKI, _ := security.NewKeyInfo("receiverKI", receiverCipherPublicKey, receiverSigningPublicKey)
 
-	receiverPublicKey, _ := receiverKP.PublicKey()
-	senderSeed, _ := senderKP.Seed()
+	senderKPI, _ := security.NewKeyPairInfoWithSeeds("senderKPI")
+	senderCipherPublicKey, senderSigningPublicKey, err := senderKPI.PublicKeys()
+	if !assert.Nil(s.T(), err) {
+		return
+	}
+	senderKI, _ := security.NewKeyInfo("senderKI", senderCipherPublicKey, senderSigningPublicKey)
 
-	encryptReceiverKey, _ := security.NewKeyInfo(false, security.KeyTypePublic, "", []byte(receiverPublicKey))
-	encryptSenderKey, _ := security.NewKeyInfo(false, security.KeyTypeSeed, "", senderSeed)
-
-	cfw, err := NewCipherWriter(encryptReceiverKey, encryptSenderKey)
+	cfw, err := NewCipherWriter(receiverKI, senderKPI)
 	if !assert.Nil(s.T(), err) {
 		return
 	}
@@ -308,13 +308,7 @@ func (s *CipherIOTestSuite) TestCipherFileWriter_WriteToSplitStreamsFromReader()
 	}
 
 	// now, we want to decrypt the buffer
-	receiverSeed, _ := receiverKP.Seed()
-	senderPubKey, _ := senderKP.PublicKey()
-
-	decryptReceiverKey, _ := security.NewKeyInfo(false, security.KeyTypeSeed, "", receiverSeed)
-	decryptSenderKey, _ := security.NewKeyInfo(false, security.KeyTypePublic, "", []byte(senderPubKey))
-
-	cfr, err := NewCipherFileReader(decryptReceiverKey, decryptSenderKey)
+	cfr, err := NewCipherFileReader(receiverKPI, senderKI)
 	if !assert.Nil(s.T(), err) {
 		return
 	}
@@ -340,16 +334,21 @@ func (s *CipherIOTestSuite) TestCipherFileWriter_WriteToSplitStreamsFromReader_L
 	encryptedBuffHdr := bytes.NewBuffer(nil)
 	encryptedBuffData := bytes.NewBuffer(nil)
 
-	receiverKP, _ := nkeys.CreateCurveKeys()
-	senderKP, _ := nkeys.CreateCurveKeys()
+	receiverKPI, _ := security.NewKeyPairInfoWithSeeds("receiverKPI")
+	receiverCipherPublicKey, receiverSigningPublicKey, err := receiverKPI.PublicKeys()
+	if !assert.Nil(s.T(), err) {
+		return
+	}
+	receiverKI, _ := security.NewKeyInfo("receiverKI", receiverCipherPublicKey, receiverSigningPublicKey)
 
-	receiverPublicKey, _ := receiverKP.PublicKey()
-	senderSeed, _ := senderKP.Seed()
+	senderKPI, _ := security.NewKeyPairInfoWithSeeds("senderKPI")
+	senderCipherPublicKey, senderSigningPublicKey, err := senderKPI.PublicKeys()
+	if !assert.Nil(s.T(), err) {
+		return
+	}
+	senderKI, _ := security.NewKeyInfo("senderKI", senderCipherPublicKey, senderSigningPublicKey)
 
-	encryptReceiverKey, _ := security.NewKeyInfo(false, security.KeyTypePublic, "", []byte(receiverPublicKey))
-	encryptSenderKey, _ := security.NewKeyInfo(false, security.KeyTypeSeed, "", senderSeed)
-
-	cfw, err := NewCipherWriter(encryptReceiverKey, encryptSenderKey)
+	cfw, err := NewCipherWriter(receiverKI, senderKPI)
 	if !assert.Nil(s.T(), err) {
 		return
 	}
@@ -360,13 +359,7 @@ func (s *CipherIOTestSuite) TestCipherFileWriter_WriteToSplitStreamsFromReader_L
 	}
 
 	// now, we want to decrypt the buffer
-	receiverSeed, _ := receiverKP.Seed()
-	senderPubKey, _ := senderKP.PublicKey()
-
-	decryptReceiverKey, _ := security.NewKeyInfo(false, security.KeyTypeSeed, "", receiverSeed)
-	decryptSenderKey, _ := security.NewKeyInfo(false, security.KeyTypePublic, "", []byte(senderPubKey))
-
-	cfr, err := NewCipherFileReader(decryptReceiverKey, decryptSenderKey)
+	cfr, err := NewCipherFileReader(receiverKPI, senderKI)
 	if !assert.Nil(s.T(), err) {
 		return
 	}

@@ -89,8 +89,8 @@ type bundleCommandVals struct {
 var localBundleCommandVals = &bundleCommandVals{}
 
 type bundleSettings struct {
-	receiverKey       *security.KeyInfo
-	senderKey         *security.KeyInfo
+	receiverKI        *security.KeyInfo
+	senderKPI         *security.KeyPairInfo
 	inputFile         *os.File
 	cipherWriter      *cipherio.CipherWriter
 	totalBytesWritten int
@@ -137,15 +137,14 @@ func bundleData() {
 		localBundleCommandVals.inputTypeText = "piped"
 	}
 
-	localBundleSettings.receiverKey, localBundleSettings.senderKey, err = getKeysForBundle()
+	localBundleSettings.receiverKI, localBundleSettings.senderKPI, err = getKeysForBundle()
 	if err != nil {
 		fmt.Printf("Unable to acquire keys for bundle: %s\n", err)
 		// Todo: need to update exit code for all fails
 		helpers.ExitCode = helpers.ExitCodeInvalidInput
 		return
 	}
-	defer localBundleSettings.senderKey.Wipe()
-	defer localBundleSettings.receiverKey.Wipe()
+	defer localBundleSettings.senderKPI.Wipe()
 
 	if localBundleCommandVals.inputTypeText == "" {
 		fmt.Println("No input-type provided.  --input-type is required.")
@@ -232,8 +231,8 @@ func bundleData() {
 	}()
 
 	localBundleSettings.cipherWriter, err = cipherio.NewCipherWriter(
-		localBundleSettings.receiverKey,
-		localBundleSettings.senderKey)
+		localBundleSettings.receiverKI,
+		localBundleSettings.senderKPI)
 	if err != nil {
 		fmt.Printf("Unable to create cipher writer: %s", err)
 		helpers.ExitCode = helpers.ExitCodeCipherError
@@ -275,102 +274,92 @@ func bundleData() {
 	return
 }
 
-func getKeysForBundle() (receiverKI, senderKI *security.KeyInfo, err error) {
+func getKeysForBundle() (receiverKeyInfo *security.KeyInfo, senderKeyPairInfo *security.KeyPairInfo, err error) {
 	// We will always need something from the keypair store for this so confirm it is loaded
 	if keypairs.GlobalKeyPairStore == nil {
 		return nil, nil, errors.New("keypair store is not loaded")
-	}
-
-	if localBundleCommandVals.localKeys {
-		return getLocalKeysForBundleWrite()
 	}
 
 	if keystore.GlobalKeyStore == nil {
 		return nil, nil, errors.New("keystore is not loaded")
 	}
 
+	if localBundleCommandVals.localKeys {
+		return getLocalKeysForBundleWrite()
+	}
+
 	if localBundleCommandVals.toName == "" {
 		return nil, nil, errors.New("receiver key name not supplied")
 	}
 
-	// Todo: populate bundle with to and from names... get default key name from profile metadata
 	// First, get the sender's keypair info
 	var useSenderName = "default"
 	if localBundleCommandVals.fromName != "" {
 		useSenderName = localBundleCommandVals.fromName
 	}
 
-	senderKPI := keypairs.GlobalKeyPairStore.GetKeyPairInfo(useSenderName)
-	if senderKPI == nil {
+	// GetKeyPairInfo returns cloned value.  It can be wiped later, but for now we do not wipe,
+	// since we are passing it back to the caller.
+	senderKeyPairInfo = keypairs.GlobalKeyPairStore.GetKeyPairInfo(useSenderName)
+	if senderKeyPairInfo == nil {
 		return nil, nil, fmt.Errorf("Unable to locate sender's keypair for name \"%s\"\n", useSenderName)
 	}
-	defer senderKPI.Wipe()
 
-	if strings.ToLower(senderKPI.Name) == "default" {
+	if strings.ToLower(senderKeyPairInfo.Name) == "default" {
 		// now that we have retrieved the sender's key, we can set the sender name to
 		// something else if needed for the bundle details
 		profile := helpers.GlobalConfig.GetCurrentProfile()
 		if profile != nil && profile.DefaultKeypairName != "" {
-			senderKPI.Name = profile.DefaultKeypairName
+			senderKeyPairInfo.Name = profile.DefaultKeypairName
 		} else {
-			senderKPI.Name = "Not Provided"
+			senderKeyPairInfo.Name = "Not Provided"
 		}
-	}
-
-	senderKI, err = security.NewKeyInfo(false, security.KeyTypeSeed, senderKPI.Name, senderKPI.Seed)
-	if err != nil {
-		return nil, nil, fmt.Errorf("unable to build new sender keyinfo: %w", err)
 	}
 
 	receiverEntity := keystore.GlobalKeyStore.GetKey(localBundleCommandVals.toName)
 	if receiverEntity == nil {
 		return nil, nil, fmt.Errorf("receiver key not located for name \"%s\"", localBundleCommandVals.toName)
 	}
-	receiverKI = receiverEntity.Key
 
-	return receiverKI.Clone(), senderKI.Clone(), nil
+	// The returned Entity and encapsulated keys are cloned during the GetKey() call, so ok to own them
+	// here and just return them without cloning again.  Maybe a bit of an optimization and mem cost savings.
+	return receiverEntity.PublicKeys, senderKeyPairInfo, nil
 }
 
 // getLocalKeysForBundleWrite will return a set of keys using the default read and write keypairs in the profile's keypair store
-func getLocalKeysForBundleWrite() (receiverKeyInfo, senderKeyInfo *security.KeyInfo, err error) {
-	kpiKeypairStoreRead := keypairs.GlobalKeyPairStore.GetKeyPairInfo("keystore_read")
+func getLocalKeysForBundleWrite() (receiverKeyInfo *security.KeyInfo, senderKeyPairInfo *security.KeyPairInfo, err error) {
+	kpiKeypairStoreRead := keypairs.GlobalKeyPairStore.GetKeyPairInfo(helpers.KeyPairNameForKeyStoreReads)
 	if kpiKeypairStoreRead == nil {
 		return nil, nil, errors.New("store default read keypair not found")
 	}
 
-	receiverPublicKey, err := kpiKeypairStoreRead.PublicKey()
+	receiverCipherPublicKey, receiverSigningPublicKey, err := kpiKeypairStoreRead.PublicKeys()
 	if err != nil {
-		return nil, nil, fmt.Errorf("unable to obtain publicKey from read keypair: %w", err)
+		return nil, nil, fmt.Errorf("unable to obtain public keys from read keypair: %w", err)
 	}
 
 	receiverKeyInfo, err = security.NewKeyInfo(
-		false,
-		security.KeyTypePublic,
 		"local",
-		receiverPublicKey,
+		receiverCipherPublicKey,
+		receiverSigningPublicKey,
 	)
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to build receiver key info: %w", err)
 	}
 
-	kpiKeypairStoreWrite := keypairs.GlobalKeyPairStore.GetKeyPairInfo("keystore_write")
+	kpiKeypairStoreWrite := keypairs.GlobalKeyPairStore.GetKeyPairInfo(helpers.KeyPairNameForKeyStoreWrites)
 	if kpiKeypairStoreWrite == nil {
 		return nil, nil, errors.New("store default write keypair not found")
 	}
-
-	senderKeyInfo, err = security.NewKeyInfo(
-		false,
-		security.KeyTypeSeed,
-		"local",
-		[]byte(kpiKeypairStoreWrite.Seed),
-	)
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to build sender key info: %w", err)
 	}
 
-	return receiverKeyInfo, senderKeyInfo, nil
+	// The kpiKeypairStoreWrite is the sender, functionally. Also it is a returned clone from GetKeyPairInfo()
+	// call, so ok to return without cloning here.
+	return receiverKeyInfo, kpiKeypairStoreWrite, nil
 }
 
 func inferOutputTypeForBundle() (outputTypeWasInferred bool) {

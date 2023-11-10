@@ -15,16 +15,17 @@ package keypairs
 
 import (
 	"fmt"
+	"github.com/thoughtrealm/bumblebee/security"
 )
 
 var GlobalKeyPairStore KeyPairStore
 
-type KeyPairStoreWalkFunc func(kpi *KeyPairInfo)
+type KeyPairStoreWalkFunc func(kpi *security.KeyPairInfo)
 
 type KeyPairStore interface {
 	Count() int
-	CreateNewKeyPair(name string) (*KeyPairInfo, error)
-	GetKeyPairInfo(name string) *KeyPairInfo
+	CreateNewKeyPair(name string) (*security.KeyPairInfo, error)
+	GetKeyPairInfo(name string) *security.KeyPairInfo
 	LoadKeyPairStoreFromFile(key []byte, filePath string) error
 	RemoveKeyPair(name string) (bool, error)
 	RenameKeyPair(currentName, newName string) (found bool, err error)
@@ -40,7 +41,7 @@ func NewKeypairStore() KeyPairStore {
 	return newSimpleKeyPairStore()
 }
 
-func NewKeypairStoreWithKeypair(name string) (KeyPairStore, *KeyPairInfo, error) {
+func NewKeypairStoreWithKeypair(name string) (KeyPairStore, *security.KeyPairInfo, error) {
 	newKPS := NewKeypairStore()
 	kpName := name
 	if name == "" {

@@ -32,52 +32,49 @@ type CipherFileWriterIntf interface {
 }
 
 type CipherWriter struct {
-	ReceiverPubKey   string
-	SenderKP         nkeys.KeyPair
-	CombinedFilePath string
-	BundleFilePath   string
-	DataFilePath     string
-	SymmetricKey     []byte
-	OutputBundleInfo *BundleInfo
-	SymmetricCipher  beecipher.Cipher
+	ReceiverCipherPublicKey string
+	SenderCipherKeyPair     nkeys.KeyPair
+	SenderSigningKeyPair    nkeys.KeyPair
+	CombinedFilePath        string
+	BundleFilePath          string
+	DataFilePath            string
+	SymmetricKey            []byte
+	OutputBundleInfo        *BundleInfo
+	SymmetricCipher         beecipher.Cipher
 }
 
-func NewCipherWriter(receiverKey *security.KeyInfo, senderKey *security.KeyInfo) (*CipherWriter, error) {
-	if receiverKey == nil {
+func NewCipherWriter(receiverKI *security.KeyInfo, senderKPI *security.KeyPairInfo) (*CipherWriter, error) {
+	if receiverKI == nil {
 		return nil, errors.New("receiver key is nil")
 	}
 
-	if senderKey == nil {
+	if senderKPI == nil {
 		return nil, errors.New("sender key is nil")
 	}
 
-	if receiverKey.KeyType != security.KeyTypePublic {
-		return nil, errors.New("receiver key is wrong type: expected key of type PUBLIC")
-	}
-
-	if senderKey.KeyType != security.KeyTypeSeed {
-		return nil, errors.New("sender key is wrong type: expected key of type SEED")
-	}
-
-	SenderKP, err := nkeys.FromCurveSeed(senderKey.KeyData)
+	SenderCipherKeyPair, err := nkeys.FromCurveSeed(senderKPI.CipherSeed)
 	if err != nil {
 		return nil, fmt.Errorf("error transforming sender key seed: %w", err)
 	}
 
-	ReceiverPubKey := string(receiverKey.KeyData)
+	SenderSigningKP, err := nkeys.FromSeed(senderKPI.SigningSeed)
+	if err != nil {
+		return nil, fmt.Errorf("error transforming sender key seed: %w", err)
+	}
 
 	bundleInfo, err := NewBundle()
 	if err != nil {
 		return nil, fmt.Errorf("failed generating bundle header: %w", err)
 	}
 
-	bundleInfo.FromName = senderKey.Name
-	bundleInfo.ToName = receiverKey.Name
+	bundleInfo.FromName = senderKPI.Name
+	bundleInfo.ToName = receiverKI.Name
 
 	return &CipherWriter{
-		SenderKP:         SenderKP,
-		ReceiverPubKey:   ReceiverPubKey,
-		OutputBundleInfo: bundleInfo,
+		SenderCipherKeyPair:     SenderCipherKeyPair,
+		SenderSigningKeyPair:    SenderSigningKP,
+		ReceiverCipherPublicKey: receiverKI.CipherPubKey,
+		OutputBundleInfo:        bundleInfo,
 	}, nil
 }
 
@@ -205,15 +202,15 @@ func (cfw *CipherWriter) WriteBundleHeader(writer io.Writer) (int, error) {
 	defer cfw.OutputBundleInfo.Wipe()
 	defer security.Wipe(bundleBytes)
 
-	senderSeed, err := cfw.SenderKP.Seed()
+	senderCipherSeed, err := cfw.SenderCipherKeyPair.Seed()
 	if err != nil {
-		return 0, fmt.Errorf("failed extracting sender seed: %s", err)
+		return 0, fmt.Errorf("failed extracting sender cipher seed: %s", err)
 	}
-	defer security.Wipe(senderSeed)
+	defer security.Wipe(senderCipherSeed)
 
 	bundleWriterBuff := bytes.NewBuffer(nil)
 	bundleReaderBuff := bytes.NewBuffer(bundleBytes)
-	nc, err := beecipher.NewNKeysCipherEncrypter(cfw.ReceiverPubKey, senderSeed)
+	nc, err := beecipher.NewNKeysCipherEncrypter(cfw.ReceiverCipherPublicKey, senderCipherSeed)
 	if err != nil {
 		return 0, fmt.Errorf("failed creating new nkeys sc encrypter: %s", err)
 	}
@@ -328,7 +325,11 @@ func WriteUint16Marker(val int, w io.Writer) (n int, err error) {
 }
 
 func (cfw *CipherWriter) Wipe() {
-	if cfw.SenderKP != nil {
-		cfw.SenderKP.Wipe()
+	if cfw.SenderCipherKeyPair != nil {
+		cfw.SenderCipherKeyPair.Wipe()
+	}
+
+	if cfw.SenderSigningKeyPair != nil {
+		cfw.SenderSigningKeyPair.Wipe()
 	}
 }

@@ -96,7 +96,7 @@ type openCommandVals struct {
 var localOpenCommandVals = &openCommandVals{}
 
 type openSettings struct {
-	receiverKey       *security.KeyInfo
+	receiverKey       *security.KeyPairInfo
 	senderKey         *security.KeyInfo
 	outputFile        *os.File
 	cipherReader      *cipherio.CipherReader
@@ -309,18 +309,18 @@ func openBundle() {
 	totalTime = endTime.Sub(startTime)
 }
 
-func getKeysForOpen() (receiverKI, senderKI *security.KeyInfo, err error) {
+func getKeysForOpen() (receiverKeyPairInfo *security.KeyPairInfo, senderKeyInfo *security.KeyInfo, err error) {
 	// We will always need something from the keypair store for this so confirm it is loaded
 	if keypairs.GlobalKeyPairStore == nil {
 		return nil, nil, errors.New("keypair store is not loaded")
 	}
 
-	if localOpenCommandVals.localKeys {
-		return getLocalKeysForOpenRead()
-	}
-
 	if keystore.GlobalKeyStore == nil {
 		return nil, nil, errors.New("keystore is not loaded")
+	}
+
+	if localOpenCommandVals.localKeys {
+		return getLocalKeysForOpenRead()
 	}
 
 	if localOpenCommandVals.fromName == "" {
@@ -333,65 +333,50 @@ func getKeysForOpen() (receiverKI, senderKI *security.KeyInfo, err error) {
 		useReceiverName = localOpenCommandVals.toName
 	}
 
-	receiverKPI := keypairs.GlobalKeyPairStore.GetKeyPairInfo(useReceiverName)
-	if receiverKPI == nil {
+	receiverKeyPairInfo = keypairs.GlobalKeyPairStore.GetKeyPairInfo(useReceiverName)
+	if receiverKeyPairInfo == nil {
 		return nil, nil, fmt.Errorf("Unable to locate receiver keypair for name \"%s\"\n", useReceiverName)
-	}
-
-	receiverKI, err = security.NewKeyInfo(false, security.KeyTypeSeed, "receiverKey", []byte(receiverKPI.Seed))
-	if err != nil {
-		return nil, nil, fmt.Errorf("unable to build new receiver keyinfo: %w", err)
 	}
 
 	senderEntity := keystore.GlobalKeyStore.GetKey(localOpenCommandVals.fromName)
 	if senderEntity == nil {
 		return nil, nil, fmt.Errorf("sender key not located for name \"%s\"", localOpenCommandVals.fromName)
 	}
-	senderKI = senderEntity.Key
+	senderKeyInfo = senderEntity.PublicKeys
 
-	return receiverKI.Clone(), senderKI, nil
+	return receiverKeyPairInfo, senderKeyInfo, nil
 }
 
 // getLocalKeysForOpenRead will return a set of keys using the default read and write keypairs in the profile's keypair store
-func getLocalKeysForOpenRead() (receiverKeyInfo, senderKeyInfo *security.KeyInfo, err error) {
-	kpiKeypairStoreWrite := keypairs.GlobalKeyPairStore.GetKeyPairInfo("keystore_write")
+func getLocalKeysForOpenRead() (receiverKeyPairInfo *security.KeyPairInfo, senderKeyInfo *security.KeyInfo, err error) {
+	kpiKeypairStoreWrite := keypairs.GlobalKeyPairStore.GetKeyPairInfo(helpers.KeyPairNameForKeyStoreWrites)
 	if kpiKeypairStoreWrite == nil {
 		return nil, nil, errors.New("store default write keypair not found")
 	}
 
-	senderPublicKey, err := kpiKeypairStoreWrite.PublicKey()
+	senderCipherPublicKey, senderSigningKey, err := kpiKeypairStoreWrite.PublicKeys()
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to obtain publicKey from write keypair: %w", err)
 	}
 
 	senderKeyInfo, err = security.NewKeyInfo(
-		false,
-		security.KeyTypePublic,
-		"",
-		senderPublicKey,
+		"sender",
+		senderCipherPublicKey,
+		senderSigningKey,
 	)
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to build sender key info: %w", err)
 	}
 
-	kpiKeypairStoreRead := keypairs.GlobalKeyPairStore.GetKeyPairInfo("keystore_read")
+	kpiKeypairStoreRead := keypairs.GlobalKeyPairStore.GetKeyPairInfo(helpers.KeyPairNameForKeyStoreReads)
 	if kpiKeypairStoreRead == nil {
 		return nil, nil, errors.New("store default read keypair not found")
 	}
 
-	receiverKeyInfo, err = security.NewKeyInfo(
-		false,
-		security.KeyTypeSeed,
-		"",
-		[]byte(kpiKeypairStoreRead.Seed),
-	)
-
-	if err != nil {
-		return nil, nil, fmt.Errorf("unable to build receiver key info: %w", err)
-	}
-
-	return receiverKeyInfo, senderKeyInfo, nil
+	// The reader is the receiver.  And the read key is a returned clone from GetKeyPairInfo, so ok
+	// to own and return from here.
+	return kpiKeypairStoreRead, senderKeyInfo, nil
 }
 
 func inferOutputTypeForOpen() (outputTypeWasInferred bool) {

@@ -17,11 +17,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/nats-io/nkeys"
 	"github.com/thoughtrealm/bumblebee/cipher"
 	cipherio "github.com/thoughtrealm/bumblebee/cipher/io"
 	"github.com/thoughtrealm/bumblebee/helpers"
 	"github.com/thoughtrealm/bumblebee/logger"
+	"github.com/thoughtrealm/bumblebee/security"
 	"github.com/vmihailenco/msgpack/v5"
 	"os"
 	"sort"
@@ -35,7 +35,7 @@ type SimpleKeyPairStore struct {
 	syncKeyPairs sync.Mutex `msgpack:"-"`
 
 	// KeyPairs stores the key data in a map for native lookups
-	KeyPairs map[string]*KeyPairInfo
+	KeyPairs map[string]*security.KeyPairInfo
 
 	// StoreKey stores the key used to read the keystore into this struct to use for future writes
 	StoreKey []byte `msgpack:"-"`
@@ -47,7 +47,7 @@ type SimpleKeyPairStore struct {
 func newSimpleKeyPairStore() *SimpleKeyPairStore {
 	// SimpleKeyPairStore is the default
 	return &SimpleKeyPairStore{
-		KeyPairs: make(map[string]*KeyPairInfo),
+		KeyPairs: make(map[string]*security.KeyPairInfo),
 	}
 }
 
@@ -198,7 +198,7 @@ func (kps *SimpleKeyPairStore) LoadKeyPairStoreFromFile(key []byte, storeFilePat
 		return fmt.Errorf("failed parsing file data: %s", err)
 	}
 
-	kps.KeyPairs = make(map[string]*KeyPairInfo)
+	kps.KeyPairs = make(map[string]*security.KeyPairInfo)
 	for name, kpi := range newKPS.KeyPairs {
 		kps.KeyPairs[name] = kpi.Clone()
 	}
@@ -208,14 +208,14 @@ func (kps *SimpleKeyPairStore) LoadKeyPairStoreFromFile(key []byte, storeFilePat
 	return nil
 }
 
-func (kps *SimpleKeyPairStore) GetKeyPairInfo(name string) *KeyPairInfo {
+func (kps *SimpleKeyPairStore) GetKeyPairInfo(name string) *security.KeyPairInfo {
 	kps.syncKeyPairs.Lock()
 	defer kps.syncKeyPairs.Unlock()
 
 	return kps.getKeyPairInfo(name)
 }
 
-func (kps *SimpleKeyPairStore) getKeyPairInfo(name string) *KeyPairInfo {
+func (kps *SimpleKeyPairStore) getKeyPairInfo(name string) *security.KeyPairInfo {
 	// We do not lock the store here.  Internal callers lock the store first
 	// as needed.
 
@@ -228,14 +228,15 @@ func (kps *SimpleKeyPairStore) getKeyPairInfo(name string) *KeyPairInfo {
 	return kpi.Clone()
 }
 
-func (kps *SimpleKeyPairStore) addKeyPairInfo(kpi *KeyPairInfo) {
+func (kps *SimpleKeyPairStore) addKeyPairInfo(kpi *security.KeyPairInfo) {
 	// We do not lock the store here.  Internal callers lock the store first
 	// as needed.
 
+	// the caller has already checked if the name currently exists, so don't check again here
 	kps.KeyPairs[strings.ToUpper(kpi.Name)] = kpi.Clone()
 }
 
-func (kps *SimpleKeyPairStore) CreateNewKeyPair(name string) (*KeyPairInfo, error) {
+func (kps *SimpleKeyPairStore) CreateNewKeyPair(name string) (*security.KeyPairInfo, error) {
 	kps.syncKeyPairs.Lock()
 	defer kps.syncKeyPairs.Unlock()
 
@@ -244,26 +245,21 @@ func (kps *SimpleKeyPairStore) CreateNewKeyPair(name string) (*KeyPairInfo, erro
 		return nil, fmt.Errorf("a keypair already exists by the name \"%s\"", name)
 	}
 
-	kp, err := nkeys.CreateCurveKeys()
+	var err error
+	kpi, err = security.NewKeyPairInfoWithSeeds(name)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable create keypair with new seeds")
 	}
 
-	seed, err := kp.Seed()
-	if err != nil {
-		return nil, err
-	}
-
-	kpi = NewKeyPairInfo(name, seed)
 	kps.addKeyPairInfo(kpi)
 	return kpi, nil
 }
 
-func (kps *SimpleKeyPairStore) ListKeyPairs() []*KeyPairInfo {
+func (kps *SimpleKeyPairStore) ListKeyPairs() []*security.KeyPairInfo {
 	kps.syncKeyPairs.Lock()
 	defer kps.syncKeyPairs.Unlock()
 
-	kpList := []*KeyPairInfo{}
+	kpList := []*security.KeyPairInfo{}
 	for _, kpi := range kps.KeyPairs {
 		kpList = append(kpList, kpi.Clone())
 	}
@@ -275,6 +271,7 @@ func (kps *SimpleKeyPairStore) ListKeyPairs() []*KeyPairInfo {
 // - Clears the store
 // - Creates and stores a new keypair with the name "default"
 func (kps *SimpleKeyPairStore) Initialize() error {
+	// Todo: Implement this?
 	return errors.New("not implemented")
 }
 
@@ -337,7 +334,7 @@ func (kps *SimpleKeyPairStore) Walk(sortInfo bool, walkFunc KeyPairStoreWalkFunc
 	}
 
 	// we are sorting so need to load slice with keypair info
-	kplist := []*KeyPairInfo{}
+	kplist := []*security.KeyPairInfo{}
 	for _, kpi := range kps.KeyPairs {
 		kplist = append(kplist, kpi)
 	}

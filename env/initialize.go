@@ -20,6 +20,7 @@ import (
 	"github.com/thoughtrealm/bumblebee/helpers"
 	"github.com/thoughtrealm/bumblebee/keypairs"
 	"github.com/thoughtrealm/bumblebee/keystore"
+	"github.com/thoughtrealm/bumblebee/logger"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -44,14 +45,15 @@ func InitializeEnvironment() error {
 		Profiles: []*helpers.Profile{},
 	}
 
-	fmt.Println("Saving empty profile definitions...")
+	logger.Debug("Initializing profile metadata...")
 	ch := helpers.NewConfigHelperFromConfig(config)
 	err := ch.WriteConfig()
 	if err != nil {
 		return fmt.Errorf("unable to write out profile metadata template: %w", err)
 	}
+	logger.Debug("Profile data initialized")
 
-	profileName, err := helpers.GetConsoleInputLine("Enter a name for the default profile (empty input for \"default\")")
+	profileName, err := helpers.GetConsoleInputLine("Enter a name for the default profile (leave empty for \"default\")")
 	if err != nil {
 		return fmt.Errorf("failed during input of profile name: %w", err)
 	}
@@ -216,7 +218,7 @@ func AssertEnvironmentIsEmpty() (shouldAbort bool) {
 	fileSystem := os.DirFS(configPath)
 
 	infoExists := false
-	fmt.Printf("Walking: %s\n", configPath)
+	logger.Debugf("Walking: %s\n", configPath)
 	_ = fs.WalkDir(fileSystem, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err

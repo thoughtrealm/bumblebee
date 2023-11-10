@@ -13,23 +13,13 @@
 
 package security
 
-import "fmt"
+import (
+	"crypto/rand"
+	"io"
+)
 
-type Entity struct {
-	Name       string
-	PublicKeys *KeyInfo
-}
-
-func (e *Entity) Print() {
-	fmt.Printf("Name               : %s\n", e.PublicKeys.Name)
-	fmt.Printf("Cipher Public Key  : %s\n", e.PublicKeys.CipherPubKey)
-	fmt.Printf("Signing Public Key : %s\n", e.PublicKeys.SigningPubKey)
-	fmt.Println()
-}
-
-func (e *Entity) Clone() *Entity {
-	return &Entity{
-		Name:       e.Name,
-		PublicKeys: e.PublicKeys.Clone(),
+func Wipe(refBytes []byte) {
+	if len(refBytes) != 0 {
+		_, _ = io.ReadFull(rand.Reader, refBytes[:])
 	}
 }

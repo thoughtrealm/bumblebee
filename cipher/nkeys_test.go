@@ -127,5 +127,86 @@ func TestNKeysCipher_FailOnRogueSender(t *testing.T) {
 }
 
 func TestSigningSuccess(t *testing.T) {
-	// signKeySender := nkeys.CreatePairWithRand()
+	signKeySender, err := nkeys.CreateUser()
+	if !assert.Nil(t, err) {
+		return
+	}
+
+	if !assert.NotNil(t, signKeySender) {
+		return
+	}
+
+	const signText = "My Name is Werner Branden"
+	signature, err := signKeySender.Sign([]byte(signText))
+	if !assert.Nil(t, err) {
+		return
+	}
+
+	if !assert.NotNil(t, signature) {
+		return
+	}
+
+	publickey, err := signKeySender.PublicKey()
+	if !assert.Nil(t, err) {
+		return
+	}
+
+	verifyKeyReceiver, err := nkeys.FromPublicKey(publickey)
+	if !assert.Nil(t, err) {
+		return
+	}
+
+	if !assert.NotNil(t, verifyKeyReceiver) {
+		return
+	}
+
+	err = verifyKeyReceiver.Verify([]byte(signText), signature)
+	assert.Nil(t, err)
+}
+
+func TestSigningFailWithWrongKey(t *testing.T) {
+	signKeySenderGood, err := nkeys.CreateUser()
+	if !assert.Nil(t, err) {
+		return
+	}
+
+	if !assert.NotNil(t, signKeySenderGood) {
+		return
+	}
+
+	signKeySenderBad, err := nkeys.CreateUser()
+	if !assert.Nil(t, err) {
+		return
+	}
+
+	if !assert.NotNil(t, signKeySenderBad) {
+		return
+	}
+
+	const signText = "My Name is Werner Branden"
+	signature, err := signKeySenderBad.Sign([]byte(signText))
+	if !assert.Nil(t, err) {
+		return
+	}
+
+	if !assert.NotNil(t, signature) {
+		return
+	}
+
+	publickey, err := signKeySenderGood.PublicKey()
+	if !assert.Nil(t, err) {
+		return
+	}
+
+	verifyKeyReceiver, err := nkeys.FromPublicKey(publickey)
+	if !assert.Nil(t, err) {
+		return
+	}
+
+	if !assert.NotNil(t, verifyKeyReceiver) {
+		return
+	}
+
+	err = verifyKeyReceiver.Verify([]byte(signText), signature)
+	assert.NotNil(t, err)
 }

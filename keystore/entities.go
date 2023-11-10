@@ -46,8 +46,8 @@ func (sks *SimpleKeyStore) AddEntity(name string, key *security.KeyInfo) error {
 	}
 
 	sks.Entities[strings.ToUpper(name)] = &security.Entity{
-		Name: name,
-		Key:  key.Clone(),
+		Name:       name,
+		PublicKeys: key.Clone(),
 	}
 
 	sks.Details.IsDirty = true
@@ -64,7 +64,7 @@ func (sks *SimpleKeyStore) RenameEntity(oldName, newName string) (bool, error) {
 	}
 
 	entity.Name = newName
-	entity.Key.Name = newName
+	entity.PublicKeys.Name = newName
 
 	// Update map key entry with new name
 	sks.Entities[strings.ToUpper(newName)] = entity
@@ -76,7 +76,7 @@ func (sks *SimpleKeyStore) RenameEntity(oldName, newName string) (bool, error) {
 	return true, nil
 }
 
-func (sks *SimpleKeyStore) UpdatePublicKey(name string, publicKey string) (found bool, err error) {
+func (sks *SimpleKeyStore) UpdatePublicKeys(name, cipherPublicKey, signingPublicKey string) (found bool, err error) {
 	sks.SyncStore.Lock()
 	defer sks.SyncStore.Unlock()
 
@@ -85,11 +85,52 @@ func (sks *SimpleKeyStore) UpdatePublicKey(name string, publicKey string) (found
 		return false, fmt.Errorf("entity not found with name \"%s\"", name)
 	}
 
-	if publicKey == "" {
-		return true, errors.New("provided publicKey is empty")
+	if cipherPublicKey == "" {
+		return true, errors.New("provided cipherPublicKey is empty")
 	}
 
-	entity.Key.KeyData = []byte(publicKey)
+	if signingPublicKey == "" {
+		return true, errors.New("provided signingPublicKey is empty")
+	}
+
+	entity.PublicKeys.CipherPubKey = cipherPublicKey
+	entity.PublicKeys.SigningPubKey = signingPublicKey
+	sks.Details.IsDirty = true
+	return true, nil
+}
+
+func (sks *SimpleKeyStore) UpdateCipherPublicKey(name string, cipherPublicKey string) (found bool, err error) {
+	sks.SyncStore.Lock()
+	defer sks.SyncStore.Unlock()
+
+	entity := sks.getEntity(name)
+	if entity == nil {
+		return false, fmt.Errorf("entity not found with name \"%s\"", name)
+	}
+
+	if cipherPublicKey == "" {
+		return true, errors.New("provided cipherPublicKey is empty")
+	}
+
+	entity.PublicKeys.CipherPubKey = cipherPublicKey
+	sks.Details.IsDirty = true
+	return true, nil
+}
+
+func (sks *SimpleKeyStore) UpdateSigningPublicKey(name string, signingPublicKey string) (found bool, err error) {
+	sks.SyncStore.Lock()
+	defer sks.SyncStore.Unlock()
+
+	entity := sks.getEntity(name)
+	if entity == nil {
+		return false, fmt.Errorf("entity not found with name \"%s\"", name)
+	}
+
+	if signingPublicKey == "" {
+		return true, errors.New("provided signingPublicKey is empty")
+	}
+
+	entity.PublicKeys.SigningPubKey = signingPublicKey
 	sks.Details.IsDirty = true
 	return true, nil
 }
@@ -104,8 +145,8 @@ func (sks *SimpleKeyStore) GetEntity(name string) (outEntity *security.Entity) {
 	}
 
 	outEntity = &security.Entity{
-		Name: actualEntity.Name,
-		Key:  actualEntity.Key.Clone(),
+		Name:       actualEntity.Name,
+		PublicKeys: actualEntity.PublicKeys.Clone(),
 	}
 
 	return outEntity

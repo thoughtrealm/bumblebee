@@ -29,44 +29,33 @@ import (
 
 const DEFAULT_OUTPUT_FILE_NAME = "bee.output"
 
-type CipherFileReaderIntf interface {
-}
-
 type CipherReader struct {
-	ReceiverKP       nkeys.KeyPair
-	SenderPubKey     string
-	CombinedFilePath string
-	BundleFilePath   string
-	DataFilePath     string
+	ReceiverCipherKP    nkeys.KeyPair
+	SenderCipherPubKey  string
+	SenderSigningPubKey string
+	CombinedFilePath    string
+	BundleFilePath      string
+	DataFilePath        string
 }
 
-func NewCipherFileReader(receiverKey *security.KeyInfo, senderKey *security.KeyInfo) (*CipherReader, error) {
-	if receiverKey == nil {
+func NewCipherFileReader(receiverKPI *security.KeyPairInfo, senderKI *security.KeyInfo) (*CipherReader, error) {
+	if receiverKPI == nil {
 		return nil, errors.New("receiver key is nil")
 	}
 
-	if senderKey == nil {
+	if senderKI == nil {
 		return nil, errors.New("sender key is nil")
 	}
 
-	if receiverKey.KeyType != security.KeyTypeSeed {
-		return nil, errors.New("receiver key is wrong type: expected key of type SEED")
-	}
-
-	if senderKey.KeyType != security.KeyTypePublic {
-		return nil, errors.New("sender key is wrong type: expected key of type PUBLIC")
-	}
-
-	ReceiverKP, err := nkeys.FromCurveSeed(receiverKey.KeyData)
+	ReceiverKP, err := receiverKPI.GetCipherKeyPair()
 	if err != nil {
-		return nil, fmt.Errorf("error transforming receiver key seed: %w", err)
+		return nil, fmt.Errorf("error transforming receiver cipher seed: %w", err)
 	}
-
-	SenderPubKey := string(senderKey.KeyData)
 
 	return &CipherReader{
-		ReceiverKP:   ReceiverKP,
-		SenderPubKey: SenderPubKey,
+		ReceiverCipherKP:    ReceiverKP,
+		SenderCipherPubKey:  senderKI.CipherPubKey,
+		SenderSigningPubKey: senderKI.SigningPubKey,
 	}, nil
 }
 
@@ -132,13 +121,13 @@ func (cfr *CipherReader) readBundleHeaderFrom(r io.Reader) (*BundleInfo, error) 
 		)
 	}
 
-	receiverSeed, err := cfr.ReceiverKP.Seed()
+	receiverSeed, err := cfr.ReceiverCipherKP.Seed()
 	if err != nil {
 		return nil, fmt.Errorf("failed extracting seed from receiver kp: %w", err)
 	}
 	defer security.Wipe(receiverSeed)
 
-	nc, err := cipher.NewNKeysCipherDecrypter(receiverSeed, cfr.SenderPubKey)
+	nc, err := cipher.NewNKeysCipherDecrypter(receiverSeed, cfr.SenderCipherPubKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed creating nkeys cipher: %w", err)
 	}
@@ -497,7 +486,7 @@ func (cfr *CipherReader) ReadCombinedStreamToFile(r io.Reader, outputFilePath st
 }
 
 func (cfr *CipherReader) Wipe() {
-	if cfr.ReceiverKP != nil {
-		cfr.ReceiverKP.Wipe()
+	if cfr.ReceiverCipherKP != nil {
+		cfr.ReceiverCipherKP.Wipe()
 	}
 }

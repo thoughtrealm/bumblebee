@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/thoughtrealm/bumblebee/helpers"
 	"github.com/thoughtrealm/bumblebee/keypairs"
+	"github.com/thoughtrealm/bumblebee/security"
 )
 
 // listKeypairsCmd represents the keypairs command
@@ -58,7 +59,7 @@ func showKeyPairsList() {
 	fmt.Printf("Using profile   : %s\n", helpers.GlobalConfig.GetCurrentProfile().Name)
 	fmt.Printf("KeyPairs Loaded : %d\n", keypairs.GlobalKeyPairStore.Count())
 	fmt.Println("======================================================")
-	keypairs.GlobalKeyPairStore.Walk(globalListSubCommandVals.sort, func(kpi *keypairs.KeyPairInfo) {
+	keypairs.GlobalKeyPairStore.Walk(globalListSubCommandVals.sort, func(kpi *security.KeyPairInfo) {
 		err := kpi.Print(
 			"",
 			localListKeyPairsSubCommandVals.showAll,

@@ -31,16 +31,20 @@ func TestKeyStoreTestSuite(t *testing.T) {
 
 func (s *KeyStoreTestSuite) SetupTest() {
 	s.testStore = newSimpleKeyStore("local", "local", true)
+
+	storeKPI, _ := security.NewKeyPairInfoWithSeeds("store")
+	storeCipherPubKey, storeSigningPubKey, _ := storeKPI.PublicKeys()
+
 	s.testStore.SetServerInfo(
 		"name",
 		"localhost",
 		"16222",
 		&security.KeyInfo{
-			IsDefault: true,
-			KeyType:   security.KeyTypeSeed,
-			Name:      "root",
-			KeyData:   []byte("SXAIBZV5ONCL446HGD2OTR3NVMFY2XKXZVXQX7ARKGBJMM32WG2G2BHXYU"),
-		})
+			Name:          "root",
+			CipherPubKey:  storeCipherPubKey,
+			SigningPubKey: storeSigningPubKey,
+		},
+	)
 }
 
 func (s *KeyStoreTestSuite) TestSimpleKeyStore_GetServerByName() {
@@ -62,30 +66,12 @@ func (s *KeyStoreTestSuite) TestSimpleKeyStore_NewKeyPair() {
 	fmt.Printf("key seed: %s\n", seed)
 }
 
-func (s *KeyStoreTestSuite) TestSimpleKeyStore_DerivePublicKey() {
+func (s *KeyStoreTestSuite) TestSimpleKeyStore_DeriveServerPublicKey() {
 	server := s.testStore.GetServerInfo()
 	if !s.NotNil(server) {
 		return
 	}
 
-	public, err := server.Key.PublicKey()
-	if !s.Nil(err) {
-		return
-	}
-
-	fmt.Printf("PublicKey: %s\n", string(public))
-}
-
-func (s *KeyStoreTestSuite) TestSimpleKeyStore_DerivePrivateKey() {
-	server := s.testStore.GetServerInfo()
-	if !s.NotNil(server) {
-		return
-	}
-
-	private, err := server.Key.PrivateKey()
-	if !s.Nil(err) {
-		return
-	}
-
-	fmt.Printf("PrivateKey: %s\n", string(private))
+	fmt.Printf("CipherPublicKey  : %s\n", server.Key.CipherPubKey)
+	fmt.Printf("SigningPublicKey : %s\n", server.Key.SigningPubKey)
 }

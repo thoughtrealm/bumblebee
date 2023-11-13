@@ -20,12 +20,12 @@ import (
 	"github.com/thoughtrealm/bumblebee/keystore"
 )
 
-// showKeyCmd represents the key command
-var showKeyCmd = &cobra.Command{
-	Use:   "key [name]",
+// showUserCmd represents the user subcommand
+var showUserCmd = &cobra.Command{
+	Use:   "user [name]",
 	Args:  cobra.MaximumNArgs(1),
-	Short: "Will display the referenced key data",
-	Long:  "Will display the referenced key data",
+	Short: "Will display the referenced user info",
+	Long:  "Will display the referenced user info",
 	Run: func(cmd *cobra.Command, args []string) {
 		err := startBootStrap(true, true)
 		if err != nil {
@@ -41,24 +41,24 @@ var showKeyCmd = &cobra.Command{
 
 		keyName = args[0]
 
-		showKey(keyName)
+		showUser(keyName)
 	},
 }
 
 func init() {
-	showCmd.AddCommand(showKeyCmd)
+	showCmd.AddCommand(showUserCmd)
 }
 
-func showKey(keyName string) {
+func showUser(userName string) {
 	if keystore.GlobalKeyStore == nil {
-		fmt.Println("Unable to show key data: Key Store not loaded.")
+		fmt.Println("Unable to show user info: Key Store not loaded.")
 		helpers.ExitCode = helpers.ExitCodeStartupFailure
 		return
 	}
 
-	entity := keystore.GlobalKeyStore.GetKey(keyName)
+	entity := keystore.GlobalKeyStore.GetKey(userName)
 	if entity == nil {
-		fmt.Printf("No key with the name \"%s\" was found.\n", keyName)
+		fmt.Printf("No user with the name \"%s\" was found.\n", userName)
 		return
 	}
 

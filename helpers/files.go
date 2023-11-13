@@ -95,11 +95,11 @@ func FileExistsInfo(filePath string) (found, isDir bool) {
 	return true, false
 }
 
-// GetSafeFileName will replace characters in the inputName that are not
+// GetFileSafeName will replace characters in the inputName that are not
 // safe for naming directories or files.  Due to cross-platform concerns,
 // this will convert or remove things that are not within the POSIX Portable File Name
 // character set.
-func GetSafeFileName(inputName string) (outputName string) {
+func GetFileSafeName(inputName string) (outputName string) {
 	const POSIX_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
 		"abcdefghijklmnopqrstuvwxyz" +
 		"0123456789" +

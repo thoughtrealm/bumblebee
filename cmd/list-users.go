@@ -21,11 +21,11 @@ import (
 	"github.com/thoughtrealm/bumblebee/security"
 )
 
-// listKeysCmd represents the keys command
-var listKeysCmd = &cobra.Command{
-	Use:   "keys",
-	Short: "Displays a list of all keys",
-	Long:  "Displays a list of all keys",
+// listUsersCmd represents the keys command
+var listUsersCmd = &cobra.Command{
+	Use:   "users",
+	Short: "Displays a list of users",
+	Long:  "Displays a list of users",
 	Run: func(cmd *cobra.Command, args []string) {
 		err := startBootStrap(true, true)
 		if err != nil {
@@ -38,7 +38,7 @@ var listKeysCmd = &cobra.Command{
 }
 
 func init() {
-	listCmd.AddCommand(listKeysCmd)
+	listCmd.AddCommand(listUsersCmd)
 }
 
 // showKeysList will iterate the keys and display them

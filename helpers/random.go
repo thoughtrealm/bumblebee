@@ -16,7 +16,6 @@ package helpers
 import cryptorand "crypto/rand"
 
 func GetRandomBytes(requestedByteCount int) (secretBytes []byte, err error) {
-	const inputSize = 10000000
 	const blockSize = 1000
 
 	if requestedByteCount == 0 {

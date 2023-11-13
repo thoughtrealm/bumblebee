@@ -357,7 +357,7 @@ func getLocalKeysForBundleWrite() (receiverKeyInfo *security.KeyInfo, senderKeyP
 		return nil, nil, fmt.Errorf("unable to build sender key info: %w", err)
 	}
 
-	// The kpiKeypairStoreWrite is the sender, functionally. Also it is a returned clone from GetKeyPairInfo()
+	// The kpiKeypairStoreWrite is the sender, functionally. Also, it is a returned clone from GetKeyPairInfo()
 	// call, so ok to return without cloning here.
 	return receiverKeyInfo, kpiKeypairStoreWrite, nil
 }

@@ -31,6 +31,7 @@ type TextWriterTarget int
 const (
 	TextWriterTargetConsole TextWriterTarget = iota
 	TextWriterTargetClipboard
+	TextWriterTargetBuffered
 )
 
 type TextWriterEventFunc func()
@@ -47,10 +48,11 @@ type TextWriter struct {
 	headerText        string
 	footerText        string
 	outputTarget      TextWriterTarget
-	clipboardBuffer   *bytes.Buffer
+	outputBuffer      *bytes.Buffer
 	onStart           TextWriterEventFunc
 	afterFlush        TextWriterEventFunc
 	startExecuted     bool
+	isBuffered        bool
 }
 
 func NewTextWriter(
@@ -71,41 +73,54 @@ func NewTextWriter(
 		afterFlush:   afterFlushFunc,
 	}
 
-	if outputTarget == TextWriterTargetClipboard {
-		newTextWriter.clipboardBuffer = bytes.NewBuffer(nil)
+	if outputTarget == TextWriterTargetClipboard || outputTarget == TextWriterTargetBuffered {
+		newTextWriter.isBuffered = true
+	}
+
+	if newTextWriter.isBuffered {
+		newTextWriter.outputBuffer = bytes.NewBuffer(nil)
 	}
 
 	return newTextWriter
 }
 
-func (bsw *TextWriter) Write(p []byte) (n int, err error) {
+// OutputBuffer can only be called once, after which it will return empty bytes.
+// This is because of how the bytes buffer works relating to calling "Bytes()" on the buffer.
+// This includes when using the clipboard for output.  After flush, the buffer is drained to
+// the clipboard.  This would then return nothing.  So, only use this for buffered scenarios that
+// are NOT related to the clipboard.  And then ONLY after calling flush.
+func (tw *TextWriter) PostFlushOutputBuffer() []byte {
+	return tw.outputBuffer.Bytes()
+}
+
+func (tw *TextWriter) Write(p []byte) (n int, err error) {
 	// Todo: we need some kind of protection logic for text mode outputs, to make sure it is text output safe
-	if !bsw.startExecuted {
-		bsw.startExecuted = true
-		if bsw.onStart != nil {
-			bsw.onStart()
+	if !tw.startExecuted {
+		tw.startExecuted = true
+		if tw.onStart != nil {
+			tw.onStart()
 		}
 	}
 
-	if !bsw.headerPrinted && bsw.headerText != "" {
-		headerText := bsw.headerText + " " + strings.Repeat("=", bsw.calcLineWidth()-(len(bsw.headerText)+1))
-		err = bsw.outputTextLine([]byte(headerText))
+	if !tw.headerPrinted && tw.headerText != "" {
+		headerText := tw.headerText + " " + strings.Repeat("=", tw.calcLineWidth()-(len(tw.headerText)+1))
+		err = tw.outputTextLine([]byte(headerText))
 		if err != nil {
 			return 0, err
 		}
 
-		bsw.headerPrinted = true
+		tw.headerPrinted = true
 	}
 
 	// First, handle text mode functionality
-	if bsw.mode == TextWriterModeText {
+	if tw.mode == TextWriterModeText {
 		inputText := string(p)
-		if bsw.partialLine != nil {
-			inputText = string(bsw.partialLine) + inputText
+		if tw.partialLine != nil {
+			inputText = string(tw.partialLine) + inputText
 		}
 
 		if !strings.Contains(inputText, "\n") {
-			bsw.partialLine = []byte(inputText)
+			tw.partialLine = []byte(inputText)
 			return len(p), nil
 		}
 
@@ -113,12 +128,12 @@ func (bsw *TextWriter) Write(p []byte) (n int, err error) {
 		for i := 0; i < len(inputLines); i++ {
 			if i == len(inputLines)-1 {
 				if !strings.HasSuffix(inputText, "\n") {
-					bsw.partialLine = []byte(inputLines[i])
+					tw.partialLine = []byte(inputLines[i])
 					return len(p), nil
 				}
 			}
 
-			err = bsw.outputLine([]byte(inputLines[i]))
+			err = tw.outputLine([]byte(inputLines[i]))
 			if err != nil {
 				return 0, err
 			}
@@ -130,20 +145,20 @@ func (bsw *TextWriter) Write(p []byte) (n int, err error) {
 	// Now, handle binary mode
 	currentPos := 0
 	lenP := len(p)
-	if len(bsw.partialLine) > 0 {
-		if len(bsw.partialLine)+lenP < bsw.lineWidth {
-			bsw.partialLine = append(bsw.partialLine, p...)
+	if len(tw.partialLine) > 0 {
+		if len(tw.partialLine)+lenP < tw.lineWidth {
+			tw.partialLine = append(tw.partialLine, p...)
 			return len(p), nil
 		}
 
-		currentPos = bsw.lineWidth - len(bsw.partialLine)
-		currentLine := append(bsw.partialLine, p[:currentPos]...)
-		err = bsw.outputLine(currentLine)
+		currentPos = tw.lineWidth - len(tw.partialLine)
+		currentLine := append(tw.partialLine, p[:currentPos]...)
+		err = tw.outputLine(currentLine)
 		if err != nil {
 			return 0, err
 		}
 
-		bsw.partialLine = nil
+		tw.partialLine = nil
 		n += len(currentLine)
 	}
 
@@ -152,72 +167,70 @@ func (bsw *TextWriter) Write(p []byte) (n int, err error) {
 			return lenP, nil
 		}
 
-		if lenP-currentPos < bsw.lineWidth {
-			bsw.partialLine = p[currentPos:]
+		if lenP-currentPos < tw.lineWidth {
+			tw.partialLine = p[currentPos:]
 			return lenP, nil
 		}
 
-		err = bsw.outputLine(p[currentPos : currentPos+bsw.lineWidth])
+		err = tw.outputLine(p[currentPos : currentPos+tw.lineWidth])
 		if err != nil {
 			return 0, err
 		}
 
-		n += bsw.lineWidth
-		currentPos += bsw.lineWidth
+		n += tw.lineWidth
+		currentPos += tw.lineWidth
 	}
 }
 
-func (bsw *TextWriter) outputLine(line []byte) error {
+func (tw *TextWriter) outputLine(line []byte) error {
 	var outputText string
 	var err error
-	switch bsw.mode {
+	switch tw.mode {
 	case TextWriterModeBinary:
 		outputText = fmt.Sprintf("%02x\n", line)
 	case TextWriterModeText:
 		outputText = fmt.Sprintf("%s\n", string(line))
 	}
 
-	// we need the line feeds for the clipboard buffer, but not the console writes.
-	switch bsw.outputTarget {
-	case TextWriterTargetConsole:
+	// we need the line feeds for the output buffer, but not the console writes.
+	if tw.isBuffered {
+		tw.outputBuffer.Write([]byte(outputText))
+	} else {
 		fmt.Printf(outputText)
-	case TextWriterTargetClipboard:
-		bsw.clipboardBuffer.Write([]byte(outputText))
 	}
 
 	if err == nil {
-		bsw.totalBytesWritten += len(line)
+		tw.totalBytesWritten += len(line)
 	}
 
 	return err
 }
 
-func (bsw *TextWriter) outputTextLine(line []byte) (err error) {
+func (tw *TextWriter) outputTextLine(line []byte) (err error) {
 	outputText := fmt.Sprintf("%s\n", string(line))
 
-	switch bsw.outputTarget {
-	case TextWriterTargetConsole:
+	if tw.isBuffered {
+		tw.outputBuffer.Write([]byte(outputText))
+	} else {
 		fmt.Println(string(line))
-	case TextWriterTargetClipboard:
-		bsw.clipboardBuffer.Write([]byte(outputText))
 	}
 
 	return err
 }
 
-func (bsw *TextWriter) calcLineWidth() int {
-	if bsw.mode == TextWriterModeBinary {
-		return bsw.lineWidth * 2
+func (tw *TextWriter) calcLineWidth() int {
+	if tw.mode == TextWriterModeBinary {
+		return tw.lineWidth * 2
 	}
-	return bsw.lineWidth
+	return tw.lineWidth
 }
 
-func (bsw *TextWriter) PrintFooter() error {
-	if !bsw.footerPrinted {
-		bsw.footerPrinted = true
-		if bsw.footerText != "" {
-			footerText := bsw.footerText + " " + strings.Repeat("=", bsw.calcLineWidth()-(len(bsw.footerText)+1))
-			err := bsw.outputTextLine([]byte(footerText))
+func (tw *TextWriter) PrintFooter() error {
+	if !tw.footerPrinted {
+		tw.footerPrinted = true
+		if tw.footerText != "" {
+			footerText := tw.footerText + " " + strings.Repeat("=", tw.calcLineWidth()-(len(tw.footerText)+1))
+			err := tw.outputTextLine([]byte(footerText))
 			if err != nil {
 				return err
 			}
@@ -226,40 +239,40 @@ func (bsw *TextWriter) PrintFooter() error {
 	return nil
 }
 
-func (bsw *TextWriter) PrintTextLine(textLine string) error {
-	return bsw.outputTextLine([]byte(textLine))
+func (tw *TextWriter) PrintTextLine(textLine string) error {
+	return tw.outputTextLine([]byte(textLine))
 }
 
-func (bsw *TextWriter) Flush() (n int, err error) {
+func (tw *TextWriter) Flush() (n int, err error) {
 	defer func() {
-		if bsw.afterFlush != nil {
-			bsw.afterFlush()
+		if tw.afterFlush != nil {
+			tw.afterFlush()
 		}
 	}()
 
-	if len(bsw.partialLine) > 0 {
-		err = bsw.outputLine(bsw.partialLine)
+	if len(tw.partialLine) > 0 {
+		err = tw.outputLine(tw.partialLine)
 		if err != nil {
-			return bsw.totalBytesWritten, err
+			return tw.totalBytesWritten, err
 		}
 	}
 
-	if !bsw.footerPrinted {
-		err = bsw.PrintFooter()
-		if bsw.outputTarget == TextWriterTargetClipboard {
-			err = WriteToClipboard(bsw.clipboardBuffer.Bytes())
+	if !tw.footerPrinted {
+		err = tw.PrintFooter()
+		if tw.outputTarget == TextWriterTargetClipboard {
+			err = WriteToClipboard(tw.outputBuffer.Bytes())
 			if err != nil {
-				return bsw.totalBytesWritten, err
+				return tw.totalBytesWritten, err
 			}
 		}
 	}
 
-	return bsw.totalBytesWritten, nil
+	return tw.totalBytesWritten, nil
 }
 
-func (bsw *TextWriter) Reset(headerText, footerText string) {
-	bsw.headerPrinted = false
-	bsw.footerPrinted = false
-	bsw.headerText = headerText
-	bsw.footerText = footerText
+func (tw *TextWriter) Reset(headerText, footerText string) {
+	tw.headerPrinted = false
+	tw.footerPrinted = false
+	tw.headerText = headerText
+	tw.footerText = footerText
 }

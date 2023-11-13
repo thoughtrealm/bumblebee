@@ -91,7 +91,7 @@ func CreateNewProfile(profileName string) error {
 //   - Create the profile keypair and store it in a keypairs file, get an optional symmetric password for it.
 //   - Create an empty keystore and save it, as a combined file bundle.
 func buildNewProfile(profileName string) error {
-	safeProfileName := helpers.GetSafeFileName(profileName)
+	safeProfileName := helpers.GetFileSafeName(profileName)
 
 	fmt.Println("Constructing profile path...")
 	profilePath, err := helpers.BuildProfilePath(safeProfileName)

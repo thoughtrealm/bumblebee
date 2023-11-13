@@ -23,7 +23,7 @@ func TestKeyInfo_SignAndVerify(t *testing.T) {
 
 	kiReceiver, err := NewKeyInfo("receiver", cipherPublicKey, signingPublicKey)
 
-	randomSignatureBytes, err := senderKPI.SignRandom(SignInputBytes)
+	randomSignatureBytes, err := senderKPI.SignRandom()
 	if !assert.Nil(t, err) {
 		return
 	}

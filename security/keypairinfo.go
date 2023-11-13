@@ -238,7 +238,7 @@ func (kpi *KeyPairInfo) Wipe() {
 	}
 }
 
-func (kpi *KeyPairInfo) SignRandom(input []byte) ([]byte, error) {
+func (kpi *KeyPairInfo) SignRandom() ([]byte, error) {
 	salt, err := helpers.GetRandomBytes(32)
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve random bytes for random sig salt: %w", err)

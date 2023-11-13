@@ -37,7 +37,7 @@ func (s *KeyStoreIOTestSuite) Test64BitLen() {
 	s.Assert().Equal(4000000000, len(byteSlice))
 }
 
-func (s *KeyStoreIOTestSuite) TestSimplexKeyStore_ReadWriteMemoryCycle_OneEntity() {
+func (s *KeyStoreIOTestSuite) TestSimpleKeyStore_ReadWriteMemoryCycle_OneEntity() {
 	bytesStore, err := s.testStore.WriteToMemory()
 	if !s.Assert().Nil(err) {
 		return
@@ -72,7 +72,7 @@ func (s *KeyStoreIOTestSuite) TestSimplexKeyStore_ReadWriteMemoryCycle_OneEntity
 	}
 }
 
-func (s *KeyStoreIOTestSuite) TestSimplexKeyStore_ReadWriteMemoryCycle_1000Entities() {
+func (s *KeyStoreIOTestSuite) TestSimpleKeyStore_ReadWriteMemoryCycle_1000Entities() {
 	testStore := buildTestStoreMultiEntity(1000)
 
 	bytesStore, err := testStore.WriteToMemory()
@@ -110,7 +110,11 @@ func (s *KeyStoreIOTestSuite) TestSimplexKeyStore_ReadWriteMemoryCycle_1000Entit
 	}
 }
 
-func (s *KeyStoreIOTestSuite) TestSimplexKeyStore_ReadWriteMemoryCycle_1000000Entities() {
+func (s *KeyStoreIOTestSuite) TestSimpleKeyStore_ReadWriteMemoryCycle_1000000Entities() {
+	if testing.Short() {
+		s.T().Skipf("Don't run test for 1,000,000 entity store in short mode")
+	}
+
 	testStore := buildTestStoreMultiEntity(1000000)
 
 	bytesStore, err := testStore.WriteToMemory()

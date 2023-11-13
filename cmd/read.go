@@ -211,7 +211,7 @@ func writeBase64Output(fileBytes []byte) (totalBytesWritten int64, err error) {
 		sourceBytes  []byte
 	)
 
-	bytesWritten, err = fmt.Fprintln(os.Stdout, ":start  :raw   :base64 ====================================================")
+	bytesWritten, err = fmt.Fprintln(os.Stdout, ":start  :raw   :base64 =========================================================")
 	if err != nil {
 		return int64(bytesWritten), fmt.Errorf("error writing output format signature: %s", err)
 	}
@@ -224,7 +224,7 @@ func writeBase64Output(fileBytes []byte) (totalBytesWritten int64, err error) {
 			return
 		}
 
-		bytesWritten, err = fmt.Fprintln(os.Stdout, ":end ======================================================================")
+		bytesWritten, err = fmt.Fprintln(os.Stdout, ":end ===========================================================================")
 		totalBytesWritten += int64(bytesWritten)
 		if err != nil {
 			err = fmt.Errorf("error writing output format signature: %s", err)

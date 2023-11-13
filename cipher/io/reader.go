@@ -20,6 +20,7 @@ import (
 	"github.com/nats-io/nkeys"
 	"github.com/thoughtrealm/bumblebee/cipher"
 	"github.com/thoughtrealm/bumblebee/helpers"
+	"github.com/thoughtrealm/bumblebee/logger"
 	"github.com/thoughtrealm/bumblebee/security"
 	"github.com/vmihailenco/msgpack/v5"
 	"io"
@@ -146,6 +147,20 @@ func (cfr *CipherReader) readBundleHeaderFrom(r io.Reader) (*BundleInfo, error) 
 	err = msgpack.Unmarshal(bundleDecrytedBytes, bundleInfo)
 	if err != nil {
 		return nil, fmt.Errorf("failed transforming bundle header: %w", err)
+	}
+
+	logger.Debug("Validating bundle signature")
+	verifyKI, _ := security.NewKeyInfo("verify-sender", cfr.SenderCipherPubKey, cfr.SenderSigningPubKey)
+	isValid, err := verifyKI.VerifyRandomSignature(bundleInfo.SenderSig)
+	if err != nil {
+		logger.Debugf("Sender identity validation failed: %s", err)
+		return nil, fmt.Errorf("Sender identity validation failed: %w", err)
+	}
+
+	if !isValid {
+		// Todo: Validate sender sig... we may want a warning flag so you can override this hard error
+		logger.Debug("Bundle signature does not match sender identity")
+		return nil, errors.New("bundle signature does not match sender identity")
 	}
 
 	return bundleInfo, nil

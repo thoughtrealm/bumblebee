@@ -92,7 +92,7 @@ func (ki *KeyInfo) Verify(input, sig []byte) (isValid bool, err error) {
 
 	err = verifyKP.Verify(input, sig)
 	if err != nil {
-		return false, fmt.Errorf("")
+		return false, fmt.Errorf("verify failed: %w", err)
 	}
 
 	return true, nil

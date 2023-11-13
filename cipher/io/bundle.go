@@ -19,7 +19,11 @@ import (
 	"time"
 )
 
-const CHUNK_SIZE = 32000
+const (
+	BundleHeaderVersion = "1"
+	BundleDataVersion   = "1"
+	CHUNK_SIZE          = 32000
+)
 
 type BundleInputSource int
 
@@ -49,6 +53,8 @@ type BundleInfo struct {
 	ToName           string
 	FromName         string
 	SenderSig        []byte
+	HdrVer           string
+	DataVer          string
 }
 
 // NewBundle returns a BundleInfo that is pre-populated with a random symmetric key
@@ -56,7 +62,11 @@ func NewBundle() (*BundleInfo, error) {
 	const SALT_SIZE = 64
 
 	// We only set the "create date" value.  The caller must set other fields as relevant.
-	newBundle := &BundleInfo{CreateDate: time.Now().Format(time.RFC3339)}
+	newBundle := &BundleInfo{
+		CreateDate: time.Now().Format(time.RFC3339),
+		HdrVer:     BundleHeaderVersion,
+		DataVer:    BundleDataVersion,
+	}
 
 	// Generate random key... this will be strengthened and salted using Argon2
 	newBundle.SymmetricKey = make([]byte, SALT_SIZE)

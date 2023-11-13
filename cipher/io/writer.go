@@ -69,6 +69,10 @@ func NewCipherWriter(receiverKI *security.KeyInfo, senderKPI *security.KeyPairIn
 
 	bundleInfo.FromName = senderKPI.Name
 	bundleInfo.ToName = receiverKI.Name
+	bundleInfo.SenderSig, err = senderKPI.SignRandom()
+	if err != nil {
+		return nil, fmt.Errorf("failed generating bundle header: %w", err)
+	}
 
 	return &CipherWriter{
 		SenderCipherKeyPair:     SenderCipherKeyPair,

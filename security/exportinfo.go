@@ -6,19 +6,20 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-type ExportKeyInfoType int
+type ExportDataType int
 
+// ExportDataType will be persisted to export files, so we will use explicit values instead of iota.
+// If we add types in the future or change things around, we don't want to deprecate or
+// invalidate exported files.
 const (
-	// ExportKeyInfoTypeKeyInfo will be persisted to export files, so we will use explicit values instead
-	// of iota.  If we add types in the future or change things around, we don't want to deprecate or
-	// invalidate exported files.
-	ExportKeyInfoTypeKeyInfo     ExportKeyInfoType = 1
-	ExportKeyInfoTypeKeyPairInfo ExportKeyInfoType = 2
+	ExportDataTypeUnknown     ExportDataType = 0
+	ExportDataTypeKeyInfo     ExportDataType = 1
+	ExportDataTypeKeyPairInfo ExportDataType = 2
 )
 
 type ExportKeyInfo struct {
 	Name          string
-	InfoType      ExportKeyInfoType
+	DataType      ExportDataType
 	CipherSeed    []byte
 	SigningSeed   []byte
 	CipherPubKey  string
@@ -41,7 +42,7 @@ func NewExportKeyInfoFromKeyPairInfo(kpi *KeyPairInfo) (*ExportKeyInfo, error) {
 
 	return &ExportKeyInfo{
 		Name:          kpi.Name,
-		InfoType:      ExportKeyInfoTypeKeyPairInfo,
+		DataType:      ExportDataTypeKeyPairInfo,
 		CipherSeed:    kpi.CipherSeed,
 		SigningSeed:   kpi.SigningSeed,
 		CipherPubKey:  cipherPubKey,
@@ -56,7 +57,7 @@ func NewExportKeyInfoFromKeyInfo(ki *KeyInfo) (*ExportKeyInfo, error) {
 
 	return &ExportKeyInfo{
 		Name:          ki.Name,
-		InfoType:      ExportKeyInfoTypeKeyInfo,
+		DataType:      ExportDataTypeKeyInfo,
 		CipherSeed:    nil,
 		SigningSeed:   nil,
 		CipherPubKey:  ki.CipherPubKey,

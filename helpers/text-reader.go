@@ -54,8 +54,8 @@ func NewTextScanner(data []byte) (*TextScanner, error) {
 //   - Otherwise, parse as a binary blob
 func (ts *TextScanner) Parse(data []byte) error {
 	logger.Debug("Starting text scanner parse")
-	logger.Debugf("length of input data: %d", len(data))
-	// logger.Debugf("%q\n", data)
+	logger.Debugfln("length of input data: %d", len(data))
+	// logger.Debugfln("%q\n", data)
 	if bytes.Contains(data, []byte(":start")) {
 		logger.Debug("Parsing as encoded text")
 		return ts.tryParseTextEncoding(data)
@@ -312,7 +312,7 @@ func (ts *TextScanner) tryParseTextEncoding(data []byte) error {
 	decodedBytes = append(decodedBytes, dataBytes...)
 	decodedBytes = append(decodedBytes, combinedBytes...)
 
-	logger.Debugf("Len decodedBytes: %d", len(decodedBytes))
+	logger.Debugfln("Len decodedBytes: %d", len(decodedBytes))
 
 	ts.readBuff.Write(decodedBytes)
 

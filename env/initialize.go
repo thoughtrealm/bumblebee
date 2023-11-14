@@ -218,7 +218,7 @@ func AssertEnvironmentIsEmpty() (shouldAbort bool) {
 	fileSystem := os.DirFS(configPath)
 
 	infoExists := false
-	logger.Debugf("Walking: %s\n", configPath)
+	logger.Debugfln("Walking: %s\n", configPath)
 	_ = fs.WalkDir(fileSystem, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err

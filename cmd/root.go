@@ -84,7 +84,7 @@ func init() {
 	cmd.PersistentFlags().BoolVarP(&helpers.CmdHelpers.OutputValueOnly, "output-only", "v", false, "Only print necessary output.  This is usually for removing extraneous characters\nwhen piping output to another process.")
 	cmd.PersistentFlags().BoolVarP(&logger.LogDebug, "log-debug", "g", false, "Enables debug logging output")
 	cmd.PersistentFlags().BoolVarP(&logger.LogTime, "log-time", "", false, "Adds time to debug lines.  Only relevant if debug output is enabled with \"--log\"")
-	cmd.PersistentFlags().BoolVarP(&logger.LogDebugVerbose, "log-debug-verbose", "", false, "Adds time to debug lines.  Only relevant if debug output is enabled with \"--log\"")
+	cmd.PersistentFlags().BoolVarP(&logger.LogDebugVerbose, "log-debug-verbose", "", false, "Enables output of detailed debug information.")
 	cmd.PersistentFlags().StringVarP(&helpers.CmdHelpers.UseProfile, "use", "u", "", "The profile name to use for the current command.")
 }
 

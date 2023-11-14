@@ -90,7 +90,11 @@ func outputLn(target *os.File, prefix, text string) {
 }
 
 func outputfLn(target *os.File, prefix, format string, a ...any) {
-	_, _ = fmt.Fprint(target, prefix+fmt.Sprintf(format, a...))
+	_, _ = fmt.Fprintln(target, prefix+fmt.Sprintf(format, a...))
+}
+
+func outputf(target *os.File, prefix, format string, a ...any) {
+	_, _ = fmt.Fprintf(target, format, a...)
 }
 
 func Debug(text string) {
@@ -102,13 +106,22 @@ func Debug(text string) {
 	outputLn(debugoutTarget, buildDebugPrefix(), text)
 }
 
-func Debugf(format string, a ...any) {
+func Debugfln(format string, a ...any) {
 	checkLogConfig()
 	if mode != logModeDebug && mode != logModeDebugVerbose {
 		return
 	}
 
 	outputfLn(debugoutTarget, buildDebugPrefix(), format, a...)
+}
+
+func Debugf(format string, a ...any) {
+	checkLogConfig()
+	if mode != logModeDebug && mode != logModeDebugVerbose {
+		return
+	}
+
+	outputf(debugoutTarget, buildDebugPrefix(), format, a...)
 }
 
 func DebugVerbose(text string) {
@@ -120,13 +133,22 @@ func DebugVerbose(text string) {
 	outputLn(debugoutTarget, buildDebugPrefix(), text)
 }
 
-func DebugVerbosef(format string, a ...any) {
+func DebugVerbosefln(format string, a ...any) {
 	checkLogConfig()
 	if mode != logModeDebugVerbose {
 		return
 	}
 
 	outputfLn(debugoutTarget, buildDebugPrefix(), format, a...)
+}
+
+func DebugVerbosef(format string, a ...any) {
+	checkLogConfig()
+	if mode != logModeDebugVerbose {
+		return
+	}
+
+	outputf(debugoutTarget, buildDebugPrefix(), format, a...)
 }
 
 func Println(text string) {
@@ -138,13 +160,22 @@ func Println(text string) {
 	outputLn(stdoutTarget, "", text)
 }
 
-func Printf(format string, a ...any) {
+func Printfln(format string, a ...any) {
 	checkLogConfig()
 	if mode == logModeOutputOnly {
 		return
 	}
 
 	outputfLn(stdoutTarget, "", format, a...)
+}
+
+func Printf(format string, a ...any) {
+	checkLogConfig()
+	if mode == logModeOutputOnly {
+		return
+	}
+
+	outputf(stdoutTarget, "", format, a...)
 }
 
 // Output ALWAYS PRINTS
@@ -158,11 +189,16 @@ func Outputf(format string, a ...any) {
 }
 
 // Error ALWAYS PRINTS
-func Error(text string) {
+func Errorln(text string) {
 	outputLn(stderrTarget, "", text)
+}
+
+// Errorfln ALWAYS PRINTS
+func Errorfln(format string, a ...any) {
+	outputfLn(stderrTarget, "", format, a...)
 }
 
 // Errorf ALWAYS PRINTS
 func Errorf(format string, a ...any) {
-	outputfLn(stderrTarget, "", format, a...)
+	outputf(stderrTarget, "", format, a...)
 }

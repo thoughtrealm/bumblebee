@@ -153,7 +153,7 @@ func (cfr *CipherReader) readBundleHeaderFrom(r io.Reader) (*BundleInfo, error) 
 	verifyKI, _ := security.NewKeyInfo("verify-sender", cfr.SenderCipherPubKey, cfr.SenderSigningPubKey)
 	isValid, err := verifyKI.VerifyRandomSignature(bundleInfo.SenderSig)
 	if err != nil {
-		logger.Debugf("Sender identity validation failed: %s", err)
+		logger.Debugfln("Sender identity validation failed: %s", err)
 		return nil, fmt.Errorf("Sender identity validation failed: %w", err)
 	}
 

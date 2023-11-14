@@ -62,17 +62,17 @@ func exportUser(userName string) {
 	var err error
 
 	if keystore.GlobalKeyStore == nil {
-		logger.Error("Unable to show key data: Key Store not loaded.")
+		logger.Errorln("Unable to show key data: Key Store not loaded.")
 		helpers.ExitCode = helpers.ExitCodeStartupFailure
 		return
 	}
 
 	logger.Println("")
-	logger.Debugf("Using profile: %s\n", helpers.GlobalConfig.GetCurrentProfile().Name)
+	logger.Debugfln("Using profile: %s\n", helpers.GlobalConfig.GetCurrentProfile().Name)
 
 	entity := keystore.GlobalKeyStore.GetKey(userName)
 	if entity == nil {
-		logger.Errorf("No user with the name \"%s\" was found.\n", userName)
+		logger.Errorfln("No user with the name \"%s\" was found.\n", userName)
 		return
 	}
 
@@ -94,7 +94,7 @@ func exportUser(userName string) {
 		passwordBytes, err = helpers.GetPasswordWithConfirm("password")
 		logger.Println("")
 		if err != nil {
-			logger.Errorf("Failed trying to obtain password for export file: %s", err)
+			logger.Errorfln("Failed trying to obtain password for export file: %s", err)
 			helpers.ExitCode = helpers.ExitCodeRequestFailed
 			return
 		}
@@ -123,7 +123,7 @@ func exportUser(userName string) {
 	}
 
 	if err != nil {
-		logger.Errorf("Export failed: %s\n", err)
+		logger.Errorfln("Export failed: %s\n", err)
 		helpers.ExitCode = helpers.ExitCodeRequestFailed
 		return
 	}
@@ -199,9 +199,9 @@ func exportUserInfoToFile(exportWriter *cipherio.ExportWriter, password []byte, 
 		var ext string
 		switch sharedExportCommandVals.exportOutputEncoding {
 		case helpers.ExportOutputEncodingRaw:
-			ext = ".userinfo.dat"
+			ext = ".bexp-dat"
 		case helpers.ExportOutputEncodingText:
-			ext = ".userinfo.txt"
+			ext = ".bexp-txt"
 		}
 
 		sharedExportCommandVals.exportOutputFilePath = filepath.Join(
@@ -225,7 +225,7 @@ func exportUserInfoToFileWithRawEncoding(exportWriter *cipherio.ExportWriter, pa
 		return fmt.Errorf("unable to export info to file: %w", err)
 	}
 
-	logger.Printf("Export info written to file: %s\n", sharedExportCommandVals.exportOutputFilePath)
+	logger.Printfln("Export info written to file: %s\n", sharedExportCommandVals.exportOutputFilePath)
 	logger.Println("File export complete")
 	return nil
 }
@@ -265,7 +265,7 @@ func exportUserInfoToFileWithTextEncoding(exportWriter *cipherio.ExportWriter, p
 		return fmt.Errorf("unable to write data to rfile: %w", err)
 	}
 
-	logger.Printf("Export info written to file: %s\n", sharedExportCommandVals.exportOutputFilePath)
+	logger.Printfln("Export info written to file: %s\n", sharedExportCommandVals.exportOutputFilePath)
 	logger.Println("File export complete")
 	return nil
 }

@@ -46,7 +46,7 @@ func (ew *ExportWriter) WriteExportKeyInfoToFile(eki *security.ExportKeyInfo, pa
 // KeyInfo, then the password is optional, since that only contains public keys.  If it is
 // type KeyPairInfo, then the password is required and an error is returned if it is nil.
 func (ew *ExportWriter) WriteExportKeyInfoToStream(eki *security.ExportKeyInfo, password []byte, w io.Writer) error {
-	if eki.InfoType == security.ExportKeyInfoTypeKeyPairInfo && len(password) == 0 {
+	if eki.DataType == security.ExportKeyInfoTypeKeyPairInfo && len(password) == 0 {
 		return errors.New("cannot export: no password provided and password is required for exporting keypair data")
 	}
 

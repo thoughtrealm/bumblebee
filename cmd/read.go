@@ -120,7 +120,7 @@ func readInputFileToOutputStream() {
 	fileBytes := fileBuffer.Bytes()
 	if len(fileBytes) == 0 {
 		// Todo: Should this be an error or no?  We'll write to debug out in case it should not be an error.
-		logger.Debugf("reading input-file returned no data: %s", localReadCommandVals.inputFilePath)
+		logger.Debugfln("reading input-file returned no data: %s", localReadCommandVals.inputFilePath)
 		helpers.ExitCode = helpers.ExitCodeRequestFailed
 		return
 	}
@@ -149,7 +149,7 @@ func readInputFileToOutputStream() {
 		return
 	}
 
-	logger.Debugf("Stream output complete: %d bytes read, %d bytes written.", bytesRead, bytesWritten)
+	logger.Debugfln("Stream output complete: %d bytes read, %d bytes written.", bytesRead, bytesWritten)
 }
 
 func writeHexOutput(fileBytes []byte) (totalBytesWritten int64, err error) {

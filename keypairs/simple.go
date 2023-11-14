@@ -361,7 +361,7 @@ func (kps *SimpleKeyPairStore) WipeData() {
 		// or just during delayed unrolling of runtime teardown,
 		// let's assume that this process could always induce panics and suppress accordingly
 		if r := recover(); r != nil {
-			logger.Debugf("Panic in SimpleKeyPairStore WipeData(): %s", r)
+			logger.Debugfln("Panic in SimpleKeyPairStore WipeData(): %s", r)
 		}
 	}()
 

@@ -2,25 +2,25 @@ package helpers
 
 import "strings"
 
-type ExportInputSource int
+type ImportInputSource int
 
 const (
-	ExportInputSourcePiped ExportInputSource = iota
-	ExportInputSourceClipboard
-	ExportInputSourceFile
-	ExportInputSourceUnknown
+	ImportInputSourcePiped ImportInputSource = iota
+	ImportInputSourceClipboard
+	ImportInputSourceFile
+	ImportInputSourceUnknown
 )
 
-func TextToExportInputSource(text string) ExportInputSource {
+func TextToImportInputSource(text string) ImportInputSource {
 	switch strings.ToUpper(strings.Trim(text, " \t\n\r")) {
 	case "PIPED":
-		return ExportInputSourcePiped
+		return ImportInputSourcePiped
 	case "CLIPBOARD":
-		return ExportInputSourceClipboard
+		return ImportInputSourceClipboard
 	case "FILE":
-		return ExportInputSourceFile
+		return ImportInputSourceFile
 	default:
-		return ExportInputSourceUnknown
+		return ImportInputSourceUnknown
 	}
 }
 

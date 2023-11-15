@@ -96,7 +96,7 @@ func (sks *SimpleKeyStore) UpdatePublicKeys(name, cipherPublicKey, signingPublic
 	entity.PublicKeys.CipherPubKey = cipherPublicKey
 	entity.PublicKeys.SigningPubKey = signingPublicKey
 	sks.Details.IsDirty = true
-	return true, nil
+	return true, sks.updateStoreFile()
 }
 
 func (sks *SimpleKeyStore) UpdateCipherPublicKey(name string, cipherPublicKey string) (found bool, err error) {
@@ -114,7 +114,7 @@ func (sks *SimpleKeyStore) UpdateCipherPublicKey(name string, cipherPublicKey st
 
 	entity.PublicKeys.CipherPubKey = cipherPublicKey
 	sks.Details.IsDirty = true
-	return true, nil
+	return true, sks.updateStoreFile()
 }
 
 func (sks *SimpleKeyStore) UpdateSigningPublicKey(name string, signingPublicKey string) (found bool, err error) {
@@ -132,7 +132,7 @@ func (sks *SimpleKeyStore) UpdateSigningPublicKey(name string, signingPublicKey 
 
 	entity.PublicKeys.SigningPubKey = signingPublicKey
 	sks.Details.IsDirty = true
-	return true, nil
+	return true, sks.updateStoreFile()
 }
 
 func (sks *SimpleKeyStore) GetEntity(name string) (outEntity *security.Entity) {
@@ -177,5 +177,5 @@ func (sks *SimpleKeyStore) removeEntity(name string) (found bool, err error) {
 
 	delete(sks.Entities, strings.ToUpper(name))
 	sks.Details.IsDirty = true
-	return true, nil
+	return true, sks.updateStoreFile()
 }

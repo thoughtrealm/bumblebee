@@ -20,12 +20,12 @@ import (
 	"github.com/thoughtrealm/bumblebee/keystore"
 )
 
-// removeKeyCmd represents the key command
-var removeKeyCmd = &cobra.Command{
-	Use:   "key [name]",
+// removeUserCmd represents the key command
+var removeUserCmd = &cobra.Command{
+	Use:   "user [name]",
 	Args:  cobra.MaximumNArgs(1),
-	Short: "Will remove the referenced key from the keystore",
-	Long:  "Will remove the referenced key from the keystore",
+	Short: "Will remove the referenced user from the keystore",
+	Long:  "Will remove the referenced user from the keystore",
 	Run: func(cmd *cobra.Command, args []string) {
 		err := startBootStrap(true, true)
 		if err != nil {
@@ -42,33 +42,34 @@ var removeKeyCmd = &cobra.Command{
 			keyName = args[0]
 		}
 
-		removeKey(keyName)
+		removeUser(keyName)
 	},
 }
 
 func init() {
-	removeCmd.AddCommand(removeKeyCmd)
+	removeCmd.AddCommand(removeUserCmd)
 }
 
-func removeKey(keyName string) {
+func removeUser(keyName string) {
 	if keystore.GlobalKeyStore == nil {
-		fmt.Println("Unable to remove key: keystore not loaded")
+		fmt.Println("Unable to remove user: keystore not loaded")
 		helpers.ExitCode = helpers.ExitCodeStartupFailure
 		return
 	}
 
 	entity := keystore.GlobalKeyStore.GetKey(keyName)
 	if entity == nil {
-		fmt.Printf("No key was found with name \"%s\"\n", keyName)
+		fmt.Printf("No user was found with name \"%s\"\n", keyName)
 		return
 	}
 
 	fmt.Println("Entity info located...")
 	entity.Print()
 	fmt.Println("")
-	response, err := helpers.GetYesNoInput(fmt.Sprintf("Are you sure you wish to remove the key \"%s\"?", keyName), helpers.InputResponseValNo)
+	response, err := helpers.GetYesNoInput(fmt.Sprintf("Are you sure you wish to remove the user \"%s\"?", keyName), helpers.InputResponseValNo)
+	fmt.Println("")
 	if err != nil {
-		fmt.Printf("Unable to confirm removal of key: %s\n", err)
+		fmt.Printf("Unable to confirm removal of user: %s\n", err)
 		helpers.ExitCode = helpers.ExitCodeRequestFailed
 		return
 	}
@@ -81,23 +82,16 @@ func removeKey(keyName string) {
 
 	found, err := keystore.GlobalKeyStore.RemoveEntity(keyName)
 	if !found {
-		fmt.Printf("Was unable to located the key during removal: \"%s\"\n", keyName)
+		fmt.Printf("Was unable to located the user during removal: \"%s\"\n", keyName)
 		helpers.ExitCode = helpers.ExitCodeRequestFailed
 		return
 	}
 
 	if err != nil {
-		fmt.Printf("Unable to remove key named \"%s\": %s\n", keyName, err)
+		fmt.Printf("Unable to remove user named \"%s\": %s\n", keyName, err)
 		helpers.ExitCode = helpers.ExitCodeRequestFailed
 		return
 	}
 
-	err = keystore.GlobalKeyStore.WriteToFile("")
-	if err != nil {
-		fmt.Printf("Unable to save keystore file: %s\n", err)
-		helpers.ExitCode = helpers.ExitCodeRequestFailed
-		return
-	}
-
-	fmt.Println("Key removed.")
+	fmt.Println("User removed.")
 }

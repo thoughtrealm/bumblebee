@@ -24,6 +24,12 @@ import (
 	"strings"
 )
 
+var dataBlockMarkers = []string{
+	":data",
+	":export-user",
+	":export-api-key",
+}
+
 // TODO: This scanner/parser is NOT the most efficient or highly performing code... maybe do something else in the future
 
 // TextScanner will scan text input and parse bee encrypted data.  It will provide a reader interface for that parsed data.
@@ -232,12 +238,25 @@ func (ts *TextScanner) tryParseTextEncoding(data []byte) error {
 				mode = parseModeHeader
 				continue
 			}
-
-			if strings.Contains(lineStrLower, ":data") {
-				logger.Debug("text reader: data block detected")
+			if isMarkerLine, markerText := ts.isDataMarkerLine(lineStrLower); isMarkerLine {
+				logger.Debugfln("text reader: data block detected by marker \"%s\"", markerText)
 				mode = parseModeData
 				continue
 			}
+
+			/*
+				if strings.Contains(lineStrLower, ":data") {
+					logger.Debug("text reader: data block detected")
+					mode = parseModeData
+					continue
+				}
+
+				if strings.Contains(lineStrLower, ":export-user") {
+					logger.Debug("text reader: data block detected")
+					mode = parseModeData
+					continue
+				}
+			*/
 
 			if strings.Contains(lineStrLower, ":raw") {
 				logger.Debug("text reader: raw block detected")
@@ -317,6 +336,16 @@ func (ts *TextScanner) tryParseTextEncoding(data []byte) error {
 	ts.readBuff.Write(decodedBytes)
 
 	return nil
+}
+
+func (ts *TextScanner) isDataMarkerLine(lineStrLower string) (isMarkerLine bool, markerTextFound string) {
+	for _, markerText := range dataBlockMarkers {
+		if strings.Contains(lineStrLower, markerText) {
+			return true, markerTextFound
+		}
+	}
+
+	return false, ""
 }
 
 func (ts *TextScanner) Read(p []byte) (n int, err error) {

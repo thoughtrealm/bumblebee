@@ -14,8 +14,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 )
 
@@ -25,7 +23,7 @@ var removeCmd = &cobra.Command{
 	Short: "Removes a key, keypair or profile",
 	Long:  "Removes a key, keypair or profile",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("remove called")
+		_ = cmd.Help()
 	},
 }
 

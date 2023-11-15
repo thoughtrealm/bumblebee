@@ -16,9 +16,11 @@ package cmd
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"github.com/spf13/cobra"
 	cipherio "github.com/thoughtrealm/bumblebee/cipher/io"
 	"github.com/thoughtrealm/bumblebee/helpers"
+	"github.com/thoughtrealm/bumblebee/keystore"
 	"github.com/thoughtrealm/bumblebee/logger"
 	"github.com/thoughtrealm/bumblebee/security"
 	"os"
@@ -195,14 +197,20 @@ func validateImportInputs() (inputsAreOk bool) {
 }
 
 func getImportClipboardInput() error {
-	var err error
-	sharedImportCommandVals.importedBytes, err = helpers.ReadFromClipboard()
+	clipboardBytes, err := helpers.ReadFromClipboard()
 	if err != nil {
 		logger.Errorfln("Unable to retrieve clipboard data: %w", err)
 		return err
 	}
 
-	return nil
+	if len(clipboardBytes) == 0 {
+		return nil
+	}
+
+	sharedImportCommandVals.importedBytes, err = decodeImportedBytes(clipboardBytes)
+
+	// decodeImportedBytes() will return an appropriate error message for returning here, if there was an error
+	return err
 }
 
 func getImportPipedInput() error {
@@ -213,7 +221,13 @@ func getImportPipedInput() error {
 		return err
 	}
 
-	sharedImportCommandVals.importedBytes = pipeBuffer.Bytes()
+	decodedBytes, err := decodeImportedBytes(pipeBuffer.Bytes())
+	if err != nil {
+		// decodeImportedBytes() will return an appropriate error message for returning here
+		return err
+	}
+
+	sharedImportCommandVals.importedBytes = decodedBytes
 	return nil
 }
 
@@ -245,8 +259,30 @@ func getImportFileInput() error {
 
 	logger.Debugfln("Bytes read from import file: %d", bytesRead)
 
-	sharedImportCommandVals.importedBytes = filebuffer.Bytes()
+	decodedBytes, err := decodeImportedBytes(filebuffer.Bytes())
+	if err != nil {
+		// decodeImportedBytes() will return an appropriate error message for returning here
+		return err
+	}
+
+	sharedImportCommandVals.importedBytes = decodedBytes
 	return nil
+}
+
+func decodeImportedBytes(encodedBytes []byte) (decodedBytes []byte, err error) {
+	var textScanner *helpers.TextScanner
+	textScanner, err = helpers.NewTextScanner(encodedBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed parsing imported data: %w", err)
+	}
+
+	bytesBuffer := bytes.NewBuffer(nil)
+	_, err = bytesBuffer.ReadFrom(textScanner)
+	if err != nil {
+		return nil, fmt.Errorf("failed decoding imported data: %w", err)
+	}
+
+	return bytesBuffer.Bytes(), nil
 }
 
 func handleGetPasswordRequest() (password []byte, err error) {
@@ -256,27 +292,84 @@ func handleGetPasswordRequest() (password []byte, err error) {
 
 	logger.Println("A password is required to read the imported data.")
 	logger.Printf("Please enter a password for the import data: ")
-	return helpers.GetPassword()
+
+	password, err = helpers.GetPassword()
+	logger.Println("")
+
+	return password, err
 }
 
 func handleUserImport(importProcessor *cipherio.ImportProcessor) error {
-	logger.Printfln("The import user data has the name \"%s\".", importProcessor.ImportedUser().Name)
-	logger.Println("Enter your preferred name for imported data.  Leave blank to use the name from the import data")
+	var importName string
+	var err error
 
-	importName, err := helpers.GetConsoleInputLine("Preferred import name (CTRL-C to cancel)")
+	ki := importProcessor.ImportedUser()
+	if sharedImportCommandVals.nameOverride != "" {
+		importName = sharedImportCommandVals.nameOverride
+	} else {
+		logger.Printfln("The imported user data has the name \"%s\".", ki.Name)
+		logger.Println("")
+		logger.Println("Enter your preferred name for the imported data.  Leave blank to use the name from the imported data.")
+		logger.Println("")
+
+		importName, err = helpers.GetConsoleInputLine("Preferred import name (CTRL-C to cancel)")
+		logger.Println("")
+		if err != nil {
+			logger.Errorfln("Error getting preferred import name from user: %s", err)
+			helpers.ExitCode = helpers.ExitCodeRequestFailed
+			return err
+		}
+
+		if importName == "" {
+			importName = ki.Name
+		}
+	}
+
+	kiStore := keystore.GlobalKeyStore.GetKey(importName)
+	if kiStore != nil {
+		if !sharedImportCommandVals.ignoreConfirm {
+			// confirm updating the current user
+			logger.Printfln("A user with the name \"%s\" already exists.", importName)
+			logger.Println("")
+			response, err := helpers.GetYesNoInput(
+				fmt.Sprintf("Update info for user \"%s\" with the imported info? ", importName),
+				helpers.InputResponseValNo)
+			logger.Println("")
+
+			if err != nil {
+				logger.Errorfln("Error getting confirmation to update current user: %s", err)
+				helpers.ExitCode = helpers.ExitCodeRequestFailed
+				return err
+			}
+
+			if response == helpers.InputResponseValNo {
+				logger.Errorln("User declined update")
+				logger.Println("")
+				helpers.ExitCode = helpers.ExitCodeRequestFailed
+				return err
+			}
+		}
+
+		_, err = keystore.GlobalKeyStore.UpdatePublicKeys(importName, ki.CipherPubKey, ki.SigningPubKey)
+		if err != nil {
+			logger.Errorfln("Unable to update keystore: %s", err)
+			helpers.ExitCode = helpers.ExitCodeRequestFailed
+			return err
+		}
+
+		logger.Printfln("User \"%s\" updated.", importName)
+		return nil
+	}
+
+	err = keystore.GlobalKeyStore.AddKey(importName, ki.CipherPubKey, ki.SigningPubKey)
 	if err != nil {
-		logger.Errorfln("Error getting preferred import name from user: %s", err)
+		logger.Errorfln("Error adding new user info to store: %s", err)
 		helpers.ExitCode = helpers.ExitCodeRequestFailed
 		return err
 	}
 
-	if importName == "" {
-		importName = importProcessor.ImportedUser().Name
-	}
-
-	// Todo: Left off here.. need to...
-	// 1. check if importName exists in keystore.  If it does, confirm updating or replacing it.
-	// 2. Add/update and save the keystore.
+	logger.Println("Keystore updated with user info")
+	logger.Println("")
 
 	return nil
 }

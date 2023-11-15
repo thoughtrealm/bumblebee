@@ -80,13 +80,7 @@ func (sks *SimpleKeyStore) AddKey(name, cipherPubKey, signingPubKey string) erro
 		return fmt.Errorf("unable to add new Entity: %w", err)
 	}
 
-	// providing empty values tells WriteToFile to use the corresponding fields of sks
-	err = sks.WriteToFile("")
-	if err != nil {
-		return fmt.Errorf("unable to write updated keystore to file: %w", err)
-	}
-
-	return nil
+	return sks.updateStoreFile()
 }
 
 func (sks *SimpleKeyStore) GetKey(name string) *security.Entity {
@@ -105,7 +99,7 @@ func (sks *SimpleKeyStore) Rename(newName string) error {
 	sks.Details.Name = newName
 
 	// Todo: In the future... we will want a flag that indicates to rename the storage file as per the new store name
-	return nil
+	return sks.updateStoreFile()
 }
 
 // Load takes a source key store and replaces the data in the reference keystore with the
@@ -234,6 +228,17 @@ func (sks *SimpleKeyStore) Walk(walkInfo *WalkInfo) (err error) {
 	// now, we can iterate over the slice
 	for _, entity := range entities {
 		walkInfo.WalkFunc(entity)
+	}
+
+	return nil
+}
+
+func (sks *SimpleKeyStore) updateStoreFile() error {
+	// Lower-cased funcs assume the caller has locked the store if needed.
+	// Providing empty values tells WriteToFile to use the corresponding fields of sks.
+	err := sks.WriteToFile("")
+	if err != nil {
+		return fmt.Errorf("unable to save store data: %s\n", err)
 	}
 
 	return nil

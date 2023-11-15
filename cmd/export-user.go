@@ -22,11 +22,13 @@ import (
 	"github.com/spf13/cobra"
 	cipherio "github.com/thoughtrealm/bumblebee/cipher/io"
 	"github.com/thoughtrealm/bumblebee/helpers"
+	"github.com/thoughtrealm/bumblebee/keypairs"
 	"github.com/thoughtrealm/bumblebee/keystore"
 	"github.com/thoughtrealm/bumblebee/logger"
 	"github.com/thoughtrealm/bumblebee/security"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // exportUserCmd represents the user export subcommand
@@ -54,26 +56,41 @@ var exportUserCmd = &cobra.Command{
 
 const textOutputHeader = ":start  :export-user  :hex"
 
+var exportUserFromKeypair bool
+
 func init() {
 	exportCmd.AddCommand(exportUserCmd)
+	exportUserCmd.Flags().BoolVarP(
+		&exportUserFromKeypair, "from-keypair", "", false,
+		`Extracts only public keys from a keypair and exports as a user,
+which is safe to send to other users. Keypair is located using provided username.
+If the provided username is "default", then the following occurs...
+-- The default sender name for the profile will be checked and used for the exported default user info.  
+-- If no default sender name exists, then you will be prompted for the name to use
+instead of default.
+If no keypair is located with the provided username, then the default sender name 
+will be checked and used if it matches the provided name.`)
 }
 
 func exportUser(userName string) {
 	var err error
-
-	if keystore.GlobalKeyStore == nil {
-		logger.Errorln("Unable to show key data: Key Store not loaded.")
-		helpers.ExitCode = helpers.ExitCodeStartupFailure
-		return
-	}
+	var entity *security.Entity
 
 	logger.Println("")
 	logger.Debugfln("Using profile: %s\n", helpers.GlobalConfig.GetCurrentProfile().Name)
 
-	entity := keystore.GlobalKeyStore.GetKey(userName)
-	if entity == nil {
-		logger.Errorfln("No user with the name \"%s\" was found.\n", userName)
-		return
+	if exportUserFromKeypair {
+		entity, err = getExportEntityFromKeyPair(userName)
+		if err != nil {
+			logger.Printfln("Unable to obtain user info from indicated keypair: %w", err)
+			return
+		}
+	} else {
+		entity = keystore.GlobalKeyStore.GetKey(userName)
+		if entity == nil {
+			logger.Errorfln("No user with the name \"%s\" was found.\n", userName)
+			return
+		}
 	}
 
 	var passwordBytes []byte
@@ -127,6 +144,70 @@ func exportUser(userName string) {
 		helpers.ExitCode = helpers.ExitCodeRequestFailed
 		return
 	}
+}
+
+func getExportEntityFromKeyPair(userName string) (entity *security.Entity, err error) {
+	logger.Debugfln("Building export key info from keypair using username: %s", userName)
+
+	var defaultKeypairName string
+	profile := helpers.GlobalConfig.GetCurrentProfile()
+	if profile != nil && profile.DefaultKeypairName != "" {
+		defaultKeypairName = profile.DefaultKeypairName
+	}
+
+	tempUserName := userName
+	kpi := keypairs.GlobalKeyPairStore.GetKeyPairInfo(tempUserName)
+	if kpi != nil {
+		logger.Debugfln("KeyPair located using username: %s", tempUserName)
+	} else {
+		logger.Debug("Unable to locate a keypair using the provided username.  Checking if provided username is the default profile name")
+		if !strings.EqualFold(tempUserName, defaultKeypairName) {
+			logger.Debug("The username provided is NOT the default profile name.  Can't find KPI.")
+			return nil, fmt.Errorf("unable to locate a keypair using username \"%s\" and the provided username is not the default profile name", userName)
+		}
+
+		tempUserName = defaultKeypairName
+		kpi = keypairs.GlobalKeyPairStore.GetKeyPairInfo("default")
+		if kpi == nil {
+			// Really, this should never happen. The default keypair should always be available.
+			// Something must be wrong with the keypair store?
+			return nil, fmt.Errorf("unable to locate a keypair using username \"%s\" or the system keypair named \"default\"", userName)
+		}
+
+		logger.Debugfln("Using profile's DefaultKeypairName as username: %s", defaultKeypairName)
+	}
+
+	if strings.EqualFold(tempUserName, "default") && defaultKeypairName != "" {
+		// This should only be the case if they passed in the username "default"
+		tempUserName = defaultKeypairName
+	}
+
+	// One more final check, just in case they did something like set the DefaultKeyPair name to "default"
+	if strings.EqualFold(tempUserName, "default") && defaultKeypairName != "" {
+		logger.Println("No appropriate default keypair name was found.")
+		tempUserName, err = helpers.GetConsoleInputLine("Please enter your desired export username (CTRL-C to CANCEL):")
+		if err != nil {
+			return nil, fmt.Errorf("failed while obtaining appropriate export username: %w", err)
+		}
+	}
+
+	cipherPubKey, signingPubKey, err := kpi.PublicKeys()
+	if err != nil {
+		return nil, fmt.Errorf("unable to extract public keys from retrieved keypair info: %w", err)
+	}
+
+	ki, _ := security.NewKeyInfo(
+		tempUserName,
+		cipherPubKey,
+		signingPubKey,
+	)
+
+	entityOut := &security.Entity{
+		Name:       tempUserName,
+		PublicKeys: ki,
+	}
+
+	return entityOut, nil
 }
 
 func exportUserInfoToConsole(exportWriter *cipherio.ExportWriter, password []byte, eki *security.ExportKeyInfo) error {

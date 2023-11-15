@@ -52,7 +52,7 @@ This flag should only be used when piping export info to another process,
 since passing passwords on the command line is not considered secure.
 For user exports, the password is optional, but for keypair exports, 
 the password is required.
-So if you wish to export keypair info to another process, 
+So if you are piping input and wish to export keypair info to another user, 
 you must use this flag to provide the password.`)
 }
 

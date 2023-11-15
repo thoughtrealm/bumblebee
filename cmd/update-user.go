@@ -20,19 +20,19 @@ import (
 	"github.com/thoughtrealm/bumblebee/keystore"
 )
 
-type updateUserKeySubcommandVals struct {
+type updateUserSubcommandVals struct {
 	cipherPublicKey  string
 	signingPublicKey string
 }
 
-var localUpdateUserKeySubcommandVals = &updateUserKeySubcommandVals{}
+var localUpdateUserSubcommandVals = &updateUserSubcommandVals{}
 
-// updateUserKeyCmd represents the key command
-var updateUserKeyCmd = &cobra.Command{
-	Use:   "user-key <name> --cipher=cipherKey --signing=signingKey",
+// updateUserCmd represents the key command
+var updateUserCmd = &cobra.Command{
+	Use:   "user <name> --cipher=cipherKey --signing=signingKey",
 	Args:  cobra.ExactArgs(1),
-	Short: "Will replace the public keys for a keystore key",
-	Long:  "Will replace the public keys for a keystore key",
+	Short: "Will update a user's public keys",
+	Long:  "Will update a user's public keys",
 	Run: func(cmd *cobra.Command, args []string) {
 		err := startBootStrap(true, true)
 		if err != nil {
@@ -43,8 +43,8 @@ var updateUserKeyCmd = &cobra.Command{
 		// Max args is set by Args property above. Only need to check for 2 or less args
 		var keyName string
 
-		if localUpdateUserKeySubcommandVals.cipherPublicKey == "" &&
-			localUpdateUserKeySubcommandVals.signingPublicKey == "" {
+		if localUpdateUserSubcommandVals.cipherPublicKey == "" &&
+			localUpdateUserSubcommandVals.signingPublicKey == "" {
 
 			fmt.Println("No keys provided.  Expected at least one of \"--cipher\" or \"signing\"", err)
 			return
@@ -57,9 +57,9 @@ var updateUserKeyCmd = &cobra.Command{
 }
 
 func init() {
-	updateCmd.AddCommand(updateUserKeyCmd)
-	updateUserKeyCmd.Flags().StringVarP(&localUpdateUserKeySubcommandVals.cipherPublicKey, "cipher", "c", "", "The value for the public cipher key")
-	updateUserKeyCmd.Flags().StringVarP(&localUpdateUserKeySubcommandVals.signingPublicKey, "signing", "s", "", "The value for the public signing key")
+	updateCmd.AddCommand(updateUserCmd)
+	updateUserCmd.Flags().StringVarP(&localUpdateUserSubcommandVals.cipherPublicKey, "cipher", "c", "", "The value for the public cipher key")
+	updateUserCmd.Flags().StringVarP(&localUpdateUserSubcommandVals.signingPublicKey, "signing", "s", "", "The value for the public signing key")
 }
 
 func updateUserPublicKeys(keyName string) {
@@ -73,23 +73,23 @@ func updateUserPublicKeys(keyName string) {
 	}
 
 	// the user may submit both keys, or just the cipher key, or just the signing key
-	if localUpdateUserKeySubcommandVals.cipherPublicKey != "" &&
-		localUpdateUserKeySubcommandVals.signingPublicKey != "" {
+	if localUpdateUserSubcommandVals.cipherPublicKey != "" &&
+		localUpdateUserSubcommandVals.signingPublicKey != "" {
 		// user provided both keys
 		found, err = keystore.GlobalKeyStore.UpdatePublicKeys(
 			keyName,
-			localUpdateUserKeySubcommandVals.cipherPublicKey,
-			localUpdateUserKeySubcommandVals.signingPublicKey)
+			localUpdateUserSubcommandVals.cipherPublicKey,
+			localUpdateUserSubcommandVals.signingPublicKey)
 		if !found {
 			fmt.Printf("Unable to update keys: key not found with name \"%s\"\n", keyName)
 			helpers.ExitCode = helpers.ExitCodeInvalidInput
 			return
 		}
-	} else if localUpdateUserKeySubcommandVals.cipherPublicKey != "" {
+	} else if localUpdateUserSubcommandVals.cipherPublicKey != "" {
 		// user provided only the cipher key
 		found, err = keystore.GlobalKeyStore.UpdateCipherPublicKey(
 			keyName,
-			localUpdateUserKeySubcommandVals.cipherPublicKey)
+			localUpdateUserSubcommandVals.cipherPublicKey)
 		if !found {
 			fmt.Printf("Unable to update cipher key: key not found with name \"%s\"\n", keyName)
 			helpers.ExitCode = helpers.ExitCodeInvalidInput
@@ -99,7 +99,7 @@ func updateUserPublicKeys(keyName string) {
 		// user provided only the signing key
 		found, err = keystore.GlobalKeyStore.UpdateSigningPublicKey(
 			keyName,
-			localUpdateUserKeySubcommandVals.signingPublicKey)
+			localUpdateUserSubcommandVals.signingPublicKey)
 		if !found {
 			fmt.Printf("Unable to update signing key: key not found with name \"%s\"\n", keyName)
 			helpers.ExitCode = helpers.ExitCodeInvalidInput
@@ -109,14 +109,6 @@ func updateUserPublicKeys(keyName string) {
 
 	if err != nil {
 		fmt.Printf("Unable to update key(s): %s\n", err)
-		helpers.ExitCode = helpers.ExitCodeRequestFailed
-		return
-	}
-
-	// Save the changed key store
-	err = keystore.GlobalKeyStore.WriteToFile("")
-	if err != nil {
-		fmt.Printf("Unable to update key: keystore could not update the file: %s\n", err)
 		helpers.ExitCode = helpers.ExitCodeRequestFailed
 		return
 	}

@@ -19,6 +19,7 @@ import (
 	"github.com/thoughtrealm/bumblebee/helpers"
 	"github.com/thoughtrealm/bumblebee/keypairs"
 	"github.com/thoughtrealm/bumblebee/keystore"
+	"github.com/thoughtrealm/bumblebee/logger"
 )
 
 type BootstrapLoader struct {
@@ -29,6 +30,7 @@ type BootstrapLoader struct {
 func Run(loadKeystore, loadKeypairStore bool) error {
 	if helpers.CmdHelpers.UseProfile != "" {
 		helpers.GlobalUseProfile = helpers.CmdHelpers.UseProfile
+		logger.Debugfln("Using profile \"%s\"", helpers.GlobalUseProfile)
 	}
 
 	loader := &BootstrapLoader{}

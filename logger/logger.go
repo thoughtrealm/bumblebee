@@ -160,6 +160,9 @@ func Println(text string) {
 	outputLn(stdoutTarget, "", text)
 }
 
+// Todo: getting the following error for this Printfln functionality...
+// cmd/export-user.go:85:4: github.com/thoughtrealm/bumblebee/logger.Printfln does not support error-wrapping directive %w
+// Need to address it or not request it
 func Printfln(format string, a ...any) {
 	checkLogConfig()
 	if mode == logModeOutputOnly {

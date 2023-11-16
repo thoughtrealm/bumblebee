@@ -34,6 +34,7 @@ type importCommandVals struct {
 	importedBytes   []byte
 	nameOverride    string
 	ignoreConfirm   bool
+	detailsOnly     bool
 }
 
 var sharedImportCommandVals = &importCommandVals{}
@@ -60,6 +61,7 @@ func init() {
 	importCmd.Flags().StringVarP(&sharedImportCommandVals.inputFilePath, "input-file", "f", "", "The file name to use for input. Only relevant if input-type is FILE.")
 	importCmd.Flags().StringVarP(&sharedImportCommandVals.nameOverride, "name", "n", "", "Overrides the name in the export package. If not provided,\nuser is prompted for name confirmation before adding to store.")
 	importCmd.Flags().BoolVarP(&sharedImportCommandVals.ignoreConfirm, "ignore-confirm", "i", false, "If set, user will not be prompted to confirm the import")
+	importCmd.Flags().BoolVarP(&sharedImportCommandVals.detailsOnly, "details-only", "", false, "If set, the input will not be imported, instead just the details will be displayed.\nThis allows you to validate the file before importing it.")
 	importCmd.Flags().StringVarP(&sharedImportCommandVals.password,
 		"password", "", "",
 		`A password if required for the input stream.
@@ -148,7 +150,11 @@ func importItem() {
 		return
 	}
 
-	logger.Println("Import complete")
+	if sharedImportCommandVals.detailsOnly {
+		logger.Println("Import details complete")
+	} else {
+		logger.Println("Import complete")
+	}
 }
 
 // validateImportInputs will validate the flag values and print error messages as needed
@@ -304,6 +310,15 @@ func handleUserImport(importProcessor *cipherio.ImportProcessor) error {
 	var err error
 
 	ki := importProcessor.ImportedUser()
+	if sharedImportCommandVals.detailsOnly {
+		logger.Printfln("Input type        : User Public Keys")
+		logger.Printfln("User Name         : %s", ki.Name)
+		logger.Printfln("Cipher Public Key : %s", ki.CipherPubKey)
+		logger.Printfln("Signing Public Key: %s", ki.SigningPubKey)
+		logger.Println("")
+		return nil
+	}
+
 	if sharedImportCommandVals.nameOverride != "" {
 		importName = sharedImportCommandVals.nameOverride
 	} else {

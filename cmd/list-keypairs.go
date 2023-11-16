@@ -58,7 +58,8 @@ func showKeyPairsList() {
 	fmt.Println("")
 	fmt.Printf("Using profile   : %s\n", helpers.GlobalConfig.GetCurrentProfile().Name)
 	fmt.Printf("KeyPairs Loaded : %d\n", keypairs.GlobalKeyPairStore.Count())
-	fmt.Println("======================================================")
+	fmt.Println("======================================================================================")
+	fmt.Println("")
 	keypairs.GlobalKeyPairStore.Walk(globalListSubCommandVals.sort, func(kpi *security.KeyPairInfo) {
 		err := kpi.Print(
 			"",

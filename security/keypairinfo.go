@@ -204,19 +204,20 @@ func (kpi *KeyPairInfo) Print(headerText string, showAll bool) error {
 	}
 
 	fmt.Printf("Name: %s\n", kpi.Name)
+	fmt.Println("========================================================")
 
 	if showAll {
-		fmt.Println("Cipher Key")
-		fmt.Println("================")
-		fmt.Printf("KP Seed     : %s\n", string(kpi.CipherSeed))
-		fmt.Printf("Private Key : %s\n", string(cipherPrivateKey))
-		fmt.Printf("Public Key  : %s\n", cipherPublicKey)
+		fmt.Println("    Cipher Key")
+		fmt.Println("    ---------------------------------------------------------")
+		fmt.Printf("    KP Seed     : %s\n", string(kpi.CipherSeed))
+		fmt.Printf("    Private Key : %s\n", string(cipherPrivateKey))
+		fmt.Printf("    Public Key  : %s\n", cipherPublicKey)
 		fmt.Println("")
-		fmt.Println("Signing Key")
-		fmt.Println("================")
-		fmt.Printf("KP Seed     : %s\n", string(kpi.SigningSeed))
-		fmt.Printf("Private Key : %s\n", string(signingPrivateKey))
-		fmt.Printf("Public Key  : %s\n", signingPublicKey)
+		fmt.Println("    Signing Key")
+		fmt.Println("    ---------------------------------------------------------")
+		fmt.Printf("    KP Seed     : %s\n", string(kpi.SigningSeed))
+		fmt.Printf("    Private Key : %s\n", string(signingPrivateKey))
+		fmt.Printf("    Public Key  : %s\n", signingPublicKey)
 
 		return nil
 

@@ -15,6 +15,9 @@ package keystore
 
 import "github.com/thoughtrealm/bumblebee/security"
 
+// This initial, basic server-related functionality is for the future implementation of a key management service.
+// It is not currently implemented or used, except for very simple server naming support in the keystore structures.
+
 type ServerInfo struct {
 	Name    string
 	Address string

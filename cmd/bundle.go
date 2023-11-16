@@ -371,6 +371,10 @@ func inferOutputTypeForBundle() (outputTypeWasInferred bool) {
 		localBundleCommandVals.outputType = keystore.OutputTypeClipboard
 		return false
 	case keystore.InputTypeFile:
+		// Todo: I want to revisit this approach... I want to be more local/active dir focused
+		// Do we want to write files to the same path as the input file?
+		// Maybe writing to CWD is better, similar to how "export-user.go:exportUserInfoToFile()" works?
+		// This would be true for bundle AND open, maybe other commands as well
 		localBundleCommandVals.outputType = keystore.OutputTypePath
 		usePath, _ := filepath.Split(localBundleCommandVals.inputFilePath)
 		localBundleCommandVals.outputPath = usePath

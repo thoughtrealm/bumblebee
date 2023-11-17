@@ -22,6 +22,7 @@ import (
 	"github.com/thoughtrealm/bumblebee/helpers"
 	"github.com/thoughtrealm/bumblebee/keypairs"
 	"github.com/thoughtrealm/bumblebee/keystore"
+	"github.com/thoughtrealm/bumblebee/logger"
 	"github.com/thoughtrealm/bumblebee/security"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
@@ -371,17 +372,20 @@ func inferOutputTypeForBundle() (outputTypeWasInferred bool) {
 		localBundleCommandVals.outputType = keystore.OutputTypeClipboard
 		return false
 	case keystore.InputTypeFile:
-		// Todo: I want to revisit this approach... I want to be more local/active dir focused
-		// Do we want to write files to the same path as the input file?
-		// Maybe writing to CWD is better, similar to how "export-user.go:exportUserInfoToFile()" works?
-		// This would be true for bundle AND open, maybe other commands as well
-		localBundleCommandVals.outputType = keystore.OutputTypePath
-		usePath, _ := filepath.Split(localBundleCommandVals.inputFilePath)
-		localBundleCommandVals.outputPath = usePath
-		return true
-	}
+		cwd, err := os.Getwd()
+		if err != nil {
+			logger.Errorf("unable to determine the current working directory: %s", err)
+			return false
+		}
 
-	return false
+		localBundleCommandVals.outputType = keystore.OutputTypePath
+		localBundleCommandVals.outputPath = cwd
+
+		return true
+	default:
+		logger.Errorf("Unsupported input type detected: %d", int(localBundleCommandVals.inputType))
+		return false
+	}
 }
 
 func validateInputFile() error {

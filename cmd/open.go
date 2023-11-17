@@ -455,7 +455,12 @@ func validateOutputFileForFileInputForOpen() error {
 
 	var usePath string
 	if localOpenCommandVals.outputPath == "" {
-		usePath, _ = filepath.Split(localOpenCommandVals.inputFilePath)
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("unable to determine the current working directory: %w", err)
+		}
+
+		usePath = cwd
 	} else {
 		usePath = localOpenCommandVals.outputPath
 	}

@@ -11,21 +11,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build (darwin && arm64) || windows
+
 package helpers
 
 import (
+	"errors"
 	"fmt"
 	"golang.design/x/clipboard"
+	"strings"
 )
 
 var clipboardInitialized bool
 
-func InitializeClipboard() error {
+func InitializeClipboard() (err error) {
 	if clipboardInitialized {
 		return nil
 	}
 
-	err := clipboard.Init()
+	defer func() {
+		if r := recover(); r != nil {
+			errText := fmt.Sprintf("%s", r)
+			if strings.Contains(strings.ToLower(errText), "clipboard: cannot use when cgo_enabled=0") {
+				err = errors.New("clipboard access is not available for this build of BumbleBee")
+				return
+			}
+
+			err = fmt.Errorf("%s", r)
+		}
+	}()
+
+	err = clipboard.Init()
 	if err != nil {
 		return fmt.Errorf("unable to initialize clipboard: %w", err)
 	}

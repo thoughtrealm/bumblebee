@@ -83,7 +83,8 @@ func (ts *TextScanner) Parse(data []byte) error {
 
 func (ts *TextScanner) isWindowsDecimalLines(data []byte) bool {
 	const hexVals = "0123456789"
-	lines := bytes.Split(data, []byte(LineBreak))
+	lineEnding := ts.detectLineEndingSequence(data)
+	lines := bytes.Split(data, lineEnding)
 	for _, line := range lines {
 		if len(line) == 0 {
 			continue
@@ -106,7 +107,8 @@ func (ts *TextScanner) isWindowsDecimalLines(data []byte) bool {
 
 func (ts *TextScanner) isHexBytes(data []byte) bool {
 	const hexVals = "ABCDEFabcdef0123456789"
-	lines := bytes.Split(data, []byte(LineBreak))
+	lineEnding := ts.detectLineEndingSequence(data)
+	lines := bytes.Split(data, lineEnding)
 	for _, line := range lines {
 		if len(line) == 0 {
 			continue
@@ -130,7 +132,8 @@ func (ts *TextScanner) isHexBytes(data []byte) bool {
 // So we won't check that again.  We just ignore marker lines and grab all hex into one string and decode.
 func (ts *TextScanner) tryParseHex(data []byte) error {
 	var decodedBytes []byte
-	lines := bytes.Split(data, []byte(LineBreak))
+	lineEnding := ts.detectLineEndingSequence(data)
+	lines := bytes.Split(data, lineEnding)
 	for _, line := range lines {
 		if len(line) == 0 {
 			continue
@@ -160,7 +163,8 @@ func (ts *TextScanner) tryParseHex(data []byte) error {
 // individual byte values.
 func (ts *TextScanner) tryParseWindowsDecimalLines(data []byte) error {
 	var decodedBytes []byte
-	lines := bytes.Split(data, []byte(LineBreak))
+	lineEnding := ts.detectLineEndingSequence(data)
+	lines := bytes.Split(data, lineEnding)
 	for _, line := range lines {
 		if len(line) == 0 {
 			continue
@@ -200,7 +204,7 @@ func (ts *TextScanner) tryParseTextEncoding(data []byte) error {
 		parseModeRaw
 	)
 
-	// we use 3 different []byte vars, because the use MIGHT have rearranged the block sequences.
+	// we use 3 different []byte vars, because the user MIGHT have rearranged the block sequences.
 	// so, we split them out into 3 vars and re-assemble, instead of assuming they are in correct order
 	// Todo: This is crude and barbaric... do it differently one day?
 	var (
@@ -212,7 +216,8 @@ func (ts *TextScanner) tryParseTextEncoding(data []byte) error {
 		rawBytes      []byte
 	)
 
-	lines := bytes.Split(data, []byte(LineBreak))
+	detectedLineEnding := ts.detectLineEndingSequence(data)
+	lines := bytes.Split(data, detectedLineEnding)
 	for _, line := range lines {
 		if len(line) == 0 {
 			continue
@@ -336,6 +341,24 @@ func (ts *TextScanner) tryParseTextEncoding(data []byte) error {
 	ts.readBuff.Write(decodedBytes)
 
 	return nil
+}
+
+func (ts *TextScanner) detectLineEndingSequence(data []byte) []byte {
+	windowsLineEnding := []byte("\r\n")
+	everyOtherOSLineEnding := []byte("\n")
+	if !bytes.Contains(data, everyOtherOSLineEnding) {
+		// There are no actual line breaks detect for either Windows or ANYTHING ELSE, so
+		// just return the default OS detected line ending sequence.
+		return []byte(LineBreak)
+	}
+
+	if bytes.Count(data, windowsLineEnding) >= 2 {
+		// There should be at least 2 lines for this check.  Hopefully, by checking
+		// for two or more counts, we avoid accidental collisions with random stream sequences.
+		return windowsLineEnding
+	}
+
+	return everyOtherOSLineEnding
 }
 
 func (ts *TextScanner) isDataMarkerLine(lineStrLower string) (isMarkerLine bool, markerTextFound string) {

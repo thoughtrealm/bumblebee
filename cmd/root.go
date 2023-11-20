@@ -71,14 +71,14 @@ func Execute() {
 
 func init() {
 	cmd := GetRootCmd()
-	/*
-		cmd.Example = "  u2t 681678000\n" +
-			"  u2t 681678000 --output-format RFC3339\n" +
-			"  u2t 681678000000 --input-type milli --input-format secs --output-format RFC3339\n" +
-			"  u2t 681678000000 --input-type milli --output-format custom --custom-text \"mmm yyyy-mm-dd hhh:nn:ss.000 zthhmm\n" +
-			"  u2t 681678000000 --input-type milLI --output-format customGo --custom-text \"Jan 2006-01-02 15:04:05.000 Z-0700\n" +
-			"  u2t list --output-formats\n" +
-			"  u2t list --custom-entities"
+	/* copied from another project for example in future changes
+	cmd.Example = "  u2t 681678000\n" +
+		"  u2t 681678000 --output-format RFC3339\n" +
+		"  u2t 681678000000 --input-type milli --input-format secs --output-format RFC3339\n" +
+		"  u2t 681678000000 --input-type milli --output-format custom --custom-text \"mmm yyyy-mm-dd hhh:nn:ss.000 zthhmm\n" +
+		"  u2t 681678000000 --input-type milLI --output-format customGo --custom-text \"Jan 2006-01-02 15:04:05.000 Z-0700\n" +
+		"  u2t list --output-formats\n" +
+		"  u2t list --custom-entities"
 	*/
 
 	cmd.PersistentFlags().BoolVarP(&helpers.CmdHelpers.OutputValueOnly, "output-only", "v", false, "Only print necessary output.  This is usually for removing extraneous characters\nwhen piping output to another process.")

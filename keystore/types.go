@@ -34,52 +34,52 @@ func TextToBundleType(textName string) BundleType {
 	}
 }
 
-type InputType int
+type InputSource int
 
 const (
-	InputTypeConsole InputType = iota
-	InputTypeFile
-	InputTypeClipboard
-	InputTypePiped
-	InputTypeUnknown
+	InputSourceConsole InputSource = iota
+	InputSourceFile
+	InputSourceClipboard
+	InputSourcePiped
+	InputSourceUnknown
 )
 
-func TextToInputType(textName string) InputType {
+func TextToInputSource(textName string) InputSource {
 	switch strings.ToUpper(strings.Trim(textName, " \t\n\r")) {
 	case "CONSOLE":
-		return InputTypeConsole
+		return InputSourceConsole
 	case "FILE":
-		return InputTypeFile
+		return InputSourceFile
 	case "CLIPBOARD":
-		return InputTypeClipboard
+		return InputSourceClipboard
 	case "PIPED":
-		return InputTypePiped
+		return InputSourcePiped
 	default:
-		return InputTypeUnknown
+		return InputSourceUnknown
 	}
 }
 
-type OutputType int
+type OutputTarget int
 
 const (
-	OutputTypeConsole OutputType = iota
-	OutputTypeFile
-	OutputTypePath
-	OutputTypeClipboard
-	OutputTypeUnknown
+	OutputTargetConsole OutputTarget = iota
+	OutputTargetFile
+	OutputTargetPath
+	OutputTargetClipboard
+	OutputTargetUnknown
 )
 
-func TextToOutputType(textName string) OutputType {
+func TextToOutputTarget(textName string) OutputTarget {
 	switch strings.ToUpper(strings.Trim(textName, " \t\n\r")) {
 	case "CONSOLE":
-		return OutputTypeConsole
+		return OutputTargetConsole
 	case "FILE":
-		return OutputTypeFile
+		return OutputTargetFile
 	case "PATH":
-		return OutputTypePath
+		return OutputTargetPath
 	case "CLIPBOARD":
-		return OutputTypeClipboard
+		return OutputTargetClipboard
 	default:
-		return OutputTypeUnknown
+		return OutputTargetUnknown
 	}
 }

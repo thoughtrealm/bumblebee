@@ -59,25 +59,25 @@ type openCommandVals struct {
 	// If localKeys is true, then the read and write keypairs from the keypair store are used for sender and receiver.
 	localKeys bool
 
-	// inputTypeText should be clipboard, piped or file
-	inputTypeText string
+	// inputSourceText should be clipboard, piped or file
+	inputSourceText string
 
-	// inputType is transformed from inputTypeText
-	inputType keystore.InputType
+	// inputSource is transformed from inputSourceText
+	inputSource keystore.InputSource
 
-	// inputFilePath is the name of a file to use as input.  Only relevant for inputTypeText=file.
+	// inputFilePath is the name of a file to use as input.  Only relevant for inputSourceText=file.
 	inputFilePath string
 
-	// outputTypeText should be console, clipboard or file
-	outputTypeText string
+	// outputTargetText should be console, clipboard or file
+	outputTargetText string
 
-	// outputType is transformed from outputTypeText
-	outputType keystore.OutputType
+	// outputTarget is transformed from outputTargetText
+	outputTarget keystore.OutputTarget
 
-	// outputFile is the name of a file to use as output.  Only relevant for outputTypeText=file.
+	// outputFile is the name of a file to use as output.  Only relevant for outputTargetText=file.
 	outputFile string
 
-	// outputPath is the name of a path to use for output.  Only relevant for outputTypeText=path.
+	// outputPath is the name of a path to use for output.  Only relevant for outputTargetText=path.
 	outputPath string
 
 	// bundleTypeText should be combined or split
@@ -111,11 +111,11 @@ func init() {
 	openCmd.Flags().StringVarP(&localOpenCommandVals.toName, "to", "t", "", "The name of the keypair to use for the receiver's key data.  If empty, uses the default keypair for the profile. Not necessary if using local-keys.")
 	openCmd.Flags().StringVarP(&localOpenCommandVals.fromName, "from", "r", "", "The name of the key to use for the sender's key data.  Not necessary if using local-keys.")
 	openCmd.Flags().BoolVarP(&localOpenCommandVals.localKeys, "local-keys", "l", false, "If true, will use the local store keys to read the secret data.")
-	openCmd.Flags().StringVarP(&localOpenCommandVals.inputTypeText, "input-type", "i", "", "The type of the input source.  Should be one of: clipbloard or file.")
-	openCmd.Flags().StringVarP(&localOpenCommandVals.inputFilePath, "input-file", "f", "", "The name of a file to use for input. Only relevant if input-type is file.")
-	openCmd.Flags().StringVarP(&localOpenCommandVals.outputTypeText, "output-type", "o", "", "The type of the output target.  Should be one of: clipboard, piped or file.")
-	openCmd.Flags().StringVarP(&localOpenCommandVals.outputFile, "output-file", "y", "", "The file name to use for output. Only relevant if output-type is FILE.")
-	openCmd.Flags().StringVarP(&localOpenCommandVals.outputPath, "output-path", "p", "", "The file name to use for output. Only relevant if output-type is PATH.")
+	openCmd.Flags().StringVarP(&localOpenCommandVals.inputSourceText, "input-source", "i", "", "The type of the input source.  Should be one of: clipbloard or file.")
+	openCmd.Flags().StringVarP(&localOpenCommandVals.inputFilePath, "input-file", "f", "", "The name of a file to use for input. Only relevant if input-source is file.")
+	openCmd.Flags().StringVarP(&localOpenCommandVals.outputTargetText, "output-target", "o", "", "The output target.  Should be one of: clipboard, piped or file.")
+	openCmd.Flags().StringVarP(&localOpenCommandVals.outputFile, "output-file", "y", "", "The file name to use for output. Only relevant if output-target is FILE.")
+	openCmd.Flags().StringVarP(&localOpenCommandVals.outputPath, "output-path", "p", "", "The file name to use for output. Only relevant if output-target is PATH.")
 	openCmd.Flags().StringVarP(&localOpenCommandVals.bundleTypeText, "bundle-type", "b", "combined", "The type of bundle to build.  Should be one of: combined or split.")
 	openCmd.Flags().BoolVarP(&localOpenCommandVals.detailsOnly, "details-only", "d", false, "Will display the bundle details only and quit. Does not extract or open the file.")
 	openCmd.Flags().BoolVarP(&localOpenCommandVals.showAll, "show-all", "s", false, "True will display payload password and salt when using the details-only flag.")
@@ -130,20 +130,20 @@ func openBundle() {
 
 	var err error
 
-	if localOpenCommandVals.inputTypeText == "" && localOpenCommandVals.inputFilePath != "" {
-		localOpenCommandVals.inputTypeText = "file"
+	if localOpenCommandVals.inputSourceText == "" && localOpenCommandVals.inputFilePath != "" {
+		localOpenCommandVals.inputSourceText = "file"
 	}
 
-	if localOpenCommandVals.outputTypeText == "" && localOpenCommandVals.outputFile != "" {
-		localOpenCommandVals.outputTypeText = "file"
+	if localOpenCommandVals.outputTargetText == "" && localOpenCommandVals.outputFile != "" {
+		localOpenCommandVals.outputTargetText = "file"
 	}
 
-	if localOpenCommandVals.outputTypeText == "" && localOpenCommandVals.outputPath != "" {
-		localOpenCommandVals.outputTypeText = "path"
+	if localOpenCommandVals.outputTargetText == "" && localOpenCommandVals.outputPath != "" {
+		localOpenCommandVals.outputTargetText = "path"
 	}
 
-	if localOpenCommandVals.inputTypeText == "" && helpers.CheckIsPiped() {
-		localOpenCommandVals.inputTypeText = "piped"
+	if localOpenCommandVals.inputSourceText == "" && helpers.CheckIsPiped() {
+		localOpenCommandVals.inputSourceText = "piped"
 	}
 
 	localOpenSettings.receiverKey, localOpenSettings.senderKey, err = getKeysForOpen()
@@ -153,36 +153,36 @@ func openBundle() {
 		return
 	}
 
-	if localOpenCommandVals.inputTypeText == "" {
-		fmt.Println("No input-type provided.  --input-type is required.")
+	if localOpenCommandVals.inputSourceText == "" {
+		fmt.Println("No input-source provided.  --input-source is required.")
 		helpers.ExitCode = helpers.ExitCodeInvalidInput
 		return
 	}
 
-	localOpenCommandVals.inputType = keystore.TextToInputType(localOpenCommandVals.inputTypeText)
-	if localOpenCommandVals.inputType == keystore.InputTypeUnknown {
-		fmt.Printf("Unknown input-type: \"%s\"\n", localOpenCommandVals.inputTypeText)
+	localOpenCommandVals.inputSource = keystore.TextToInputSource(localOpenCommandVals.inputSourceText)
+	if localOpenCommandVals.inputSource == keystore.InputSourceUnknown {
+		fmt.Printf("Unknown input-source: \"%s\"\n", localOpenCommandVals.inputSourceText)
 		helpers.ExitCode = helpers.ExitCodeInvalidInput
 		return
 	}
 
-	if localOpenCommandVals.inputType == keystore.InputTypeConsole {
+	if localOpenCommandVals.inputSource == keystore.InputSourceConsole {
 		fmt.Println("Console input is not supported for OPEN command")
 		helpers.ExitCode = helpers.ExitCodeInvalidInput
 		return
 	}
 
 	if !localOpenCommandVals.detailsOnly {
-		if localOpenCommandVals.outputTypeText == "" {
-			if !inferOutputTypeForOpen() {
-				fmt.Println("Unable to infer output-type based on input-type.  You must provide a value for --output-type.")
+		if localOpenCommandVals.outputTargetText == "" {
+			if !inferOutputTargetForOpen() {
+				fmt.Println("Unable to infer output-target based on input-source.  You must provide a value for --output-target.")
 				helpers.ExitCode = helpers.ExitCodeInvalidInput
 				return
 			}
 		} else {
-			localOpenCommandVals.outputType = keystore.TextToOutputType(localOpenCommandVals.outputTypeText)
-			if localOpenCommandVals.outputType == keystore.OutputTypeUnknown {
-				fmt.Printf("Unknown output-type: \"%s\"\n", localOpenCommandVals.outputTypeText)
+			localOpenCommandVals.outputTarget = keystore.TextToOutputTarget(localOpenCommandVals.outputTargetText)
+			if localOpenCommandVals.outputTarget == keystore.OutputTargetUnknown {
+				fmt.Printf("Unknown output-target: \"%s\"\n", localOpenCommandVals.outputTargetText)
 				helpers.ExitCode = helpers.ExitCodeInvalidInput
 				return
 			}
@@ -198,7 +198,7 @@ func openBundle() {
 		}
 	}
 
-	if localOpenCommandVals.inputType == keystore.InputTypeFile {
+	if localOpenCommandVals.inputSource == keystore.InputSourceFile {
 		err = validateInputFileForOpen()
 		if err != nil {
 			fmt.Printf("Unable to validate input file(s): %s\n", err)
@@ -207,7 +207,7 @@ func openBundle() {
 		}
 	}
 
-	if localOpenCommandVals.outputType == keystore.OutputTypeFile || localOpenCommandVals.outputType == keystore.OutputTypePath {
+	if localOpenCommandVals.outputTarget == keystore.OutputTargetFile || localOpenCommandVals.outputTarget == keystore.OutputTargetPath {
 		err = validateOutputFileForOpen()
 		if err != nil {
 			fmt.Printf("Unable to validate output file(s): %s\n", err)
@@ -283,22 +283,22 @@ func openBundle() {
 
 	startTime := time.Now()
 
-	switch localOpenCommandVals.inputType {
-	case keystore.InputTypeConsole:
+	switch localOpenCommandVals.inputSource {
+	case keystore.InputSourceConsole:
 		// this should have already been denied previously, but just to be sure...
 		fmt.Println("Console not allowed for input with OPEN command")
 		return
-	case keystore.InputTypeFile:
+	case keystore.InputSourceFile:
 		err = decryptFile(outputWriter)
 		if err != nil {
 			fmt.Printf("Unable to decrypt input file(s): %s\n", err)
 		}
-	case keystore.InputTypeClipboard:
+	case keystore.InputSourceClipboard:
 		err = decryptClipboard(outputWriter)
 		if err != nil {
 			fmt.Printf("Unable to decrypt clipboard input: %s\n", err)
 		}
-	case keystore.InputTypePiped:
+	case keystore.InputSourcePiped:
 		err = decryptPipe(outputWriter)
 		if err != nil {
 			fmt.Printf("Unable to decrypt piped input: %s\n", err)
@@ -379,18 +379,18 @@ func getLocalKeysForOpenRead() (receiverKeyPairInfo *security.KeyPairInfo, sende
 	return kpiKeypairStoreRead, senderKeyInfo, nil
 }
 
-func inferOutputTypeForOpen() (outputTypeWasInferred bool) {
-	switch localOpenCommandVals.inputType {
+func inferOutputTargetForOpen() (outputTargetWasInferred bool) {
+	switch localOpenCommandVals.inputSource {
 	/* no support for console input for open command?
-	case keystore.InputTypeConsole:
-		localOpenCommandVals.outputType = keystore.OutputTypeConsole
+	case keystore.InputSourceConsole:
+		localOpenCommandVals.outputTarget = keystore.OutputTargetConsole
 		return true
 	*/
-	case keystore.InputTypeClipboard:
-		localOpenCommandVals.outputType = keystore.OutputTypeClipboard
+	case keystore.InputSourceClipboard:
+		localOpenCommandVals.outputTarget = keystore.OutputTargetClipboard
 		return false
-	case keystore.InputTypeFile:
-		localOpenCommandVals.outputType = keystore.OutputTypeFile
+	case keystore.InputSourceFile:
+		localOpenCommandVals.outputTarget = keystore.OutputTargetFile
 		return true
 	}
 
@@ -399,7 +399,7 @@ func inferOutputTypeForOpen() (outputTypeWasInferred bool) {
 
 func validateInputFileForOpen() error {
 	if localOpenCommandVals.inputFilePath == "" {
-		return errors.New("input type is FILE and no input path is provided")
+		return errors.New("input source is FILE and no input path is provided")
 	}
 
 	if localOpenCommandVals.bundleType == keystore.BundleTypeCombined {
@@ -432,7 +432,7 @@ func validateInputFileForOpen() error {
 	return nil
 }
 
-// validateOutputFileForOpen is called when the output type is FILE or PATH.
+// validateOutputFileForOpen is called when the output target is FILE or PATH.
 // The user can leave the output path or file reference empty, in which case
 // we need to derive the necessary output components.
 //   - When the input is  file, we want to output to the same path as the input file. In that case, the cipher writer
@@ -441,7 +441,7 @@ func validateInputFileForOpen() error {
 // it will use the input filename and change the extension.
 //   - When the input is not a file, such as clipboard or console, we need to do ... something else?
 func validateOutputFileForOpen() error {
-	if localOpenCommandVals.inputType == keystore.InputTypeFile {
+	if localOpenCommandVals.inputSource == keystore.InputSourceFile {
 		return validateOutputFileForFileInputForOpen()
 	}
 
@@ -465,8 +465,8 @@ func validateOutputFileForFileInputForOpen() error {
 		usePath = localOpenCommandVals.outputPath
 	}
 
-	// Force output type to PATH
-	localOpenCommandVals.outputType = keystore.OutputTypePath
+	// Force output target to PATH
+	localOpenCommandVals.outputTarget = keystore.OutputTargetPath
 
 	// Use the input path for the output file
 	localOpenCommandVals.outputPath = usePath
@@ -476,9 +476,9 @@ func validateOutputFileForFileInputForOpen() error {
 
 // validateOutputFileForNonFileInputsForOpen assumes that no input file values exist
 func validateOutputFileForNonFileInputsForOpen() error {
-	if localOpenCommandVals.outputType == keystore.OutputTypeFile {
+	if localOpenCommandVals.outputTarget == keystore.OutputTargetFile {
 		if localOpenCommandVals.outputFile == "" {
-			return errors.New("output type is \"file\", but no output file reference is provided")
+			return errors.New("output target is \"file\", but no output file reference is provided")
 		}
 
 		filePath, _ := filepath.Split(localOpenCommandVals.outputFile)
@@ -506,18 +506,18 @@ func validateOutputFileForNonFileInputsForOpen() error {
 }
 
 func getOutputWriter() (io.Writer, error) {
-	switch localOpenCommandVals.outputType {
-	case keystore.OutputTypeConsole:
+	switch localOpenCommandVals.outputTarget {
+	case keystore.OutputTargetConsole:
 		return getConsoleWriter()
-	case keystore.OutputTypeClipboard:
+	case keystore.OutputTargetClipboard:
 		return getClipboardWriter()
-	case keystore.OutputTypeFile:
+	case keystore.OutputTargetFile:
 		return nil, nil // for type file, we pass the filename
-	case keystore.OutputTypePath:
+	case keystore.OutputTargetPath:
 		return nil, nil // for type path, we pass the filepath
 	}
 
-	return nil, errors.New("unknown input type obtaining stream reader")
+	return nil, errors.New("unknown input source obtaining stream reader")
 }
 
 func getConsoleWriter() (io.Writer, error) {
@@ -577,12 +577,12 @@ func decryptFile(writer io.Writer) error {
 	var err error
 	switch localOpenCommandVals.bundleType {
 	case keystore.BundleTypeCombined:
-		switch localOpenCommandVals.outputType {
-		case keystore.OutputTypeFile:
+		switch localOpenCommandVals.outputTarget {
+		case keystore.OutputTargetFile:
 			localOpenSettings.totalBytesWritten, err = localOpenSettings.cipherReader.ReadCombinedFileToFile(
 				localOpenCommandVals.inputFilePath,
 				localOpenCommandVals.outputFile)
-		case keystore.OutputTypePath:
+		case keystore.OutputTargetPath:
 			localOpenSettings.totalBytesWritten, err = localOpenSettings.cipherReader.ReadCombinedFileToPath(
 				localOpenCommandVals.inputFilePath,
 				localOpenCommandVals.outputPath)
@@ -593,13 +593,13 @@ func decryptFile(writer io.Writer) error {
 		}
 	case keystore.BundleTypeSplit:
 		// During validation, the inputFilePath extension should now point to the bunder header file
-		switch localOpenCommandVals.outputType {
-		case keystore.OutputTypeFile:
+		switch localOpenCommandVals.outputTarget {
+		case keystore.OutputTargetFile:
 			localOpenSettings.totalBytesWritten, err = localOpenSettings.cipherReader.ReadSplitFilesToFile(
 				localOpenCommandVals.inputFilePath,
 				helpers.ReplaceFileExt(localOpenCommandVals.inputFilePath, ".bdata"),
 				localOpenCommandVals.outputFile)
-		case keystore.OutputTypePath:
+		case keystore.OutputTargetPath:
 			localOpenSettings.totalBytesWritten, err = localOpenSettings.cipherReader.ReadSplitFilesToPath(
 				localOpenCommandVals.inputFilePath,
 				helpers.ReplaceFileExt(localOpenCommandVals.inputFilePath, ".bdata"),
@@ -660,12 +660,12 @@ func decryptClipboard(writer io.Writer) error {
 	// Bundle type is not relevant for clipboard... all bundle types will be text encoded in with all relevant sections.
 	// The text reader will parse all clipboard data into one virtual combined stream, regardless of bundle sections.
 	// Since this originates from a clipboard read, it is ASSUMED that this won't be used for any huge data reads
-	switch localOpenCommandVals.outputType {
-	case keystore.OutputTypeFile:
+	switch localOpenCommandVals.outputTarget {
+	case keystore.OutputTargetFile:
 		localOpenSettings.totalBytesWritten, err = localOpenSettings.cipherReader.ReadStreamToFile(
 			reader,
 			localOpenCommandVals.outputFile)
-	case keystore.OutputTypePath:
+	case keystore.OutputTargetPath:
 		localOpenSettings.totalBytesWritten, err = localOpenSettings.cipherReader.ReadStreamToPath(
 			reader,
 			localOpenCommandVals.outputPath)
@@ -704,12 +704,12 @@ func decryptPipe(writer io.Writer) error {
 	// Bundle type is not relevant for piped input... all bundle types will be text encoded in with all relevant sections.
 	// The text reader will parse all pipe data into one virtual combined stream, regardless of bundle sections.
 	// Since this originates from a pipe read, it is ASSUMED that this won't be used for any huge data reads
-	switch localOpenCommandVals.outputType {
-	case keystore.OutputTypeFile:
+	switch localOpenCommandVals.outputTarget {
+	case keystore.OutputTargetFile:
 		localOpenSettings.totalBytesWritten, err = localOpenSettings.cipherReader.ReadStreamToFile(
 			reader,
 			localOpenCommandVals.outputFile)
-	case keystore.OutputTypePath:
+	case keystore.OutputTargetPath:
 		localOpenSettings.totalBytesWritten, err = localOpenSettings.cipherReader.ReadStreamToPath(
 			reader,
 			localOpenCommandVals.outputPath)

@@ -82,10 +82,7 @@ func exportUser(userName string) {
 	if exportUserFromKeypair {
 		entity, err = getExportEntityFromKeyPair(userName)
 		if err != nil {
-			// Todo: getting the following error for this Printfln functionality...
-			// cmd/export-user.go:85:4: github.com/thoughtrealm/bumblebee/logger.Printfln does not support error-wrapping directive %w
-			// Need to address it or not request it
-			logger.Printfln("Unable to obtain user info from indicated keypair: %w", err)
+			logger.Printfln("Unable to obtain user info from indicated keypair: %v", err)
 			return
 		}
 	} else {
@@ -139,7 +136,7 @@ func exportUser(userName string) {
 	case helpers.ExportOutputTargetFile:
 		err = exportUserInfoToFile(exportWriter, passwordBytes, eki)
 	case helpers.ExportOutputTargetUnknown:
-		err = fmt.Errorf("unknown export output type: %s", sharedExportCommandVals.exportOutputTargetText)
+		err = fmt.Errorf("unknown export output target: %s", sharedExportCommandVals.exportOutputTargetText)
 	}
 
 	if err != nil {

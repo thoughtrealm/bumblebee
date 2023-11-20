@@ -58,7 +58,7 @@ var importCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(importCmd)
 	importCmd.Flags().StringVarP(&sharedImportCommandVals.inputSourceText, "input-source", "t", "", "The input source.  Should be one of: pipe, clipboard or file.")
-	importCmd.Flags().StringVarP(&sharedImportCommandVals.inputFilePath, "input-file", "f", "", "The file name to use for input. Only relevant if input-type is FILE.")
+	importCmd.Flags().StringVarP(&sharedImportCommandVals.inputFilePath, "input-file", "f", "", "The file name to use for input. Only relevant if input-source is FILE.")
 	importCmd.Flags().StringVarP(&sharedImportCommandVals.nameOverride, "name", "n", "", "Overrides the name in the export package. If not provided,\nuser is prompted for name confirmation before adding to store.")
 	importCmd.Flags().BoolVarP(&sharedImportCommandVals.ignoreConfirm, "ignore-confirm", "i", false, "If set, user will not be prompted to confirm the import")
 	importCmd.Flags().BoolVarP(&sharedImportCommandVals.detailsOnly, "details-only", "", false, "If set, the input will not be imported, instead just the details will be displayed.\nThis allows you to validate the file before importing it.")
@@ -98,7 +98,7 @@ func importItem() {
 	case helpers.ImportInputSourceFile:
 		err = getImportFileInput()
 	default:
-		// this should never happen, but in case we forget to add support for a new input type,
+		// this should never happen, but in case we forget to add support for a new input source,
 		// we'll add an error output here
 		logger.Errorln("Unsupported input source type detected")
 		helpers.ExitCode = helpers.ExitCodeRequestFailed
@@ -205,7 +205,7 @@ func validateImportInputs() (inputsAreOk bool) {
 func getImportClipboardInput() error {
 	clipboardBytes, err := helpers.ReadFromClipboard()
 	if err != nil {
-		logger.Errorfln("Unable to retrieve clipboard data: %w", err)
+		logger.Errorfln("Unable to retrieve clipboard data: %v", err)
 		return err
 	}
 
@@ -223,7 +223,7 @@ func getImportPipedInput() error {
 	pipeBuffer := bytes.NewBuffer(nil)
 	_, err := pipeBuffer.ReadFrom(os.Stdin)
 	if err != nil {
-		logger.Errorfln("Unable to retrieve piped input data: %w", err)
+		logger.Errorfln("Unable to retrieve piped input data: %v", err)
 		return err
 	}
 

@@ -59,25 +59,25 @@ type bundleCommandVals struct {
 	// If localKeys is true, then the read and write keypairs from the keypair store are used for sender and receiver.
 	localKeys bool
 
-	// inputTypeText should be console, clipboard or file
-	inputTypeText string
+	// inputSourceText should be console, clipboard or file
+	inputSourceText string
 
-	// inputType is transformed from inputTypeText
-	inputType keystore.InputType
+	// inputSource is transformed from inputSourceText
+	inputSource keystore.InputSource
 
-	// inputFilePath is the name of a file to use as input.  Only relevant for inputTypeText=file.
+	// inputFilePath is the name of a file to use as input.  Only relevant for inputSourceText=file.
 	inputFilePath string
 
-	// outputTypeText should be console, clipboard or file
-	outputTypeText string
+	// outputTargetText should be console, clipboard or file
+	outputTargetText string
 
-	// outputType is transformed from outputTypeText
-	outputType keystore.OutputType
+	// outputTarget is transformed from outputTargetText
+	outputTarget keystore.OutputTarget
 
-	// outputFile is the name of a file to use as output.  Only relevant for outputTypeText=file.
+	// outputFile is the name of a file to use as output.  Only relevant for outputTargetText=file.
 	outputFile string
 
-	// outputPath is the name of a path to use for output.  Only relevant for outputTypeText=path.
+	// outputPath is the name of a path to use for output.  Only relevant for outputTargetText=path.
 	outputPath string
 
 	// bundleTypeText should be combined or split
@@ -105,11 +105,11 @@ func init() {
 	bundleCmd.Flags().StringVarP(&localBundleCommandVals.toName, "to", "t", "", "The name of the key to use for the receiver's key data.  Not necessary if using local-keys.")
 	bundleCmd.Flags().StringVarP(&localBundleCommandVals.fromName, "from", "r", "", "The name of the keypair to use for the sender's key data.  If empty, uses the default keypair for the profile. Not necessary if using local-keys.")
 	bundleCmd.Flags().BoolVarP(&localBundleCommandVals.localKeys, "local-keys", "l", false, "If true, will use the local store keys to write the bundle data.")
-	bundleCmd.Flags().StringVarP(&localBundleCommandVals.inputTypeText, "input-type", "i", "", "The type of the input source.  Should be one of: console, clipboard or file.")
-	bundleCmd.Flags().StringVarP(&localBundleCommandVals.inputFilePath, "input-file", "f", "", "The name of a file to use for input. Only relevant if input-type is file.")
-	bundleCmd.Flags().StringVarP(&localBundleCommandVals.outputTypeText, "output-type", "o", "", "The type of the output target.  Should be one of: console, clipboard or file.")
-	bundleCmd.Flags().StringVarP(&localBundleCommandVals.outputFile, "output-file", "y", "", "The file name to use for output. Only relevant if output-type is FILE.")
-	bundleCmd.Flags().StringVarP(&localBundleCommandVals.outputPath, "output-path", "p", "", "The path name to use for output. Only relevant if output-type is PATH.")
+	bundleCmd.Flags().StringVarP(&localBundleCommandVals.inputSourceText, "input-source", "i", "", "The type of the input source.  Should be one of: console, clipboard or file.")
+	bundleCmd.Flags().StringVarP(&localBundleCommandVals.inputFilePath, "input-file", "f", "", "The name of a file to use for input. Only relevant if input-source is file.")
+	bundleCmd.Flags().StringVarP(&localBundleCommandVals.outputTargetText, "output-target", "o", "", "The output target.  Should be one of: console, clipboard or file.")
+	bundleCmd.Flags().StringVarP(&localBundleCommandVals.outputFile, "output-file", "y", "", "The file name to use for output. Only relevant if output-target is FILE.")
+	bundleCmd.Flags().StringVarP(&localBundleCommandVals.outputPath, "output-path", "p", "", "The path name to use for output. Only relevant if output-target is PATH.")
 	bundleCmd.Flags().StringVarP(&localBundleCommandVals.bundleTypeText, "bundle-type", "b", "combined", "The type of bundle to build.  Should be one of: combined or split.")
 }
 
@@ -122,20 +122,20 @@ func bundleData() {
 
 	var err error
 
-	if localBundleCommandVals.inputTypeText == "" && localBundleCommandVals.inputFilePath != "" {
-		localBundleCommandVals.inputTypeText = "file"
+	if localBundleCommandVals.inputSourceText == "" && localBundleCommandVals.inputFilePath != "" {
+		localBundleCommandVals.inputSourceText = "file"
 	}
 
-	if localBundleCommandVals.outputTypeText == "" && localBundleCommandVals.outputFile != "" {
-		localBundleCommandVals.outputTypeText = "file"
+	if localBundleCommandVals.outputTargetText == "" && localBundleCommandVals.outputFile != "" {
+		localBundleCommandVals.outputTargetText = "file"
 	}
 
-	if localBundleCommandVals.outputTypeText == "" && localBundleCommandVals.outputPath != "" {
-		localBundleCommandVals.outputTypeText = "path"
+	if localBundleCommandVals.outputTargetText == "" && localBundleCommandVals.outputPath != "" {
+		localBundleCommandVals.outputTargetText = "path"
 	}
 
-	if localBundleCommandVals.inputTypeText == "" && helpers.CheckIsPiped() {
-		localBundleCommandVals.inputTypeText = "piped"
+	if localBundleCommandVals.inputSourceText == "" && helpers.CheckIsPiped() {
+		localBundleCommandVals.inputSourceText = "piped"
 	}
 
 	localBundleSettings.receiverKI, localBundleSettings.senderKPI, err = getKeysForBundle()
@@ -147,20 +147,20 @@ func bundleData() {
 	}
 	defer localBundleSettings.senderKPI.Wipe()
 
-	if localBundleCommandVals.inputTypeText == "" {
-		fmt.Println("No input-type provided.  --input-type is required.")
+	if localBundleCommandVals.inputSourceText == "" {
+		fmt.Println("No input-source provided.  --input-source is required.")
 		helpers.ExitCode = helpers.ExitCodeInvalidInput
 		return
 	}
 
-	localBundleCommandVals.inputType = keystore.TextToInputType(localBundleCommandVals.inputTypeText)
-	if localBundleCommandVals.inputType == keystore.InputTypeUnknown {
-		fmt.Printf("Unknown input-type: \"%s\"\n", localBundleCommandVals.inputTypeText)
+	localBundleCommandVals.inputSource = keystore.TextToInputSource(localBundleCommandVals.inputSourceText)
+	if localBundleCommandVals.inputSource == keystore.InputSourceUnknown {
+		fmt.Printf("Unknown input-source: \"%s\"\n", localBundleCommandVals.inputSourceText)
 		helpers.ExitCode = helpers.ExitCodeInvalidInput
 		return
 	}
 
-	if localBundleCommandVals.inputType == keystore.InputTypeFile {
+	if localBundleCommandVals.inputSource == keystore.InputSourceFile {
 		err = validateInputFile()
 		if err != nil {
 			fmt.Printf("Input file invalid: %s\n", err)
@@ -169,22 +169,22 @@ func bundleData() {
 		}
 	}
 
-	if localBundleCommandVals.outputTypeText == "" {
-		if !inferOutputTypeForBundle() {
-			fmt.Println("Unable to infer output-type based on input-type.  You must provide a value for --output-type.")
+	if localBundleCommandVals.outputTargetText == "" {
+		if !inferOutputTargetForBundle() {
+			fmt.Println("Unable to infer output-target based on input-source.  You must provide a value for --output-target.")
 			helpers.ExitCode = helpers.ExitCodeInvalidInput
 			return
 		}
 	} else {
-		localBundleCommandVals.outputType = keystore.TextToOutputType(localBundleCommandVals.outputTypeText)
-		if localBundleCommandVals.outputType == keystore.OutputTypeUnknown {
-			fmt.Printf("Unknown output-type: \"%s\"\n", localBundleCommandVals.outputTypeText)
+		localBundleCommandVals.outputTarget = keystore.TextToOutputTarget(localBundleCommandVals.outputTargetText)
+		if localBundleCommandVals.outputTarget == keystore.OutputTargetUnknown {
+			fmt.Printf("Unknown output-targete: \"%s\"\n", localBundleCommandVals.outputTargetText)
 			helpers.ExitCode = helpers.ExitCodeInvalidInput
 			return
 		}
 	}
 
-	if localBundleCommandVals.outputType == keystore.OutputTypeFile {
+	if localBundleCommandVals.outputTarget == keystore.OutputTargetFile {
 		err = validateOutputFile()
 		if err != nil {
 			fmt.Printf("Output file invalid: %s\n", err)
@@ -193,7 +193,7 @@ func bundleData() {
 		}
 	}
 
-	if localBundleCommandVals.outputType == keystore.OutputTypePath {
+	if localBundleCommandVals.outputTarget == keystore.OutputTargetPath {
 		err = validateOutputPath()
 		if err != nil {
 			fmt.Printf("Output path invalid: %s\n", err)
@@ -251,18 +251,18 @@ func bundleData() {
 	fmt.Println("Starting BUNDLE request...")
 	startTime := time.Now()
 
-	switch localBundleCommandVals.outputType {
-	case keystore.OutputTypeConsole:
+	switch localBundleCommandVals.outputTarget {
+	case keystore.OutputTargetConsole:
 		err = writeToConsole(reader)
-	case keystore.OutputTypeClipboard:
+	case keystore.OutputTargetClipboard:
 		err = writeToClipboard(reader)
-	case keystore.OutputTypeFile:
+	case keystore.OutputTargetFile:
 		err = writeToFile(reader)
-	case keystore.OutputTypePath:
+	case keystore.OutputTargetPath:
 		err = writeToPath(reader)
 	default:
 		// this should NEVER happen, but in case we add a new type, this will remind us during testing to call it here
-		fmt.Println("Unknown output type in output writer call")
+		fmt.Println("Unknown output target in output writer call")
 	}
 
 	if err != nil {
@@ -363,27 +363,27 @@ func getLocalKeysForBundleWrite() (receiverKeyInfo *security.KeyInfo, senderKeyP
 	return receiverKeyInfo, kpiKeypairStoreWrite, nil
 }
 
-func inferOutputTypeForBundle() (outputTypeWasInferred bool) {
-	switch localBundleCommandVals.inputType {
-	case keystore.InputTypeConsole:
-		localBundleCommandVals.outputType = keystore.OutputTypeConsole
+func inferOutputTargetForBundle() (outputTargetWasInferred bool) {
+	switch localBundleCommandVals.inputSource {
+	case keystore.InputSourceConsole:
+		localBundleCommandVals.outputTarget = keystore.OutputTargetConsole
 		return true
-	case keystore.InputTypeClipboard:
-		localBundleCommandVals.outputType = keystore.OutputTypeClipboard
+	case keystore.InputSourceClipboard:
+		localBundleCommandVals.outputTarget = keystore.OutputTargetClipboard
 		return false
-	case keystore.InputTypeFile:
+	case keystore.InputSourceFile:
 		cwd, err := os.Getwd()
 		if err != nil {
 			logger.Errorf("unable to determine the current working directory: %s", err)
 			return false
 		}
 
-		localBundleCommandVals.outputType = keystore.OutputTypePath
+		localBundleCommandVals.outputTarget = keystore.OutputTargetPath
 		localBundleCommandVals.outputPath = cwd
 
 		return true
 	default:
-		logger.Errorf("Unsupported input type detected: %d", int(localBundleCommandVals.inputType))
+		logger.Errorf("Unsupported input source detected: %d", int(localBundleCommandVals.inputSource))
 		return false
 	}
 }
@@ -401,15 +401,15 @@ func validateInputFile() error {
 }
 
 func validateOutputFile() error {
-	// inferOutputTypeForBundle will have done some of this already
+	// inferOutputTargetForBundle will have done some of this already
 	if localBundleCommandVals.outputFile == "" {
 		// we will attempt to infer the output file path from the input file path
-		if localBundleCommandVals.inputType != keystore.InputTypeFile {
-			return errors.New("output type set to \"file\", however no output file path is provided and the input type is not \"file\", so unable to infer an output file path")
+		if localBundleCommandVals.inputSource != keystore.InputSourceFile {
+			return errors.New("output target set to \"file\", however no output file path is provided and the input source is not \"file\", so unable to infer an output file path")
 		}
 
 		if localBundleCommandVals.inputFilePath == "" {
-			return errors.New("output type set to \"file\", however no output file path is provided and no input file path is provided, so unable to infer an output file path")
+			return errors.New("output target set to \"file\", however no output file path is provided and no input file path is provided, so unable to infer an output file path")
 		}
 
 		// an output filename with an extension of "ext" tells the cipher writer func to change the extension as needed
@@ -423,12 +423,12 @@ func validateOutputFile() error {
 	outputFilePath, outputFileName := filepath.Split(localBundleCommandVals.outputFile)
 	if outputFileName == "" {
 		// we will attempt to infer the output filename from the input file path
-		if localBundleCommandVals.inputType != keystore.InputTypeFile {
-			return errors.New("output type set to \"file\", however no output filename is provided and the input type is not \"file\", so unable to infer an output filename")
+		if localBundleCommandVals.inputSource != keystore.InputSourceFile {
+			return errors.New("output target set to \"file\", however no output filename is provided and the input source is not \"file\", so unable to infer an output filename")
 		}
 
 		if localBundleCommandVals.inputFilePath == "" {
-			return errors.New("output type set to \"file\", however no output file path is provided and no input filename is provided, so unable to infer an output filename")
+			return errors.New("output target set to \"file\", however no output file path is provided and no input filename is provided, so unable to infer an output filename")
 		}
 
 		_, inputFileName := filepath.Split(localBundleCommandVals.inputFilePath)
@@ -450,12 +450,12 @@ func validateOutputFile() error {
 func validateOutputPath() error {
 	if localBundleCommandVals.outputPath == "" {
 		// we will attempt to infer the output file path from the input file path
-		if localBundleCommandVals.inputType != keystore.InputTypeFile {
-			return errors.New("output type set to \"file\", however no output file path is provided and the input type is not \"file\", so unable to infer an output file path")
+		if localBundleCommandVals.inputSource != keystore.InputSourceFile {
+			return errors.New("output target set to \"file\", however no output file path is provided and the input source is not \"file\", so unable to infer an output file path")
 		}
 
 		if localBundleCommandVals.inputFilePath == "" {
-			return errors.New("output type set to \"file\", however no output file path is provided and no input file path is provided, so unable to infer an output file path")
+			return errors.New("output target set to \"file\", however no output file path is provided and no input file path is provided, so unable to infer an output file path")
 		}
 
 		inputPath, _ := filepath.Split(localBundleCommandVals.inputFilePath)
@@ -478,18 +478,18 @@ func validateOutputPath() error {
 }
 
 func getInputReader() (io.Reader, error) {
-	switch localBundleCommandVals.inputType {
-	case keystore.InputTypeConsole:
+	switch localBundleCommandVals.inputSource {
+	case keystore.InputSourceConsole:
 		return getConsoleReader()
-	case keystore.InputTypeClipboard:
+	case keystore.InputSourceClipboard:
 		return getClipboardReader()
-	case keystore.InputTypeFile:
+	case keystore.InputSourceFile:
 		return getFileReader()
-	case keystore.InputTypePiped:
+	case keystore.InputSourcePiped:
 		return getPipedReader()
 	}
 
-	return nil, errors.New("unknown input type obtaining stream reader")
+	return nil, errors.New("unknown input source obtaining stream reader")
 }
 
 func getConsoleReader() (io.Reader, error) {
@@ -498,10 +498,10 @@ func getConsoleReader() (io.Reader, error) {
 		return nil, fmt.Errorf("unable to get user input: %s", err)
 	}
 
-	if localBundleCommandVals.outputType == keystore.OutputTypePath && localBundleCommandVals.inputFilePath == "" {
-		// if an output type of PATH is specified, we need to add a file name if one is not specified via the inputFilePath
+	if localBundleCommandVals.outputTarget == keystore.OutputTargetPath && localBundleCommandVals.inputFilePath == "" {
+		// if an output target of PATH is specified, we need to add a file name if one is not specified via the inputFilePath
 		// writeToPath
-		localBundleCommandVals.outputType = keystore.OutputTypeFile
+		localBundleCommandVals.outputTarget = keystore.OutputTargetFile
 		localBundleCommandVals.outputFile = filepath.Join(localBundleCommandVals.outputPath, "bee.console.ext")
 	}
 
@@ -522,10 +522,10 @@ func getClipboardReader() (io.Reader, error) {
 		return nil, fmt.Errorf("unable to initialize text scanner from clipboard input: %s", err)
 	}
 
-	if localBundleCommandVals.outputType == keystore.OutputTypePath && localBundleCommandVals.inputFilePath == "" {
-		// if an output type of PATH is specified, we need to add a file name if one is not specified via the inputFilePath
+	if localBundleCommandVals.outputTarget == keystore.OutputTargetPath && localBundleCommandVals.inputFilePath == "" {
+		// if an output target of PATH is specified, we need to add a file name if one is not specified via the inputFilePath
 		// writeToPath
-		localBundleCommandVals.outputType = keystore.OutputTypeFile
+		localBundleCommandVals.outputTarget = keystore.OutputTargetFile
 		localBundleCommandVals.outputFile = filepath.Join(localBundleCommandVals.outputPath, "bee.clipboard.ext")
 	}
 
@@ -545,10 +545,10 @@ func getPipedReader() (io.Reader, error) {
 		return nil, fmt.Errorf("unable to initialize pipe text scanner from pipe input: %s", err)
 	}
 
-	if localBundleCommandVals.outputType == keystore.OutputTypePath && localBundleCommandVals.inputFilePath == "" {
-		// if an output type of PATH is specified, we need to add a file name if one is not specified via the inputFilePath
+	if localBundleCommandVals.outputTarget == keystore.OutputTargetPath && localBundleCommandVals.inputFilePath == "" {
+		// if an output target of PATH is specified, we need to add a file name if one is not specified via the inputFilePath
 		// writeToPath
-		localBundleCommandVals.outputType = keystore.OutputTypeFile
+		localBundleCommandVals.outputTarget = keystore.OutputTargetFile
 		localBundleCommandVals.outputFile = filepath.Join(localBundleCommandVals.outputPath, "bee.piped.ext")
 	}
 

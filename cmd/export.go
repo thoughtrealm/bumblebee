@@ -42,7 +42,7 @@ var exportCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(exportCmd)
 	exportCmd.PersistentFlags().StringVarP(&sharedExportCommandVals.exportOutputTargetText, "output-target", "t", "console", "The output target.  Should be one of: console, clipboard or file.")
-	exportCmd.PersistentFlags().StringVarP(&sharedExportCommandVals.exportOutputFilePath, "output-file", "f", "", "The file name to use for output. Only relevant if output-type is FILE.")
+	exportCmd.PersistentFlags().StringVarP(&sharedExportCommandVals.exportOutputFilePath, "output-file", "f", "", "The file name to use for output. Only relevant if output-target is FILE.")
 	exportCmd.PersistentFlags().StringVarP(&sharedExportCommandVals.exportOutputEncodingText, "output-encoding", "e", "text", "The encoding for the output.  Should be \"text\" or \"raw\".\nText is human readable and can be copied, printed, pasted into an email, texted, etc.\nRaw is not readable or printable to console, text docs, emails, etc.")
 	exportCmd.PersistentFlags().StringVarP(&sharedExportCommandVals.exportPassword,
 		"password", "", "",

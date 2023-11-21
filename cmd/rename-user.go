@@ -20,12 +20,12 @@ import (
 	"github.com/thoughtrealm/bumblebee/keystore"
 )
 
-// renameKeyCmd represents the key command
-var renameKeyCmd = &cobra.Command{
-	Use:   "key <oldName> <newName>",
+// renameUserCmd represents the key command
+var renameUserCmd = &cobra.Command{
+	Use:   "user <oldName> <newName>",
 	Args:  cobra.ExactArgs(2),
-	Short: "Will change the  name of a key from oldName to newName",
-	Long:  "Will change the  name of a key from oldName to newName",
+	Short: "Will change the name of a user from oldName to newName",
+	Long:  "Will change the name of a user from oldName to newName",
 	Run: func(cmd *cobra.Command, args []string) {
 		err := startBootStrap(true, true)
 		if err != nil {
@@ -34,43 +34,43 @@ var renameKeyCmd = &cobra.Command{
 		}
 
 		// Exact args is set by Args property above. So we should ALWAYS have 2 args
-		oldKeyName := args[0]
-		newKeyName := args[1]
+		oldUserName := args[0]
+		newUserName := args[1]
 
-		renameKey(oldKeyName, newKeyName)
+		renameUser(oldUserName, newUserName)
 	},
 }
 
 func init() {
-	renameCmd.AddCommand(renameKeyCmd)
+	renameCmd.AddCommand(renameUserCmd)
 }
 
-func renameKey(oldKeyName, newKeyName string) {
+func renameUser(oldUserName, newUserName string) {
 	if keystore.GlobalKeyStore == nil {
-		fmt.Println("Unable to rename key: keystore not loaded")
+		fmt.Println("Unable to rename user: keystore not loaded")
 		helpers.ExitCode = helpers.ExitCodeStartupFailure
 		return
 	}
 
-	found, err := keystore.GlobalKeyStore.RenameEntity(oldKeyName, newKeyName)
+	found, err := keystore.GlobalKeyStore.RenameEntity(oldUserName, newUserName)
 	if err != nil {
-		fmt.Printf("Unable to rename key: %s\n", err)
+		fmt.Printf("Unable to rename user: %s\n", err)
 		helpers.ExitCode = helpers.ExitCodeRequestFailed
 		return
 	}
 
 	if !found {
-		fmt.Printf("Unable to rename key: A key was not found with the name %s\n", oldKeyName)
+		fmt.Printf("Unable to rename user: A user was not found with the name %s\n", oldUserName)
 		helpers.ExitCode = helpers.ExitCodeRequestFailed
 		return
 	}
 
 	err = keystore.GlobalKeyStore.WriteToFile("")
 	if err != nil {
-		fmt.Printf("Unable to rename key: keystore could not update the file: %s\n", err)
+		fmt.Printf("Unable to rename user: keystore could not update the file: %s\n", err)
 		helpers.ExitCode = helpers.ExitCodeRequestFailed
 		return
 	}
 
-	fmt.Println("Key renamed and keystore file changes committed.")
+	fmt.Println("User renamed and keystore file changes committed.")
 }

@@ -1,7 +1,7 @@
 **/testfiles
 **/.idea
 media/*
-bee*
-bumblebee
+/bee*
+/bumblebee
 tests/distributions/distributions
 **/.DS_Store

@@ -167,8 +167,8 @@ Let Signature represent the signed sequence stored in the header<br/>
 Let Header<sub>plain</sub> represent a bundle header structure as described above<br/>
 Let Header<sub>encrypted</sub> represent the encrypted bundle header<br/>
 
-Let Cipher be an initialized XChacha20-Poly1305 encryptor</br>
-Let ADConst be a value for Cipher's Associated Data
+Let Cipher be an initialized XChacha20-Poly1305 encryptor<br/>
+Let ADConst be a value for Cipher's Associated Data<br/>
 Let Secret<sub>input</sub> represent the provided secret to encrypt<br/>
 Let Secret<sub>encrypted</sub> represent the encrypted form of the secret<br/>
 
@@ -189,6 +189,5 @@ Key<sub>derived</sub> <= Argon2[Key<sub>payload</sub>, Salt<sub>payload</sub>, t
 Cipher <= XChacha20-Poly1305::Init[Key<sub>derived</sub>]<br/>
 
 Iterate Cipher::[Secret<sub>input</sub>]<br/>
-    Cipher::Encrypt[Secret<sub>input</sub>[blockX], ADConst] => Secret<sub>encrypted</sub>[blockX]<br/>
-    WriteToStream[Secret<sub>encrypted</sub>[blockX]]<br/>
-    
+&nbsp;&nbsp;&nbsp;Cipher::Encrypt[Secret<sub>input</sub>[blockX], ADConst] => Secret<sub>encrypted</sub>[blockX]<br/>
+&nbsp;&nbsp;&nbsp;WriteToStream[Secret<sub>encrypted</sub>[blockX]]<br/>

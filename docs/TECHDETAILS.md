@@ -1,9 +1,9 @@
 # Technical Details
 
 ### The "Two Stages of Locked Boxes" Approach
-A Bundle is what I refer to as the encrypted output construction created by Bumblebee.
+A Bundle is what I refer to as the encrypted output construction created by **Bumblebee**.
 
-I refer to the Bumblebee bundling approach as "Two Stages of Locked Boxes."  I would imagine this analogy
+I refer to the **Bumblebee** bundling approach as "Two Stages of Locked Boxes."  I would imagine this analogy
 is not unique and is likely referred to by some other very clever and cryptographer-ey sounding name.  
 Nevertheless, it is the name of the analogy that I use for describing this approach.
 
@@ -65,7 +65,7 @@ her handwriting, he discards Box 1 and does not open it.
  
 * Otherwise, he then removes Key 1 and opens Box 1, extracting Alice's secret.
 
-Here's a generalized description of how this analogy correlates to the Bumblebee approach technically:
+Here's a generalized description of how this analogy correlates to the **Bumblebee** approach technically:
 
 * We generate a random, strengthened key and encrypt the secret data with it using symmetric crypto.  This is Box 1
 and Key 1 in our analogy.
@@ -77,23 +77,66 @@ This is Box 2 and Key A in our analogy.
  
 * Both are delivered to the receiver, who unlocks the asymmetric structure with their private key (Box 2, Key B).
  
-* Bumblebee uses the stored signature to affirm the sender is who we expected (the handwriting on the secret note). 
+* **Bumblebee** uses the stored signature to affirm the sender is who we expected (the handwriting on the secret note). 
  
-* If the signature is verified, Bumblebee then extracts the symmetric key (Key 1) and decrypts the secret data (Box 1).
+* If the signature is verified, **Bumblebee** then extracts the symmetric key (Key 1) and decrypts the secret data (Box 1).
 
 This process does not require the sender or the receiver to manage any of the cryptographic elements mentioned in 
 the process, outside of sharing public keys in some way.  The sharing of public keys is a one-time process, unless 
 they are changed in the future for some reason.
 
+### Extending "Two Stages of Locked Boxes" With Two Shipments
+Now, let's extend the analogy a little bit.  Perhaps, Alice is not comfortable with the security of putting
+Key 1 in Box 2 and providing both boxes at the same time.  Basically, her concern is that transporting Key 1,
+which unlocks Box 1, along with Box 1 is inherently unsecure, even if it is in Box 2 and that is impenetrable. It 
+just makes her uncomfortable.
+
+So, Alice ships the two boxes separately.  She sends Box 1 via USPS and Box 2 via FedEx.  Assume that they take different
+routes and arrive at different times.
+
+Alice feels better about this, because Key 1 is never transported in the presence of Box 1.  Also, without both
+boxes, the secret cannot be accessed.
+
+Once Bob has both boxes in his possession, he is able to access her secret, as previously described.
+
+**Relating this to the Bumblebee bundling process**, when you bundle a secret you can choose to output the bundle to
+a single "combined stream" or two "split streams."  This is effective what Alice is dealing with in this
+scenario extension.
+
+You can use set the "Bundle Type" using the --bundle-type flag (or -b shortcut).  The options are "combined" or "split".
+
+With "combined", the output is emitted to a single stream.  The default extension for this "*.bcomb" for
+"bee combined stream" format, which can be overridden by providing an explicit file name using the "--output-file" flag
+(or -y shortcut). When using the combined output encoding, the length of the header is emitted to the output
+stream, followed by the header data, which is then followed by the payload data.  When opened by the 
+receiver, the header and payload are extracted from the combined stream and processed to provide the unencrypted secret.
+
+With "split", two separate output entities are created; one for the header, one for the payload.  The
+header with have a default extension of "\*.bhdr" and the payload will have a default extension of "\*.bdata".
+You may deliver the two artifacts any way you wish. When opening the bundle, you specify a split bundle type,
+and **Bumblebee** will process the two components accordingly to create the unencrypted output. 
+
+It is a bit more work to provide the two separate artifacts using different transport paths.  But, both combined 
+and split encodings are functionally identical.
+
+_**Note:** While the combined stream should be sufficiently secure for our needs, if you are concerned that a weakness could
+be exploited with the combined approach, you can choose to use split streams.  Perhaps asymmetric key associations
+are rendered ineffective or unsecure due to some emergent tech (e.g. quantum advances), then using split streams will 
+mitigate that concern to some degree.  Of course, in that event, most modern crypto systems will be rendered 
+ineffective as well._
+
+_The soon coming public reveal of "post-quantum solutions" will shed more light on this.  Once a post-quantum solution 
+is accepted by the community, perhaps **Bumblebee** would be updated to use those algorithms accordingly._
+
 ### Details Of The Bundle Process Flow
-The Bundle process receives an input byte sequence and outputs a byte sequence compromised of two parts:
+The Bundle process receives an input byte sequence and outputs an encrypted byte sequence compromised of two parts:
 
-- A Bundle Header
-- A Bundle Payload
+- A Bundle Header encrypted with curve25519
+- A Bundle Payload encrypted with Chacha20-Poly1305
 
-The header contains various elements of details and metadata while the payload contains the input data.  
+The header contains various elements of details and metadata.  The payload contains the secret data.  
 
-The following items are included in the header as of Bumblebee release 0.1.0:
+The following items are included in the header as of **Bumblebee** release 0.1.0:
 ```
 	// SymmetricKey is a random value used to encrypt the payload using Chacha20/Poly1305
 	SymmetricKey []byte
@@ -130,31 +173,29 @@ The following items are included in the header as of Bumblebee release 0.1.0:
 ```
 
 When bundling the input, the header is first populated with the following values:
-- SymmetricKey is set to a random 32 byte sequence
-- Salt is set to a random 32 byte sequence
-- The SenderSig is initialized with a random 32 byte sequence that is signed using ed25519 and the 
+- SymmetricKey is set to a random 32-byte sequence
+- Salt is set to a random 32-byte sequence
+- The SenderSig is initialized with a random 32-byte sequence that is signed using ed25519 and the 
 Sender's Private Key from their ed25519 (signing) keypair.  Both the random sequence and the signature output
 are stored in the header.
-- All the remaining metadata values are populated as necessary
+- All the remaining metadata values are populated as needed
 
 The header itself is then encrypted using the NKEYS XKEYs (curve25519) SEAL functionality. 
-The SEAL functionality uses the receiver's Public Key from their curve25519 (cipher) keypair.
+The SEAL functionality uses the receiver's Public Key from their curve25519 keypair.
 
 The header is then emitted to the output stream.
 
-Once the encrypted header is emitted, then the payload is encrypted using the previously derived
+Once the encrypted header is written to the stream, then the payload is encrypted using the previously derived
 Salt and SymmetricKey.  While the random SymmetricKey is potentially a strong one-time sequence,
 it is still strengthened using Argon2.  This is to mitigate any weak random sequences that might be
 generated.
 
-The payload is encrypted using XChacha20/Poly1305, which is a streaming cipher and
+The payload is encrypted using XChacha20-Poly1305, which is a streaming cipher and
 supports the output of large payload streams.  The output encryption is performed in
 sealed chunks of 32,000 bytes.  Each chunk will result in a small increase in output size,
 due to nonce and AEAD overhead, so the resulting output stream will be slightly larger than the input stream. 
 
 ### A technical flow of the Bundle process...
-
-
 Let Key<sub>payload</sub> be a random symmetric key for the payload data stream<br/>
 Let Key<sub>derived</sub> be an Argon2 permutation of Key<sub>payload</sub>  
 Let Salt<sub>payload</sub> be a random 32-byte salt for the payload data stream<br/>

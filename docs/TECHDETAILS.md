@@ -182,8 +182,8 @@ Header<sub>plain</sub>::[Metadata] <= Values[Metadata]<br/>
 
 Header<sub>encrypted</sub> <= curve25519[Bundle<sub>plain</sub>, PUB<sub>receiver</sub>]<br/>
 
-WriteToStream[int16uWithFixedEndian[length(Header<sub>encrypted/sub>)]]
-WriteToStream[Header<sub>encrypted</sub>]
+WriteToStream[int16uWithFixedEndian[length(Header<sub>encrypted/sub>)]]<br/>
+WriteToStream[Header<sub>encrypted</sub>]<br/>
 
 Key<sub>derived</sub> <= Argon2[Key<sub>payload</sub>, Salt<sub>payload</sub>, time/mem/threads]<br/>
 Cipher <= XChacha20-Poly1305::Init[Key<sub>derived</sub>]<br/>

@@ -44,17 +44,28 @@ func BundleInputSourceToText(bis BundleInputSource) string {
 }
 
 type BundleInfo struct {
-	SymmetricKey     []byte
-	Salt             []byte
-	InputSource      BundleInputSource
-	CreateDate       string // RFC3339
+	// SymmetricKey is a random value used to encrypt the payload using Chacha20/Poly1305
+	SymmetricKey []byte
+	// Salt is a random value provided for the payload encryption
+	Salt []byte
+	// InputSource records the source type of the data provided for bundling
+	InputSource BundleInputSource
+	// The date the bundle was created
+	CreateDate string // RFC3339
+	// OriginalFileName records the file name of the source file, IF the source was a file
 	OriginalFileName string
+	// OriginalFileData records the date stamp of the source file, IF the source was a file
 	OriginalFileDate string // RFC3339
-	ToName           string
-	FromName         string
-	SenderSig        []byte
-	HdrVer           string
-	DataVer          string
+	// ToName indicates the name used to identity the User public keys in the keystore
+	ToName string
+	// FromName indicates the name used to identity the keypair set that encrypted the bundle
+	FromName string
+	// SenderSig contains the RandomSignatureData struct data
+	SenderSig []byte
+	// HdrVer identifies the version of the bee functionality that built the hdr
+	HdrVer string
+	// PayloadVer identifies the version of the bee functionality that builtthe payload
+	PayloadVer string
 }
 
 // NewBundle returns a BundleInfo that is pre-populated with a random symmetric key
@@ -65,7 +76,7 @@ func NewBundle() (*BundleInfo, error) {
 	newBundle := &BundleInfo{
 		CreateDate: time.Now().Format(time.RFC3339),
 		HdrVer:     BundleHeaderVersion,
-		DataVer:    BundleDataVersion,
+		PayloadVer: BundleDataVersion,
 	}
 
 	// Generate random key... this will be strengthened and salted using Argon2

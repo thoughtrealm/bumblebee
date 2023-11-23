@@ -100,7 +100,7 @@ boxes, the secret cannot be accessed.
 Once Bob has both boxes in his possession, he is able to access her secret, as previously described.
 
 **Relating this to the Bumblebee bundling process**, when you bundle a secret you can choose to output the bundle to
-a single "combined stream" or two "split streams."  This is effective what Alice is dealing with in this
+a single "combined stream" or two "split streams."  This is effectively what Alice is dealing with in this
 scenario extension.
 
 You can use set the "Bundle Type" using the --bundle-type flag (or -b shortcut).  The options are "combined" or "split".

@@ -33,15 +33,15 @@ var showUserCmd = &cobra.Command{
 			return
 		}
 
-		var keyName string
+		var userName string
 		if len(args) == 0 {
 			_ = cmd.Help()
 			return
 		}
 
-		keyName = args[0]
+		userName = args[0]
 
-		showUser(keyName)
+		showUser(userName)
 	},
 }
 

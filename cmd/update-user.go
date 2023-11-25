@@ -41,7 +41,7 @@ var updateUserCmd = &cobra.Command{
 		}
 
 		// Max args is set by Args property above. Only need to check for 2 or less args
-		var keyName string
+		var userName string
 
 		if localUpdateUserSubcommandVals.cipherPublicKey == "" &&
 			localUpdateUserSubcommandVals.signingPublicKey == "" {
@@ -50,9 +50,9 @@ var updateUserCmd = &cobra.Command{
 			return
 		}
 
-		keyName = args[0]
+		userName = args[0]
 
-		updateUserPublicKeys(keyName)
+		updateUserPublicKeys(userName)
 	},
 }
 
@@ -62,7 +62,7 @@ func init() {
 	updateUserCmd.Flags().StringVarP(&localUpdateUserSubcommandVals.signingPublicKey, "signing", "s", "", "The value for the public signing key")
 }
 
-func updateUserPublicKeys(keyName string) {
+func updateUserPublicKeys(userName string) {
 	var err error
 	var found bool
 
@@ -77,31 +77,31 @@ func updateUserPublicKeys(keyName string) {
 		localUpdateUserSubcommandVals.signingPublicKey != "" {
 		// user provided both keys
 		found, err = keystore.GlobalKeyStore.UpdatePublicKeys(
-			keyName,
+			userName,
 			localUpdateUserSubcommandVals.cipherPublicKey,
 			localUpdateUserSubcommandVals.signingPublicKey)
 		if !found {
-			fmt.Printf("Unable to update keys: key not found with name \"%s\"\n", keyName)
+			fmt.Printf("Unable to update keys: key not found with name \"%s\"\n", userName)
 			helpers.ExitCode = helpers.ExitCodeInvalidInput
 			return
 		}
 	} else if localUpdateUserSubcommandVals.cipherPublicKey != "" {
 		// user provided only the cipher key
 		found, err = keystore.GlobalKeyStore.UpdateCipherPublicKey(
-			keyName,
+			userName,
 			localUpdateUserSubcommandVals.cipherPublicKey)
 		if !found {
-			fmt.Printf("Unable to update cipher key: key not found with name \"%s\"\n", keyName)
+			fmt.Printf("Unable to update cipher key: key not found with name \"%s\"\n", userName)
 			helpers.ExitCode = helpers.ExitCodeInvalidInput
 			return
 		}
 	} else {
 		// user provided only the signing key
 		found, err = keystore.GlobalKeyStore.UpdateSigningPublicKey(
-			keyName,
+			userName,
 			localUpdateUserSubcommandVals.signingPublicKey)
 		if !found {
-			fmt.Printf("Unable to update signing key: key not found with name \"%s\"\n", keyName)
+			fmt.Printf("Unable to update signing key: key not found with name \"%s\"\n", userName)
 			helpers.ExitCode = helpers.ExitCodeInvalidInput
 			return
 		}

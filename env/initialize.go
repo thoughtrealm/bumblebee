@@ -214,7 +214,7 @@ required to re-initialize this profile.`)
 // When this returns false, it should mean that NOTHING is in this path, it's now
 // a blank slate to do whatever we need to do there.
 func AssertEnvironmentIsEmpty() (shouldAbort bool) {
-	configPath := configdir.LocalConfig("bumblebee")
+	configPath := configdir.LocalConfig(helpers.BBGLobalFolderName)
 	fileSystem := os.DirFS(configPath)
 
 	infoExists := false

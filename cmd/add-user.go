@@ -30,7 +30,7 @@ var localAddUserSubcommandVals = &addUserSubcommandVals{}
 // addUserCmd represents the key sub-command for the add command.
 // We maintain the public keys for external users.
 var addUserCmd = &cobra.Command{
-	Use:   "user <keyName> --cipher <key> --signing <key>",
+	Use:   "user <userName> --cipher <key> --signing <key>",
 	Args:  cobra.ExactArgs(1),
 	Short: "Adds a new user using the provided cipher and signing public keys",
 	Long:  "Adds a new user using the provided cipher and signing public keys",

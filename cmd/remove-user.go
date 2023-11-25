@@ -33,16 +33,16 @@ var removeUserCmd = &cobra.Command{
 			return
 		}
 
-		var keyName string
+		var userName string
 		switch len(args) {
 		case 0:
 			_ = cmd.Help()
 			return
 		case 1:
-			keyName = args[0]
+			userName = args[0]
 		}
 
-		removeUser(keyName)
+		removeUser(userName)
 	},
 }
 
@@ -50,23 +50,23 @@ func init() {
 	removeCmd.AddCommand(removeUserCmd)
 }
 
-func removeUser(keyName string) {
+func removeUser(userName string) {
 	if keystore.GlobalKeyStore == nil {
 		fmt.Println("Unable to remove user: keystore not loaded")
 		helpers.ExitCode = helpers.ExitCodeStartupFailure
 		return
 	}
 
-	entity := keystore.GlobalKeyStore.GetKey(keyName)
+	entity := keystore.GlobalKeyStore.GetKey(userName)
 	if entity == nil {
-		fmt.Printf("No user was found with name \"%s\"\n", keyName)
+		fmt.Printf("No user was found with name \"%s\"\n", userName)
 		return
 	}
 
 	fmt.Println("Entity info located...")
 	entity.Print()
 	fmt.Println("")
-	response, err := helpers.GetYesNoInput(fmt.Sprintf("Are you sure you wish to remove the user \"%s\"?", keyName), helpers.InputResponseValNo)
+	response, err := helpers.GetYesNoInput(fmt.Sprintf("Are you sure you wish to remove the user \"%s\"?", userName), helpers.InputResponseValNo)
 	fmt.Println("")
 	if err != nil {
 		fmt.Printf("Unable to confirm removal of user: %s\n", err)
@@ -80,15 +80,15 @@ func removeUser(keyName string) {
 		return
 	}
 
-	found, err := keystore.GlobalKeyStore.RemoveEntity(keyName)
+	found, err := keystore.GlobalKeyStore.RemoveEntity(userName)
 	if !found {
-		fmt.Printf("Was unable to located the user during removal: \"%s\"\n", keyName)
+		fmt.Printf("Was unable to located the user during removal: \"%s\"\n", userName)
 		helpers.ExitCode = helpers.ExitCodeRequestFailed
 		return
 	}
 
 	if err != nil {
-		fmt.Printf("Unable to remove user named \"%s\": %s\n", keyName, err)
+		fmt.Printf("Unable to remove user named \"%s\": %s\n", userName, err)
 		helpers.ExitCode = helpers.ExitCodeRequestFailed
 		return
 	}

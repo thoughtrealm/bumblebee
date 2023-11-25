@@ -28,7 +28,7 @@ import (
 var GlobalUseProfile string
 
 const (
-	BBGLobalFolderName = "bumblebee"
+	BBGLobalFolderName = "Bumblebee"
 	BBConfigFileName   = "config.yaml"
 )
 

@@ -68,9 +68,9 @@ For a general roadmap of future functionality plans, see [Road Map](ROAD_MAP.md)
 
 Given this status, there may be bugs and missing or incomplete features. Sufficient testing has been
 completed, such that any remaining issues should be in non-critical areas.  Both manual analysis
-and unit testing efforts are employed to validate correct performance.
+and unit tests are employed to validate correct performance.
 
-Of course, if find or experience any issues, please report them as described below in 
+Of course, if you find or experience any issues, please report them as described below in 
 [Reporting bugs and making feature requests](#Reporting_bugs_and_making_feature_requests).
 
 ## Design, Security Approach and Technical Details

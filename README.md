@@ -30,10 +30,19 @@ which can be copied and decrypted by the target user.
  
 **See the following for addition info and help...**
 
-... [Quick Start Guide](docs/BumblebeeQuickStartGuide.pdf)
+... [Quick Start Guide](BumblebeeQuickStartGuide.pdf)
 
-... [Project Status]()
+... [Project Status](STATUS.md)
 
+... [Command Implementation Status](COMMANDDEFINITIONS.md)
+
+... [Project Road Map](ROAD_MAP.md)
+
+... [Technical Details](TechnicalDetails.pdf)
+
+... [YouTube Overview Presentation](https://youtu.be/d8Ay6VDspAk)
+
+... [YouTube Basic Demo](https://youtu.be/9ceIijof4eI)
 
 ## Bumblebee Overview
 **Bumblebee** is a system for sharing secrets, which provides functionality for easily encrypting 

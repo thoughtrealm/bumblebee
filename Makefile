@@ -98,3 +98,19 @@ prep: all
 	tar -cf ${BINARY_NAME}-mac-amd64.tar ${BINARY_NAME}-mac-amd64
 	tar -cf ${BINARY_NAME}-linux-arm64.tar ${BINARY_NAME}-linux-arm64
 	tar -cf ${BINARY_NAME}-linux-amd64.tar ${BINARY_NAME}-linux-amd64
+
+hashes: prep
+	@echo
+	@echo Generating hash file
+	shasum -a 256 -b ${BINARY_NAME}-arm64.exe > builds/bee_runtimes_sha256sums.txt
+	shasum -a 256 -b ${BINARY_NAME}-arm64.exe.zip >> builds/bee_runtimes_sha256sums.txt
+	shasum -a 256 -b ${BINARY_NAME}-amd64.exe >> builds/bee_runtimes_sha256sums.txt
+	shasum -a 256 -b ${BINARY_NAME}-amd64.exe.zip >> builds/bee_runtimes_sha256sums.txt
+	shasum -a 256 -b ${BINARY_NAME}-mac-arm64 >> builds/bee_runtimes_sha256sums.txt
+	shasum -a 256 -b ${BINARY_NAME}-mac-arm64.tar >> builds/bee_runtimes_sha256sums.txt
+	shasum -a 256 -b ${BINARY_NAME}-mac-amd64 >> builds/bee_runtimes_sha256sums.txt
+	shasum -a 256 -b ${BINARY_NAME}-mac-amd64.tar >> builds/bee_runtimes_sha256sums.txt
+	shasum -a 256 -b ${BINARY_NAME}-linux-arm64 >> builds/bee_runtimes_sha256sums.txt
+	shasum -a 256 -b ${BINARY_NAME}-linux-arm64.tar >> builds/bee_runtimes_sha256sums.txt
+	shasum -a 256 -b ${BINARY_NAME}-linux-amd64 >> builds/bee_runtimes_sha256sums.txt
+	shasum -a 256 -b ${BINARY_NAME}-linux-amd64.tar >> builds/bee_runtimes_sha256sums.txt

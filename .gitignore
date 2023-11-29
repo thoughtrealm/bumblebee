@@ -6,3 +6,4 @@ media/*
 tests/distributions/distributions
 **/.DS_Store
 **/Thumbs.db
+archives/*

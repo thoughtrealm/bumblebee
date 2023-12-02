@@ -185,35 +185,48 @@ go into the concept of _bundle types_ for now.  Just know that the _combined_ fo
 two parts of a bundle, the header and the payload, are contained in the same file (or stream).
 You can refer to other Bumblebee docs for an explanation of bundle formats._
 
-# left off here
-
-Now, you can provide the bundled file to the other user.  Keep in mind that only the user specified with the “--to” flag can decrypt the bundle, since they have corresponding private key to the public key in your user store.  Not even you can decrypt the new bundle.
+Now, you can provide the bundled file to the other user.  Keep in mind that only the user specified with
+the “**--to**” flag can decrypt the bundle, since they have corresponding private key to the public key
+in your user store.  Not even you can decrypt the new bundle.
 
 Of course, in this case, you are the other user.  Otherwise, you could send this file using whatever mechanism you wish.  You could attach it to an email, Slack it to them, etc.
 
 ## Step 6. Decrypt a bundled file from another user
-For now, we will just decrypt the bundle using the same user name, but the process is identical.
+For now, we will just decrypt the bundle using the same username, but the process is identical.
 
-We can decrypt the bundle to a few different target outputs.  For now, we will decrypt the output to a file.  If the input source of the bundle was a file, then Bumblebee will include the original file name in the bundle header.  When decrypting that bundle to a file, Bumblebee will name the new, decrypted file with the same name as the original file.
+We can decrypt the bundle to a few different target outputs.  For now, we will decrypt the output to a
+file.  If the input source of the bundle was a file, then Bumblebee will include the original file name
+in the bundle header.  When decrypting that bundle to a file, Bumblebee will name the new, decrypted
+file with the same name as the original file.
 
-To demonstrate this, rename the current test testfile.txt to something like testfile.original.txt.
+To demonstrate this, rename the current **testfile.txt** to something like **testfile.original.txt**.
 
-Now, we use the open command to decrypt the bundle.
+Now, we use the ***open*** command to decrypt the bundle.
 
 	bee open --input-file testfile.bcomb –from <username>
 
-Note: Similar to the bundle command, in this case, if you omit the “--to” flag, Bumblebee will assume that the default key pair identity is the receiving key pair. The receiver key pair’s private key is used to decrypt the bundle.  Again, it is possible to have multiple local identities with Bumblebee, as well as multiple profiles, which are basically separate security contexts; but, we will not go into that functionality here.  Just know that by omitting the “--to” flag, Bumblebee is decrypting the bundle using the local key pair named “default”.  You can refer to other docs for further info on multiple identities in the profile, as well as multiple profiles.
+_**Note**: Similar to the bundle command, in this case, if you omit the “**--to**” flag, Bumblebee
+will assume that the default key pair identity should be used as the receiving key pair. The receiver's private
+key is used to decrypt the bundle.  Again, it is possible to have multiple local identities with Bumblebee,
+as well as multiple profiles, which are basically separate security contexts; but, we will not go into
+that functionality here.  Just know that by omitting the “**--to**” flag, Bumblebee is decrypting the bundle
+using the local key pair named “***default***”.  You can refer to other docs for further info on multiple
+identities in the profile, as well as multiple profiles._
 
 The **--from** flag tells Bumblebee what signing keys to use to validate the sender’s identity.  When you import the other user’s public keys, you import their signing public key as well.  When opening a bundle, their public signing key is used to validate that they are the one who signed the bundle internally.  Bee does the for you and is why you must supply a --from reference.  If the user’s public key referenced by the “--from” flag does not validate correctly with the internally signed structures, then Bumblebee will output an error and will abort decrypting the bundle.
 
-You should now see a new file with the same name as the original file, testfile.txt.  You can compare this file to the original file that is now named testfile.original.txt using whatever process or compare command or tool you want to use.  The two files should be identical.
+You should now see a new file with the same name as the original file, **testfile.txt**.  You can compare this
+file to the original file that is now named **testfile.original.txt** using whatever process or comparison
+command or tool that you want to use.  The two files should be identical.
 
-What we just walked through is the general pattern for bundling and sharing any files with any user.
+What we just walked through is the general pattern for bundling and sharing files with any user.
 
-    1. Simply run the bundle command and create the encrypted bundle for a target receiving user.  
-    2. Supply the encrypted bundle to the intended user.
-    3. That user decrypts the bundle with their private keys using the open command. 
-    4. Bumblebee validates that your identity was the sending user when it opens the bundle.
+<pre>
+1. Run the <b>bundle</b> command and create the encrypted <em>bundle</em> for another user.  
+2. Supply the encrypted <em>bundle</em> to that user.
+3. The other user then decrypts the <em>bundle</em> with their private keys using the <b>open</b> command. 
+4. <em>Bumblebee</em> validates that your identity was indeed the sending identity when it opens the <em>bundle</em>.
+</pre>
 
 ## Step 7.  Share secrets that are not files
 It is possible to send secrets that are not originally stored in a file.  There are a few ways to do this. We will focus here on directly entering secrets from the console.  You can consult the other docs for doing so in other ways.
@@ -230,28 +243,29 @@ This will provide a prompt to enter text.  You enter text, line by line.  You st
 
 Once you complete entering text, Bumblebee will use that as the bundle input.
 
-Because we did not provide any output directives, in this case, Bumblebee will default the output to the console as well.  Similar to the export output, you should an output like this, but with different values than this example.
+Because we did not provide any output flags, Bumblebee will default the output to the console as well.  Similar to the export output, you should an output like this, but with different values than this example.
 
-    Starting BUNDLE request...
-    :start :header+data ============================================
-    01b1786b763147f42dfe84957afa232848c3d8ee03d299fce66a89a6613f1f9d
-    5c7507e4606990e713611a6603741fce9a823f096ae3d1cb01dec0d938016279
-    ee8b1042227315fc569c5063d435a9ffd9c9e70f504275dff87e1ba3eb318e75
-    20a901dbf42be47d5e7af420065c60db0b862fdb6129c7158f345624162b70ed
-    1a443ad063858aa4df49fc2895390bb971ea2ac74a77673252abf7a4e7e9d85b
-    3b07148ec504eff025dd1602ae49b5f5a00b785ba0e2b00b4a505615222c5da3
-    e3c0af302f7dceb89e9587b02511a0fbb64e1352ca480a24e9482e016615dfc0
-    4cdcb5d87533250eed4243c05aacd103c14c6ea9751b33d16f9031630635fba2
-    111d29b56efe7b6a2cd239bfd7647992b3681f748c1d7310ba911fa3174a7e50
-    14e7a083952070481be96dddfd940ef7a58b36d0f4d1710d2644d8852236660f
-    c3d8f1c938befad058eafd7653736fa21cb26cbfc0ba4eb29b4926307c203724
-    b0b7f86c64d279073b174d0aaa255edf006ac27883b1519284f326470168738e
-    1062b68b794e73bb695fa4ca51b046ce0d260f4f3b98ed0bc204cab30eec683b
-    c8e539f1ddd4168c47b24c460e49ba982b3294c7ba1c1285efc07bfb04e3a56e
-    c32c40d461f65a5b1f0ce7c21175d713d654942d1a153bd1cf29c59f2c3892ec
-    7aac46eea55b9d8a519938d7a6
-    :end ===========================================================
-    BUNDLE completed. Bytes written: 493 in 76 milliseconds.
+<pre>
+Starting BUNDLE request...
+:start :header+data ============================================
+01b1786b763147f42dfe84957afa232848c3d8ee03d299fce66a89a6613f1f9d
+5c7507e4606990e713611a6603741fce9a823f096ae3d1cb01dec0d938016279
+ee8b1042227315fc569c5063d435a9ffd9c9e70f504275dff87e1ba3eb318e75
+20a901dbf42be47d5e7af420065c60db0b862fdb6129c7158f345624162b70ed
+1a443ad063858aa4df49fc2895390bb971ea2ac74a77673252abf7a4e7e9d85b
+3b07148ec504eff025dd1602ae49b5f5a00b785ba0e2b00b4a505615222c5da3
+e3c0af302f7dceb89e9587b02511a0fbb64e1352ca480a24e9482e016615dfc0
+4cdcb5d87533250eed4243c05aacd103c14c6ea9751b33d16f9031630635fba2
+111d29b56efe7b6a2cd239bfd7647992b3681f748c1d7310ba911fa3174a7e50
+14e7a083952070481be96dddfd940ef7a58b36d0f4d1710d2644d8852236660f
+c3d8f1c938befad058eafd7653736fa21cb26cbfc0ba4eb29b4926307c203724
+b0b7f86c64d279073b174d0aaa255edf006ac27883b1519284f326470168738e
+1062b68b794e73bb695fa4ca51b046ce0d260f4f3b98ed0bc204cab30eec683b
+c8e539f1ddd4168c47b24c460e49ba982b3294c7ba1c1285efc07bfb04e3a56e
+c32c40d461f65a5b1f0ce7c21175d713d654942d1a153bd1cf29c59f2c3892ec
+7aac46eea55b9d8a519938d7a6
+:end ===========================================================
+BUNDLE completed. Bytes written: 493 in 76 milliseconds.
+</pre>
 
 That is a text safe version of the bundle data.
-

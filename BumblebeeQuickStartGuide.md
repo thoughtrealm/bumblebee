@@ -1,5 +1,5 @@
 # Bumblebee Quick Start Guide
-#### _Last updated: Nov 26, 2023_
+#### _Last updated: Dec 2, 2023_
 
 This document will provide a set of steps that will guide you through installing Bumblebee,
 sharing keys with another user, and using a few methods for sharing secrets with them.
@@ -153,9 +153,7 @@ Now, list your users again.
 
 	bee list users
 
-You should now see a user list with your name.
-
-At this point, you can share files and secret items with that user.
+You should now see your name in the list of users.  Now, you can share files and secrets with that user.
 
 ## Step 5. Send a file to the other user
 We will now send a file to another other user.

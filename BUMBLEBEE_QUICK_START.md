@@ -9,6 +9,24 @@ While there are a number of additional features and options in Bumblebee, this d
 
 These steps were tested on Debian arm64.  However, they will work fine on a Windows or Mac as well.
 
+## Sending a file to another user
+We will go through a simple scenario of sending a file to another user.  There are other ways to share
+secrets without files, but we will focus on sharing files first.
+
+Before we can do so, we will need to install Bumblebee, as well as set up a user that
+we wish to share secrets with.
+
+After the setup is done, we will walk through steps to demonstrate the general pattern for
+sharing files with other Bumblebee users.  
+
+The basic pattern is as follows:
+<pre>
+1. Run the <b>bundle</b> command and create the encrypted <em>bundle</em> for another user.  
+2. Supply the encrypted <em>bundle</em> to that user.
+3. The other user then decrypts the <em>bundle</em> with their private keys using the <b>open</b> command. 
+4. <em>Bumblebee</em> validates that your identity was indeed the sending identity when it opens the <em>bundle</em>.
+</pre>
+
 ## Step 1. Installing Bumblebee
 
 ### Option A: Download runtime from Github repository<br>
@@ -155,10 +173,8 @@ Now, list your users again.
 
 You should now see your name in the list of users.  Now, you can share files and secrets with that user.
 
-## Step 5. Send a file to the other user
-We will now send a file to another other user.
-
-To keep this step simple, copy any file you wish into the same directory.  We will refer to
+## Step 5. Bundle a file for the other user
+To keep this first step simple, copy any file you wish into the same directory.  We will refer to
 the file using a name of “testfile.txt”.  You may change the name of your file so that the
 commands are exactly as provided below, or you may leave your file named whatever it is and just
 substitute the correct name in the commands you will be entering.
@@ -217,31 +233,33 @@ You should now see a new file with the same name as the original file, **testfil
 file to the original file that is now named **testfile.original.txt** using whatever process or comparison
 command or tool that you want to use.  The two files should be identical.
 
-What we just walked through is the general pattern for bundling and sharing files with any user.
+## Share secrets that are not files
+It is possible to send secrets to users that are not stored in a file.  There are a few ways to do this.
+We will focus here on directly entering secrets from the console.  You can consult other docs for sharing
+secrets in other ways.
 
-<pre>
-1. Run the <b>bundle</b> command and create the encrypted <em>bundle</em> for another user.  
-2. Supply the encrypted <em>bundle</em> to that user.
-3. The other user then decrypts the <em>bundle</em> with their private keys using the <b>open</b> command. 
-4. <em>Bumblebee</em> validates that your identity was indeed the sending identity when it opens the <em>bundle</em>.
-</pre>
+For this _bundle_ we are going to enter the secret by typing it in.  We are also going to write it out to
+the console, where we will copy and paste it to share with the other user.  They will use the pasted text to
+decrypt your secret and write it to their console.
 
-## Step 7.  Share secrets that are not files
-It is possible to send secrets that are not originally stored in a file.  There are a few ways to do this. We will focus here on directly entering secrets from the console.  You can consult the other docs for doing so in other ways.
+In so doing, we will share a secret that was never _explicitly_ written to a file.  
 
-In this bundle we are going to enter the secret by typing it in.  We are also going to write it out to the console, where we will copy and paste it to some system for the other user.  They will use the pasted text to decrypt your secret and write it to their console.
+_**Note**: By "_explicitly_", we are acknowledging that all operating systems may use files for temporary
+memory storage at any time.  So, you may be inadvertently writing data to the file system, even when you
+don’t mean to do so._
 
-In so doing, we will share a secret that was never explicitly written to a file.  By explicitly, we acknowledge that all operating systems may use files for temporary memory storage any time.  So, you may be inadvertently writing data to a file when you don’t mean to.
-
-To bundle a secret directly from the console, use the “--input-source console” flag value.
+To bundle a secret directly from the console, use the **--input-source console** flag value.
 
 	bee bundle --input-source console --to <username>
 
-This will provide a prompt to enter text.  You enter text, line by line.  You stop entering text by pressing return on an empty line, basically entering an empty line.
+This will provide a prompt to enter text.  You enter text, line by line.  You complete entering text by
+just pressing **return** for an empty line.
 
-Once you complete entering text, Bumblebee will use that as the bundle input.
+Once you complete entering the text, <em>Bumblebee</em> will use that as the <em>bundle</em> input.
 
-Because we did not provide any output flags, Bumblebee will default the output to the console as well.  Similar to the export output, you should an output like this, but with different values than this example.
+Since we did not provide any output flags, Bumblebee will default the output to the console as well.
+Similar to the **export** output, you should see an output like this, though with different values than
+this specific example.
 
 <pre>
 Starting BUNDLE request...
@@ -266,4 +284,9 @@ c32c40d461f65a5b1f0ce7c21175d713d654942d1a153bd1cf29c59f2c3892ec
 BUNDLE completed. Bytes written: 493 in 76 milliseconds.
 </pre>
 
-That is a text safe version of the bundle data.
+That is a text safe version of the bundle data.  Meaning, it can be safely entered into any app or service
+that supports.
+
+Let's copy the output to the clipboard.  Be sure to include the full lines beginning with the line
+that starts with "**:start**" and down to the line that starts with "**:end**".
+

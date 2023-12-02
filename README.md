@@ -5,8 +5,8 @@ country/state/city/municipality/whatever.  If not, **you are responsible** to no
 build or use this product._  
 
 _The **Bumblebee Authors** will assume no liability or responsibility, either legally or
-ethically, for any particular usage of this product.  This product is provided for
-ethical application and usage only._
+ethically, for any particular usage of this product.  **This product is provided for
+ethical application and usage only**._
 
 # Bumblebee Project Summary
 ## What Is Bumblebee
@@ -30,11 +30,11 @@ which can be copied and decrypted by the intended user.
  
 ## Bumblebee Guides and Docs
 
-... [Quick Start Guide](BumblebeeQuickStartGuide.md)
+... [Quick Start Guide](BUMBLEBEE_QUICK_START.md)
 
 ... [Project Status](STATUS.md)
 
-... [Command Implementation Status](COMMANDDEFINITIONS.md)
+... [Command Implementation Status](COMMAND_DEFINITIONS.md)
 
 ... [Project Road Map](ROAD_MAP.md)
 
@@ -45,9 +45,10 @@ which can be copied and decrypted by the intended user.
 ... [YouTube Basic Demo](https://youtu.be/9ceIijof4eI)
 
 ## Bumblebee Status
-The initial CLI environment is in process, but is MVP complete.
-MVP flows are complete and tested.
-Nevertheless, you may run into bugs. If so, please report them
+- The initial CLI environment is still in process.
+- MVP flows are complete and tested, including critical cipher paths.
+- It is ok to use now.
+- Nevertheless, you may run into bugs. If so, please report them.
 
 # Bumblebee Detailed Overview
 

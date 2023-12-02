@@ -5,7 +5,7 @@ This is a rough idea of possible future work priorities.  It is possible that
 priorities may shift, which would mean the ordering of these phases could change.
 
 ## Phase 1 - CLI (Command Line Interpreter)
-_Phase 1 is approximately 85% complete.  It is 100% MVP complete._
+_Phase 1 is approximately 85% all feature complete.  It is 100% MVP feature complete._
 
 **The primary goal of Phase 1 is to deliver a CLI application that provides at least 
 the following functionality:**

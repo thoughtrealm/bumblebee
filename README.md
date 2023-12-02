@@ -30,7 +30,7 @@ which can be copied and decrypted by the target user.
  
 **See the following for addition info and help...**
 
-... [Quick Start Guide](BumblebeeQuickStartGuide.pdf)
+... [Quick Start Guide](BumblebeeQuickStartGuide.md)
 
 ... [Project Status](STATUS.md)
 

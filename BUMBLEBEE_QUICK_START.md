@@ -1,5 +1,5 @@
 # Bumblebee Quick Start Guide
-#### _Last updated: Dec 2, 2023_
+#### _Last updated: Dec 9, 2023_
 
 This document will provide a set of steps that will guide you through installing Bumblebee,
 sharing keys with another user, and using a few methods for sharing secrets with them.
@@ -7,7 +7,7 @@ sharing keys with another user, and using a few methods for sharing secrets with
 This document is focused on simple use cases that will show you some basic functionality in Bumblebee.
 While there are a number of additional features and options in Bumblebee, this document will not go into those details.
 
-These steps were tested on Debian arm64.  However, they will work fine on a Windows or Mac as well.
+These steps were tested on Debian ARM64.  However, they will work fine on Windows and Mac as well.
 
 ## Sending a file to another user
 We will go through a simple scenario of sending a file to another user.  There are other ways to share
@@ -155,7 +155,7 @@ specific use case.
 ## Step 4. Import the other user’s keys in order to add them to your user store
 After you supply your exported keys to another user, you will want to import their keys, so you can send them secrets.
 
-To demonstrate this process, we will import your own keys as a user with a different name.
+To demonstrate this process, we will import your own keys as a user.
 
 To do so, run the following command from the same directory as your export file.  Because the export
 file was not exported with a password, you will not be prompted to enter a password.
@@ -257,36 +257,87 @@ just pressing **return** for an empty line.
 
 Once you complete entering the text, <em>Bumblebee</em> will use that as the <em>bundle</em> input.
 
-Since we did not provide any output flags, Bumblebee will default the output to the console as well.
+Also, since we did not provide any output flags, Bumblebee will default the output to the console as well.
 Similar to the **export** output, you should see an output like this, though with different values than
 this specific example.
 
+Here's an example of the output...
+
 <pre>
+~/bee-demo : bee bundle --input-source console --to Bob
+Enter one or more lines for the bundle input. Enter an empty line to stop. CTRL-C to cancel.
+ : User root
+ : password foo
+ : 
+
 Starting BUNDLE request...
 :start :header+data ============================================
-01b1786b763147f42dfe84957afa232848c3d8ee03d299fce66a89a6613f1f9d
-5c7507e4606990e713611a6603741fce9a823f096ae3d1cb01dec0d938016279
-ee8b1042227315fc569c5063d435a9ffd9c9e70f504275dff87e1ba3eb318e75
-20a901dbf42be47d5e7af420065c60db0b862fdb6129c7158f345624162b70ed
-1a443ad063858aa4df49fc2895390bb971ea2ac74a77673252abf7a4e7e9d85b
-3b07148ec504eff025dd1602ae49b5f5a00b785ba0e2b00b4a505615222c5da3
-e3c0af302f7dceb89e9587b02511a0fbb64e1352ca480a24e9482e016615dfc0
-4cdcb5d87533250eed4243c05aacd103c14c6ea9751b33d16f9031630635fba2
-111d29b56efe7b6a2cd239bfd7647992b3681f748c1d7310ba911fa3174a7e50
-14e7a083952070481be96dddfd940ef7a58b36d0f4d1710d2644d8852236660f
-c3d8f1c938befad058eafd7653736fa21cb26cbfc0ba4eb29b4926307c203724
-b0b7f86c64d279073b174d0aaa255edf006ac27883b1519284f326470168738e
-1062b68b794e73bb695fa4ca51b046ce0d260f4f3b98ed0bc204cab30eec683b
-c8e539f1ddd4168c47b24c460e49ba982b3294c7ba1c1285efc07bfb04e3a56e
-c32c40d461f65a5b1f0ce7c21175d713d654942d1a153bd1cf29c59f2c3892ec
-7aac46eea55b9d8a519938d7a6
+01ab786b76310bf0253cd66a8a24e2429ebc8ca5427708af6128c2b248209f80
+234d66d56b4df5bdb57a0266b81233d32716c1ce6c71464a1c3724d7b3280109
+1e396ea2e90b30968f738bccade31bc4257a9a93e4b65ac406e2ce72121ff48a
+5293be085b2f74fa9f3015706f5f2a3a628119284a246305838b924f27f92b2e
+27fbbc11fdd3f76db2d8504758be5c5a260493afa7a4d171c26e1054f0c2e575
+c9631c2bb1ada972f9df75f3bdfd6a3f7bb9cf731906f2e97d86226fe0b39c5e
+5510e1dc2beb18fd82ab419fa9b054af5654abe615f9a0e264e45278834bfdea
+039bc655fe7e068191162b50db4feb174bd24b7826af1ef8c2bc2f5e5b0c73e4
+57f397dbe53b7e0f61ced9e3ea0073f7a7c106629fcb3a3fc946ae7cc247dc76
+f6b5e2d091863012303601ac713af6b548e96e95c9d854a20f1321bf458f67e5
+616ba98f9f24a8a5dc89d7ab57354abbcbbfe347e19f776850db1f83f1df98fe
+76c2b9a4acce7266164a8d5436f2027b6c96f70e8f2b2a5b568ecf7aea688b5c
+71396c4af0fd8dd2694e043ed9ead58e47e9d7e255c2c2c2139a5575ac8e416c
+23b6ced87f95092ed77641edd9895805c4910a2d51469888fc9d15b641d8bf42
+fc6f423a4cbd62c0e1fd1515e2e8650bd479deab02405a1482503bbf99011cd6
+e9a1810979d56b1042c59b
 :end ===========================================================
-BUNDLE completed. Bytes written: 493 in 76 milliseconds.
+BUNDLE completed. Bytes written: 491 in 83 milliseconds.
+~/bee-demo : 
 </pre>
 
 That is a text safe version of the bundle data.  Meaning, it can be safely entered into any app or service
-that supports.
+that just supports text.  For example, you could paste it into a text, email or Slack post.
 
-Let's copy the output to the clipboard.  Be sure to include the full lines beginning with the line
-that starts with "**:start**" and down to the line that starts with "**:end**".
+For this example, let's just copy the output to the clipboard.  Be sure to include the lines beginning 
+with the line that starts with "**:start**" and down to the line that starts with "**:end**".
 
+Now, there are several ways to **open** the clipboard bundle depending on the operating system.
+
+For convenience on Windows or Mac ARM64, Bumblebee provides an input-source of **clipboard**, 
+like in this example...
+
+    open --input-source clipboard --output-target console --from <username>
+
+On Debian with xclip installed, you can use...
+
+    xclip -o | bee open --output-target console --from <username>
+
+Otherwise, for any other operating system, you would use whatever command formation is needed, such 
+as **pbpaste** on Mac.  Linux has a number of options for clipboard access, so refer to whatever your
+distro or environment needs.
+
+Regardless, you should see something like the following output...
+
+<pre>
+~/bee-demo : xclip -o | bee open --output-target console --from Bob
+Starting OPEN request...
+
+Decoded data...
+==========================================================
+User root
+password foo
+==========================================================
+
+OPEN completed. Bytes written: 22 in 61 milliseconds.
+~/bee-demo : 
+</pre>
+
+Generally, copying and pasting like this would only be appropriate for smaller bundles, such as in the example
+when sharing credentials or something like that.  While you could use clipboard sharing for much larger
+bundles, the approach described in the test above would not be practical.
+
+The point of that example is simply to show sharing a bundle without writing it to a file explicitly.
+
+_**Note**: For builds targeting Windows and Mac ARM64, Bumblebee provides a target of clipboard using 
+**--output-target clipboard**.  That will write the output directly to the clipboard._
+
+## Storing secrets locally using **--local-keys**
+Bumblebee provides  

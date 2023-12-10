@@ -24,10 +24,10 @@ import (
 
 // addKeypairCmd represents the keypair command
 var addKeypairCmd = &cobra.Command{
-	Use:   "keypair [name]",
+	Use:   "keypair <name>",
 	Args:  cobra.MaximumNArgs(1),
-	Short: "Adds a new keypair",
-	Long:  "Adds a new keypair",
+	Short: "Adds a new keypair identity",
+	Long:  "Adds a new keypair identity",
 	Run: func(cmd *cobra.Command, args []string) {
 		err := startBootStrap(false, true)
 		if err != nil {
@@ -35,15 +35,12 @@ var addKeypairCmd = &cobra.Command{
 			return
 		}
 
-		var keypairName string
-		switch len(args) {
-		case 0:
+		if len(args) == 0 {
 			_ = cmd.Help()
-		case 1:
-			keypairName = args[0]
+			return
 		}
 
-		addNewKeyPair(keypairName)
+		addNewKeyPair(args[0])
 	},
 }
 
@@ -54,6 +51,14 @@ func init() {
 
 func addNewKeyPair(keypairName string) {
 	var err error
+
+	// This empty value for keypairName functionality was supported in the original implementation.
+	// However, now, the keypairName should never be an empty string due to the logic in the calling
+	// command.  Although, the user could use a construction like 'bee add keypair ""', or something
+	// else, that could result in an argument that is an empty string.
+	// So, for now, instead of throwing an error, we will leave this support here, in case we want to
+	// support this again in the future. Or, as a safeguard, if some other code should call this from
+	// somewhere else without providing the keypairName value.
 	if keypairName == "" {
 		keypairName, err = helpers.GetConsoleRequiredInputLine(
 			"Enter name for the new key",

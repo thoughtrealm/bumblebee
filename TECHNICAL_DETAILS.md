@@ -395,23 +395,23 @@ The Bundle may be in a split or combined form.  Please refer to “A General Des
 
 Regardless of split vs. combined source types, the following process is the same:
 
-- Read the header data<br><br>
+- Read the header data
       
 - Decrypt the header data using the receiver’s private key from their curve25519 (cipher) keypair.
-This uses the ***XKEYS*** (curve25519) **Open** functionality.<br><br>
+This uses the ***XKEYS*** (curve25519) **Open** functionality.
   
 - Extract the signing data from the decrypted header.  Confirm that the signature matches the expected
 sender’s signature using the specified “from” user’s public key from their ed25519 (signing) keypair.
-If the validation fails, abort the process or possibly request permission to proceed.<br><br>
+If the validation fails, abort the process or possibly request permission to proceed.
   
-- Extract the payload salt and key from the decrypted header.  Then derive the actual payload key using Argon2.<br><br>
+- Extract the payload salt and key from the decrypted header.  Then derive the actual payload key using Argon2.
   
 - Read and decode the payload, while emitting the decoded data to the requested output target and encoding.
-The payload is decrypted using the XChacha20-Poly1305 symmetric cipher.<br><br>
+The payload is decrypted using the XChacha20-Poly1305 symmetric cipher.
   
 - If the original source and the output targets are both files, use the original file details for date
 and naming, unless the user has supplied explicit target details.  Future implementations may include other
-file or target properties that might need to be applied as well.<br><br>
+file or target properties that might need to be applied as well.
 
 ## A Pseudocode Description of the **OPEN** Process
 Given these values:

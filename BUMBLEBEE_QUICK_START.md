@@ -1,48 +1,65 @@
-# Bumblebee Quick Start Guide
-#### _Last updated: Dec 9, 2023_
+# _Bumblebee_ Quick Start Guide
+#### _Last updated: Dec 10, 2023_
 
-This document will provide a set of steps that will guide you through installing Bumblebee,
-sharing keys with another user, and using a few methods for sharing secrets with them.
+This document will provide a set of steps that will guide you through installing _Bumblebee_,
+sharing keys with another user, and then demonstrates a few methods for sharing secrets.
 
-This document is focused on simple use cases that will show you some basic functionality in Bumblebee.
-While there are a number of additional features and options in Bumblebee, this document will not go into those details.
+This guide is focused on simple use cases that will show you basic functionality in _Bumblebee_.
+While there are a number of additional features and options in _Bumblebee_, this document will not go
+into those details to a great degree.
 
-These steps were tested on Debian ARM64.  However, they will work fine on Windows and Mac as well.
+The examples shown are taken from sessions on _Debian ARM64_.  The _Bumblebee_ syntax itself is identical
+across all platforms of _Windows_, _Linux_, and _Mac_.  However, the command line constructions may
+differ a bit due to OS distinctions, such as examples that pipe clipboard input. Also, I will use the
+term _clipboard_ to refer to the corresponding functionality for any operating system, regardless of what
+it is called. 
 
 ## Sending a file to another user
-We will go through a simple scenario of sending a file to another user.  There are other ways to share
-secrets without files, but we will focus on sharing files first.
+We will go through a simple scenario of sending a file to another user.  While there are ways to share
+secrets without using files, we will focus on sharing files first.
 
-Before we can do so, we will need to install Bumblebee, as well as set up a user that
+Before we can do so, we will need to install _Bumblebee_, as well as set up a user that
 we wish to share secrets with.
 
 After the setup is done, we will walk through steps to demonstrate the general pattern for
-sharing files with other Bumblebee users.  
+sharing files with other _Bumblebee_ users.  
 
 The basic pattern is as follows:
 <pre>
 1. Run the <b>bundle</b> command and create the encrypted <em>bundle</em> for another user.  
 2. Supply the encrypted <em>bundle</em> to that user.
 3. The other user then decrypts the <em>bundle</em> with their private keys using the <b>open</b> command. 
-4. <em>Bumblebee</em> validates that your identity was indeed the sending identity when it opens the <em>bundle</em>.
+4. <em>Bumblebee</em> validates the sender's identity when it opens the <em>bundle</em>.
 </pre>
 
-## Step 1. Installing Bumblebee
+_**Note**: In this guide, we will be setting up a scenario where the sender and receiver are the same identity.  This
+is so that you can do these steps without requiring another user.  However, the steps themselves are the same
+when interacting with other users._
 
-### Option A: Download runtime from Github repository<br>
-Bumblebee is a single runtime.  You can get the latest, pre-built version for your platform
-in the “Releases” section at https://github.com/thoughtrealm/bumblebee.  Simply download and place
-the runtime in a common path in your OS.  You can place it in a directory and just execute it
-directly from there, but that can result in command lines that are longer than necessary.
-It is recommended to place the runtime in a common path.
+## Step 1. Installing _Bumblebee_
+
+### Option A: Download binary or archive from GitHub repository
+_Bumblebee_ is a single runtime.  You can download the latest, pre-built binary or archive for your platform
+in the “Releases” section of the GitHub project [here](https://github.com/thoughtrealm/bumblebee/releases/latest).
+
+_**NOTE**: Be sure to validate the binary and/or archive with the hashes provided.  They can be found in the
+release page description, as well as attached as a project artifact, or in the related description file
+in the project's build/ path._
+
+Simply download and place the binary in a common path in your OS.  You can place it in a directory and
+execute it directly from there, but that can result in command line constructions that are longer than
+necessary, depending on your OS. Therefore, it is recommended to place the binary in a common path.
 
 ### Option B: Build and install using the Go compiler
-If you have the Go compiler installed, you can clone the repo, then simply run “make install” in the root path of the repo.
+If you have the Go compiler installed, you can clone the repo, then run “make install” in the
+root path of the repo.
 
-If you are on Windows and do not have the make utility installed, you can run “go install” instead.  This build should work fine, with the one exception that the output of the “bee version” command will not be fully populated with build times.
+If you are on _Windows_ and do not have the make utility installed, you can run ***go install*** instead.
+That form of build should work fine, with the one exception that the output of the ***bee version***
+command will not be populated with build times.
 
-### Validate Bumblebee is installed and working
-Once installed, you can verify it is running correctly by simply typing...
+### Validate _Bumblebee_ is installed and working
+Once installed, you can verify it is running correctly by typing...
 
     bee
 
@@ -50,78 +67,81 @@ That will output the root help info.  You can check the version by running...
 
     bee version
 
-## Step 2. Initialize the Bumblebee Environment
-The first step is to initialize the Bumblebee environment.  This will create the default profile,
-populate the initial random key sets and some other artifacts that are required for sharing secrets.
+## Step 2. Initialize the _Bumblebee_ Environment
+The first step is to initialize the _Bumblebee_ environment.  This process will do the following...
+1. Create the default profile
+2. Create the profile's **User Store** and **Identity Store** 
+3. Create a default identity and related key sets
+4. Create additional elements in the profile that are required for sharing secrets.
 
 To do so, just run...
 
     bee init
 
-You will be asked about several options.
+You will be asked about a few options.
 
-When asked, _“Enter a default sender key name or leave empty for none”_, provide a name you wish to
+When asked, _“Enter a default sender key name or leave empty for none”_, provide the name you wish to
 use for the default sender account in this profile.  It could be a name, a handle, an email address,
-whatever you wish to use for identifying yourself.  The other user will be able to use whatever name
-they wish to use in their user store for your identity.  Bumblebee will always validate the sending identity,
-regardless of the name used to identify them in the user store.
+whatever you wish to use for identifying yourself.  Keep in mind that other users will be able to use
+whatever name they wish to use in their user stores for your identity.  _BumbleBee_ will always validate
+the sending identity by key sets, regardless of the name used to identify them in the user store.
 
-However, in a formal environment, like in a corporate environment, it is recommended to use something unique
-like your email address or an LDAP account name, etc.
+If setting up a formal environment, such as in a corporate setting, it is recommended to use something unique
+for your name, such as your email address or an LDAP account name, etc.
 
-Otherwise, for the other questions you are prompted for, just press enter for each to accept the default
-options for now.
+For any other questions, just press _return_ for each to accept the default options.
 
 Once the initialization is completed, you can view the default profile identities by running...
 
     bee list keypairs
 
-That will show you the public keys only for the default and system key pairs.
+That will show you the public keys only for the default and system identities.
 
-You can use the “**--show-all**” flag to see the seed and private keys as well…
+You can use the ***--show-all*** flag to see the seed and private keys as well...
 
     bee list keypairs --show-all
 
-Of course, be aware that you must never share your private keys with anyone.  By default, they are
-not printed out when listing the key pairs unless you provide the “**--show-all**” flag.
+Be aware that you must **NEVER** share your private keys with anyone.  By default, they are
+not printed out when listing the key pairs unless you provide the ***--show-all*** flag.
 
-_**Note**: Bumblebee makes use of curve25519 key pair cryptography.
-Specifically, it uses the **NKEYS** repo/packages (https://github.com/nats-io/nkeys).
+_**Note**: _BumbleBee_ makes use of curve25519 key pair cryptography.
+Specifically, it uses the **NKEYS** packages (https://github.com/nats-io/nkeys).
 **NKEYS** is provided by the **NATS** messaging server (https://nats.io/)._
 
 _**Note**: Each identity is configured with two key pairs: a Cipher and a Signing key pair.
-The Cipher key pair is a curve25519 key pair construction and is used for the encrypting
+The Cipher key pair is a curve25519 key pair construction and is used for encrypting
 and decrypting processes.  The Signing key pair is an ed25519 key pair and is used for
-signing secrets sent by that identity, so that the receiving user can validate the sender’s
+signing secrets sent by that identity.  This allows the receiving user to validate the sender’s
 identity.  The curve25519 support is found in the **XKEYS** package of the **NKEYs** repo._
 
-You can also see the users that you have set up by running...
+You can see the users that have been set up by running...
 
     bee list users
 
 Of course, at this point, you will find that your user list is empty.  You must add or import
-users to your local profile(s).  We will do so late in this Quick Start Guide.
+users to your local profile(s).
 
-## Step 3. Export your keys to share them with another user
+## Step 3. Export your public keys to share them with another user
 To share secrets with another user, you must provide them with your public keys.  This can be
 done easily by exporting your keys.  There are several ways to do this, but we will just focus
 on exporting them to a file.
 
-To do so, run the following command.  For _<username>_, use the name you provided in **Step 2**,
-when you initialized the environment.  And when prompted for a password, just press return to
-not provide a password for now.
+To do so, run the following command.  For the argument _<username>_, use the name you provided
+in **Step 2**, when you initialized the environment.  And when prompted for a password, just
+press _return_ to not provide a password.
 
     bee export user <username> --from-keypair --output-file export-user.txt
 
-The export will have generated the file export-user.txt.  If you dump the file contents on Mac or Linux by using...
+The export will have generated the file export-user.txt.  If you dump the file contents on _Mac_ or _Linux_
+by using...
 
     cat export-user.txt
 
-or on Windows by using...
+or on _Windows_ by using...
 
-    type export-user-txt
+    type export-user.txt
 
-then, you will see something formatted similarly to the following, though with different values.
+You will see output formatted similarly to the following, though with different hex values.
 
     :start  :export-user  :hex =====================================
     0086a44e616d65af7573657240646f6d61696e2e636f6da84461746154797065
@@ -133,40 +153,42 @@ then, you will see something formatted similarly to the following, though with d
     575144374144435344
     :end ===========================================================
 
-Bumblebee uses that format because it is text safe.  Meaning, you can copy it and paste it into a 
-message post, a slack post, an email body, etc.  It is simply the hex encoded sequence of the file’s
-binary contents.  Bumblebee uses this encoding format for several different features.
+_BumbleBee_ uses that format because it is text safe.  Meaning, you can copy it and paste it into a 
+message post, a Slack post, an email body, etc.  It is simply the hex encoded sequence of the file’s
+binary contents.  _BumbleBee_ uses this encoding format for several features.
 
-If you wish, when exporting the file you may provide a password.  If you do so, the contents will be
-symmetrically encrypted with XChacha20-poly1305 using Argon2 for key derivation.  This is a strong
-cryptographic technique.
+If you wish, when exporting your keys, you may provide a password for the file.  If you do so,
+the contents will be symmetrically encrypted with XChacha20-poly1305 using Argon2 for key derivation.
+This is a strong cryptographic technique.
 
-While the export data only contains public keys, you may wish to protect those by encrypting them
-with a password.  If you do so, keep in mind that you **must** also provide the password to the user that
-is importing your export file.  They will need the password in order to open and import the info.
+While a password is not required, since the export data only contains public keys, you may wish to
+protect those by encrypting them with a password.  If you do so, keep in mind that you **must** also
+provide the password to the user that is importing your export file.  They will need the password to
+open and import the info.
 
-Alternately, if you run the following command, it will output the data to the console instead
-of a file.  This time, enter any password you wish when prompted for one.
+Another option is to run the following command, which will output the data to the console instead
+of a file.
 
     bee export user <username> --from-keypair --output-target console
 
 With the output in the console, you can copy it and paste it to the other user.  Perhaps paste it in
-their Slack channel.  And in this case, provide them with the password in some way.
-If you provide it through some public transport outside of your trusted network, you will
-probably want to use use a password to protect your public keys.  However, this will depend on your 
-specific use case.
+their Slack channel.  If you provide it through some public transport outside your trusted network, you will
+probably want to use a password to protect your public keys.  This will depend on your specific use case.
 
-## Step 4. Import the other user’s keys in order to add them to your user store
-After you supply your exported keys to another user, you will want to import their keys, so you can send them secrets.
+## Step 4. Import the other user’s public keys in order to add them to your user store
+After you supply your exported keys to another user, you will want to import their keys, so you can
+send them secrets.
 
-To demonstrate this process, we will import your own keys as a user.
+To demonstrate this process, we will import your own keys as a user.  However, the process is the same
+for other users.
 
 To do so, run the following command from the same directory as your export file.  Because the export
-file was not exported with a password, you will not be prompted to enter a password.
+file was not exported with a password, you will not be prompted to enter a password.  If you did 
+provide a password, you will be prompted to enter it.
 
-When it asks you what name you want to use to import the user info, just press return to use the
-exported name.  This will be your own name.  However, because your local entity's identity is stored
-as a key pair set in the key pair store, it will not be a conflict to have a user with the same name
+When it asks you what name you want to use to import the user info, just press _return_ to use the
+exported name.  This will be your own name.  However, this is not an issue, because your local
+identity is stored as a key pair set in the key pair store.  This is not a conflict with the same name
 in the user store.
 
 	bee import --input-file export-user.txt
@@ -175,67 +197,76 @@ Now, list your users again.
 
 	bee list users
 
-You should now see your name in the list of users.  Now, you can share files and secrets with that user.
+You should see your name in the list of users.  You can now share secrets with that user.
 
 ## Step 5. Bundle a file for the other user
 To keep this first step simple, copy any file you wish into the same directory.  We will refer to
-the file using a name of “testfile.txt”.  You may change the name of your file so that the
-commands are exactly as provided below, or you may leave your file named whatever it is and just
-substitute the correct name in the commands you will be entering.
+that file using a name of “testfile.txt”.  You may change the name of your file to this,
+so that the commands exactly match what is as provided below.  Or, you may leave your file named whatever
+it is and substitute the correct name in the commands you will be entering.
 
 To encrypt a file for another user, we use the **bundle** command.  We supply the “**--to**” flag
-to tell Bumblebee who the receiving user is so that it knows which keys to use for encrypting the
+to tell _BumbleBee_ who the receiving user is so that it knows which keys to use for encrypting the
 **bundle** header.
 
 	bee bundle --input-file testfile.txt --to <username>
 
-_**Note**: If you omit the “**--from**” flag, Bumblebee will use the default key pair identity as the
-sender.  It is possible to have multiple local identities with Bumblebee, as well as multiple profiles,
-which provide a separate security contexts. However, we will not go into that functionality here.
-Just know that by omitting the “**--from**” flag, Bumblebee is signing the bundle using the key pair
-named “default”.  You can refer to other docs for further info on multiple identities in the profile,
-as well as multiple profiles._
+_**Note**: When you omit the “**--from**” flag, _BumbleBee_ will use the default key pair identity as the
+sender.  It is possible to have multiple local identities with _BumbleBee_, as well as multiple profiles,
+which provide a separate security context. However, we will not go into that functionality yet.
+Just know that by omitting the “**--from**” flag, _BumbleBee_ is signing the bundle using the key pair
+named “default”.  We will demonstrate multiple identities and profiles later in this guide._
 
 That will have bundled **testfile.txt** into a new file, **testfile.bcomb**.
 
-_**Note**: The ***.bcomb** extension refers to the “_Bumblebee combined_” bundle format.  We will not
-go into the concept of _bundle types_ for now.  Just know that the _combined_ format means that the
+_**Note**: The ***.bcomb** extension refers to the “__BumbleBee_ combined_” bundle format.  We will not
+go into the details of _bundle types_ for now.  Just know that the _combined_ format means that the
 two parts of a bundle, the header and the payload, are contained in the same file (or stream).
-You can refer to other Bumblebee docs for an explanation of bundle formats._
+You can refer to other _BumbleBee_ docs for an explanation of bundle formats._
 
 Now, you can provide the bundled file to the other user.  Keep in mind that only the user specified with
-the “**--to**” flag can decrypt the bundle, since they have corresponding private key to the public key
-in your user store.  Not even you can decrypt the new bundle.
+the “**--to**” flag can decrypt the bundle, since they alone have the corresponding private key relating
+to the public key in your user store.  Not even you can decrypt the new bundle.
 
-Of course, in this case, you are the other user.  Otherwise, you could send this file using whatever mechanism you wish.  You could attach it to an email, Slack it to them, etc.
+In this case, you are the other user.  Otherwise, you would send this file using whatever mechanism you
+wish.  You could attach it to an email, Slack it to them, etc.
 
 ## Step 6. Decrypt a bundled file from another user
-For now, we will just decrypt the bundle using the same username, but the process is identical.
+For now, we will just decrypt the bundle using your user info, but the process is identical.
 
-We can decrypt the bundle to a few different target outputs.  For now, we will decrypt the output to a
-file.  If the input source of the bundle was a file, then Bumblebee will include the original file name
-in the bundle header.  When decrypting that bundle to a file, Bumblebee will name the new, decrypted
-file with the same name as the original file.
+We can decrypt the bundle to a few different output targets.  For now, we will decrypt the output to a
+file.  
+
+If the input source of the bundle is a file, then _BumbleBee_ will include the original file name
+in the bundle header.  Then, when the other user decrypts the bundle to a file, _BumbleBee_ will attempt
+to name the new, decrypted file with the same name as the original file.
 
 To demonstrate this, rename the current **testfile.txt** to something like **testfile.original.txt**.
 
-Now, we use the ***open*** command to decrypt the bundle.
+Now, use the ***open*** command to decrypt the bundle.
 
-	bee open --input-file testfile.bcomb –from <username>
+	bee open --input-file testfile.bcomb –-from <username>
 
-_**Note**: Similar to the bundle command, in this case, if you omit the “**--to**” flag, Bumblebee
+_**Note**: Similar to the bundle command, in this case, if you omit the “**--to**” flag, _BumbleBee_
 will assume that the default key pair identity should be used as the receiving key pair. The receiver's private
-key is used to decrypt the bundle.  Again, it is possible to have multiple local identities with Bumblebee,
+key is used to decrypt the bundle.  Again, it is possible to have multiple local identities with _BumbleBee_,
 as well as multiple profiles, which are basically separate security contexts; but, we will not go into
-that functionality here.  Just know that by omitting the “**--to**” flag, Bumblebee is decrypting the bundle
-using the local key pair named “***default***”.  You can refer to other docs for further info on multiple
-identities in the profile, as well as multiple profiles._
+that functionality yet.  Just know that by omitting the “**--to**” flag, _BumbleBee_ is decrypting the bundle
+using the local key pair named “***default***”.  We will demonstrate multiple identities and profiles
+later in this guide._
 
-The **--from** flag tells Bumblebee what signing keys to use to validate the sender’s identity.  When you import the other user’s public keys, you import their signing public key as well.  When opening a bundle, their public signing key is used to validate that they are the one who signed the bundle internally.  Bee does the for you and is why you must supply a --from reference.  If the user’s public key referenced by the “--from” flag does not validate correctly with the internally signed structures, then Bumblebee will output an error and will abort decrypting the bundle.
+The **--from** flag tells _BumbleBee_ which signing keys to use to validate the sender’s identity.  When
+you imported the other user’s public keys, you imported both their cipher and signing keys.  When
+opening a bundle, their signing key is used to validate that they are indeed the one who sent the
+bundle.  
+
+_Bumblebee_ does this for you, so you must supply the **--from** reference.  If the _bundle_'s signature
+does not match the **--from** user's identity, then _BumbleBee_ will output an error and will
+abort decrypting the bundle.
 
 You should now see a new file with the same name as the original file, **testfile.txt**.  You can compare this
-file to the original file that is now named **testfile.original.txt** using whatever process or comparison
-command or tool that you want to use.  The two files should be identical.
+file to the original file that is now named **testfile.original.txt** using whatever process, comparison
+command, or tool that you wish.  The two files should be identical.
 
 ## Share secrets that are not files
 It is possible to send secrets to users that are not stored in a file.  There are a few ways to do this.
@@ -246,7 +277,7 @@ For this _bundle_ we are going to enter the secret by typing it in.  We are also
 the console, where we will copy and paste it to share with the other user.  They will use the pasted text to
 decrypt your secret and write it to their console.
 
-In so doing, we will share a secret that was never _explicitly_ written to a file.  
+In so doing, we will be sharing a secret which was never _explicitly_ written to a file.  
 
 _**Note**: By "_explicitly_", we are acknowledging that all operating systems may use files for temporary
 memory storage at any time.  So, you may be inadvertently writing data to the file system, even when you
@@ -256,16 +287,16 @@ To bundle a secret directly from the console, use the **--input-source console**
 
 	bee bundle --input-source console --to <username>
 
-This will provide a prompt to enter text.  You enter text, line by line.  You complete entering text by
-just pressing **return** for an empty line.
+Bumblebee will provide a prompt for entering text, which you enter one line at a time.  You complete 
+entering text by just pressing **return** on an empty line.
 
-Once you complete entering the text, <em>Bumblebee</em> will use that as the <em>bundle</em> input.
+Once you complete entering the text, _Bumblebee_ will use that as the input data for the _bundle_.
 
-Also, since we did not provide any output flags, Bumblebee will default the output to the console as well.
-Similar to the **export** output, you should see an output like this, though with different values than
-this specific example.
+Also, since we did not provide the **--output-target** flag, _BumbleBee_ will default the output
+to the console as well. 
 
-Here's an example of the output...
+Similar to the output you saw with the **export** comand, you should see an output like the following, 
+though with different hex values than this specific example.
 
 <pre>
 ~/bee-demo : <b>bee bundle --input-source console --to Bob</b>
@@ -298,25 +329,26 @@ BUNDLE completed. Bytes written: 491 in 83 milliseconds.
 </pre>
 
 That is a text safe version of the bundle data.  Meaning, it can be safely entered into any app or service
-that just supports text.  For example, you could paste it into a text, email or Slack post.
+that just supports text.  For example, you could paste it into a text message, text document, email
+or Slack post.
 
-For this example, let's just copy the output to the clipboard.  Be sure to include the lines beginning 
+For this example, let's copy the output to the clipboard.  Be sure to include the lines beginning 
 with the line that starts with "**:start**" and down to the line that starts with "**:end**".
 
-Now, there are several ways to **open** the clipboard bundle depending on the operating system.
+There are several ways to **open** the _bundle_'s data in the clipboard, depending on the operating system.
 
-For convenience on Windows or Mac ARM64, Bumblebee provides an input-source of **clipboard**, 
-like in this example...
+For convenience on _Windows_ or _Mac ARM64_ builds, _BumbleBee_ provides an input-source of **clipboard**, 
+as shown in this example...
 
     open --input-source clipboard --output-target console --from <username>
 
-On Debian with xclip installed, you can use...
+However, on _Debian_ with xclip installed, you can use...
 
     xclip -o | bee open --output-target console --from <username>
 
-Otherwise, for any other operating system, you would use whatever command formation is needed, such 
-as **pbpaste** on Mac.  Linux has a number of options for clipboard access, so refer to whatever your
-distro or environment needs.
+Otherwise, for any other operating system or configuration, you would use whatever command formation is
+needed, such as using **pbpaste** on _Mac_.  _Linux_ has a number of options for clipboard access,
+so refer to whatever your distro or environment needs.
 
 Regardless, you should see something like the following output...
 
@@ -334,34 +366,40 @@ OPEN completed. Bytes written: 22 in 61 milliseconds.
 ~/bee-demo : 
 </pre>
 
-Generally, copying and pasting like this would only be appropriate for smaller bundles, such as in the example
-when sharing credentials or something like that.  While you could use clipboard sharing for much larger
-bundles, the approach described in the test above would not be practical.
+Generally, copying and pasting like this would only be appropriate for smaller bundles, such as in this
+example of sharing credentials or something like that.  While you could use clipboard sharing for much
+larger bundles, the approach described in the example above may not be practical.
 
-The point of that example is simply to show sharing a bundle without writing it to a file explicitly.
+The point of that example is simply to show how to share a bundle without writing it to a file explicitly.
 
-_**Note**: For builds targeting Windows and Mac ARM64, Bumblebee provides an output target option of "clipboard" using 
-**--output-target clipboard**.  That flag tells Bumblebee to write the output directly to the clipboard._
+_**Note**: For builds targeting **Windows** and **Mac ARM64**, _BumbleBee_ provides the flag value
+**--output-target clipboard**.  That flag value tells _BumbleBee_ to write the output directly to the
+clipboard.  When using that option, you do not have to copy the console output, since _Bumblebee writes it to
+the clipboard for you._
 
 ## Storing secrets locally using **--local-keys**
 Sometimes you wish to encrypt files for your own purposes.  Perhaps, you have important documents
-that you want to keep in an encrypted state.  
+that you want to keep in an encrypted state.  Maybe you are storing them in a Cloud storage service and
+you want to encrypt them before doing so.  Or maybe you want to encrypt files for local backup purposes.
 
-To support this, Bumblebee's **bundle** and **open** commands support a flag **--local-keys**.  When you pass
-this flag to the **bundle** and **open** commands, Bumblebee will use the profile's system read and write 
-key pairs.  
+To support this, _BumbleBee_'s **bundle** and **open** commands support a flag **--local-keys**.  When you pass
+this flag to the **bundle** and **open** commands, _BumbleBee_ will use the profile's _read_ and _write_
+system key pairs.  
 
 When you run the command...
 
 <pre>
-bee list keypairs</pre>
+bee list keypairs
+</pre>
 
-command, you will see these key pairs output with the names **keystore_read** and **keystore_write**.
+You will see the system key pairs output with the names **keystore_read** and **keystore_write**.  These
+are used for supporting the **--local-keys** functionality.  They are also used to encrypt your local
+**User Store**.
 
-To take advantage of this, simply provide the **--local-keys** flag to any **bundle** or **open** command 
+To use these system keys, provide the **--local-keys** flag to any **bundle** or **open** command 
 construction.
 
-So, similar to the last example where we used the console for input, here's an example using **--local-keys** ...
+Similar to the prior example where we used the console for input, here's an example using **--local-keys** ...
 
 <pre>
 ~/bee-demo : <b>bee bundle --input-source console --output-file test --local-keys</b>
@@ -396,28 +434,28 @@ OPEN completed. Bytes written: 24 in 61 milliseconds.
 </pre>
 
 Notice that there are no references to the flags **--to** or **--from**.  When you use the 
-**--local-keys** flag, Bumblebee is simply substituting the **--to** and **--from** key references with
+**--local-keys** flag, _BumbleBee_ is simply substituting the **--to** and **--from** key references with
 the system keys accordingly, depending on the command being using.
 
-The files you encrypt with the --local-keys option can be stored offsite or in your backups or
+The files you encrypt with the **--local-keys** option can be stored offsite or in your backups or
 wherever you wish.  You just retrieve them as needed and open them accordingly.
 
-Keep in mind that bundles built with the **--local-keys** flag can only be decrypted using the
-**--local-keys** option in an environment with the specific system keys used to bundle the data.
+**Keep in mind** that bundles built with the **--local-keys** flag **can only be decrypted** using the
+**--local-keys** option in an environment with the specific system keys that were used to bundle the data.
 So, for any data encrypted with the **--local-keys** flag, be sure to backup the profile or maintain the
-profile's environment that you used to bundle the data.  If you lose the environment in some way and have
-no backup, you will not be able to decrypt those files again.  Of course, this is true of any bundled data,
-regardless of the key pairs used.
+profile's environment that you used to bundle that data.  If you lose the environment in some way and have
+no backup, you **will not be able to decrypt** those files.  Of course, this is true of any bundled data,
+regardless of the key pairs and identities used.
 
-## Using multiple key pair identities in the same store
+## Using multiple key pair identities in the same profile
 It is possible to create any number of identities within a single profile.  For this explanation, we will
-refer to the <i>default</i> profile, but this pertains to any profile.
+refer to the ***default*** profile.  However, this can be done with any profile.
 
-Let's say you want to maintain additional identities for work and one for home.  For this example,
-we'll assume that these would be in addition to the default identity create when you initialized the 
-<i>default</i> profile.
+Let's say you want to maintain additional identities, maybe one for work and one for home.  For this example,
+we'll assume that these would be in addition to the default identity created when you initialized the 
+***default*** profile.
 
-To do so, simply add a new identity like this...
+To do so, you would add a new identity like this...
 
 <pre>
 bee add keypair home
@@ -429,7 +467,7 @@ And...
 bee add keypair work
 </pre>
 
-Bumblebee will create the new identity and output the key pair info.
+_BumbleBee_ will create the new identities and output the key pair info.
 
 Now, when you run the command...
 
@@ -439,39 +477,42 @@ bee list keypairs
 
 You will see the new **home** and **work** key pairs.
 
-You can export this identity for other users like this...
+You can export these identities to other users like this...
 
 <pre>
 bee export user home --from-keypair --output-file export-home.txt
 </pre>
 
-To reference this identity when creating a bundle, just specify it with the **--from** flag...
+To reference this identity when creating a bundle, specify it with the **--from** flag...
 
 <pre>
 bee bundle --input-source console --output-file test --from home --to Bob
 </pre>
 
-The other user would import your identity as usual and then reference it when opening the bundle, like this...
+The other user would import your identity like it would for any user, and then reference it when opening
+the bundle, like this...
 
 <pre>
 bee open --input-file test.bcomb --output-target console --from home
 </pre>
 
-Of course, the other use would probably use a different name for your identity than just "**home**".
+Of course, the other use may use a different name for your identity than just "**home**",
+such as "BobHome" or something like that.
 
 Using this process, you can add as many identities in a single profile as you wish.  You can
 remove them using **bee remove keypair**.
 
 ## Using multiple profiles
-Bumblebee allows you to create any number of profiles.  Each profile provides its own security
+_BumbleBee_ allows you to create any number of profiles.  Each profile provides its own security
 context of user and key pair stores.  So, any particular profile only sees the users and key pair identities
-that were setup in that profile.
+that were set up in that profile.
 
 For example, instead of creating new identities for **work** and **home** in the same profile as we did
 in the prior example, we can create completely separate profiles for work and home.
 
-To do so, simply create a new profile with the following command.  This is the same process as the
-**init** command, so you can answer the questions as you would when creating the default environment.
+To do so, create a new profile with the following command.  This is the same process as the
+**init** command that we demonstrated earlier, so you can answer the questions as you would like
+when creating the new profile's environment.
 
 <pre>
 bee add profile home
@@ -489,7 +530,7 @@ You can use the profile in a couple of ways.
 
 ### Setting the active profile with the **use** command
 
-One is that you can switch the active profile using this command...
+One way is by setting the active profile using the **--use** flag as follows...
 
 <pre>
 bee use home
@@ -501,17 +542,17 @@ You can then use this command to see the currently active profile...
 bee show profile
 </pre>
 
-When you run a Bumblebee command, it uses the active profile.  So, if you change the active
+When you run a _BumbleBee_ command, it uses the active profile.  So, if you change the active
 profile to **home** using the ***bee use <profile>*** command, then any commands you run will
 do so in the **home** profile.
 
-So, for example, any users or identities you add will be added to that profile.  If you switch to another
+For example, any users or identities you add will be added to that profile.  If you then switch to another
 profile, those users and identities will not be there.
 
-To change the active profile back to the default profile, simply run ***bee use default***.
+To change the active profile back to the _default_ profile, simply run ***bee use default***.
 
 ### Referencing a different profile with the **--use** flag
-Another way to reference a different profile is to provide the ***--use profile*** flag to any command.
+Another way to reference a different profile is to provide the ***--use <profile>*** flag with any command.
 
 This flag allows you to run any command in the context of another profile, without changing the active 
 profile.
@@ -520,16 +561,16 @@ For example...
 
     bee bundle --input-source console --output-file test --to <username> --use home
 
-That command will bundle the file using the default identity in the **home** profile, as well as use the user
+That command will bundle the file using the default identity in the **home** profile, as well as the user
 info in the **home** profile's user store.
 
 You can also see the profile config for any profile like this...
 
-    bee show profile <profilename>
+    bee show profile [profilename]
 
-Notice that command does not require the **--use** flag.  The optional profile name is used when provided,
-instead of the active profile's info.  
+Notice that command does not require the **--use** flag.  If **profilename** is provided, then 
+that profile is shown.  If not provided, then it will show the active profile info.
 
-## Summary of Quick Start Guide
-That wraps up this Quick Start Guide.  For more detailed info, see the Bumblebee User Manual
+## Wrapping up
+That wraps up this Quick Start Guide.  For more detailed info, see the [_Bumblebee User Guide_](USER_GUIDE.md)
 or other docs as needed.

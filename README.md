@@ -126,7 +126,7 @@ Sufficient testing has been completed, such that any remaining issues should be 
 Both manual analysis and unit tests are used to validate functionality.
 
 If you find or experience any issues, please report them as described below in 
-[Reporting bugs and making feature requests](#Reporting_bugs_and_making_feature_requests).
+[Reporting bugs and making feature requests](#reporting).
 
 ## Design, Security Approach and Technical Details
 The design for this system creates no proprietary or unique cryptographic functionality.
@@ -146,7 +146,7 @@ A Thread Model document is not available yet.  We do intend to provide one.
 ## License
 _BumbleBee_ is licensed under an MIT license.  For license details see [License](LICENSE).
 
-## Reporting bugs and making feature requests
+## <a name="reporting"></a>Reporting bugs and making feature requests
 Please create an Issue for any bugs you find or suggestions you may have relating to
 _BumbleBee_ functionality. I will try to respond to these as quickly as I can.
 

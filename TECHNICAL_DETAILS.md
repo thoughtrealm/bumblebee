@@ -122,8 +122,8 @@ you have the key in-hand and have validated the header info, read and decrypt th
 [This diagram](docs/StreamCompositionOfBundles.pdf) describes the layout of the combined and split stream bundles. 
 
 ## Describing the Bundle With an Analogy of "**Two Stages of Locked Boxes**"
-To better understand the bundling process, as well as it's strengths and weaknesses of the bundles, we
-attempt to describe it using an alaogy of "_Two Stages of Locked Boxes_."  
+To better understand the bundling process, as well as the strengths and weaknesses of the bundles, we
+attempt to describe it using an analogy of "_Two Stages of Locked Boxes_."  
 
 This analogy is surely not unique and is likely referred to by others using some much more clever
 sounding name.  Nevertheless, it is the name we will use for this analogy when describing this approach.
@@ -145,7 +145,7 @@ We first generate a random, strong symmetric key which we do not reveal to the u
 symmetric key to encrypt the secret.
 
 In a slightly over simplified description, we then we encrypt that key and some other elements
-(salt, signature, etc) using asymmetric cryptography.  The asymmetric cryptography requires sharing only
+(salt, signature, etc.) using asymmetric cryptography. The asymmetric cryptography requires sharing only
 the public keys, which can be shared safely.  This prevents having to know and manage the sharing of the
 symmetric key itself.  Then we encrypt the secret data using symmetric cryptography and the symmetric key.
 

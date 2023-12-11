@@ -35,20 +35,20 @@ without requiring a file exchange.
 - Currently, the [Quick Start Guide](BUMBLEBEE_QUICK_START.md) is the best doc to get you up to speed
 on Bumblebee functionality. It will take you through a brief description of the current
 installation options, show you how to set up and initialize Bumblebee, plus walk you through some
-examples of sharing secret files and messages.<br><br>
+examples of sharing secret files and messages.
 
 - The [User Guide](USER_GUIDE.md) is not available yet.  For now, please refer to
-[Quick Start Guide](BUMBLEBEE_QUICK_START.md).<br><br>
+[Quick Start Guide](BUMBLEBEE_QUICK_START.md).
 
 - The latest binaries and archives are [here](https://github.com/thoughtrealm/bumblebee/releases/latest).
-Refer to the [Quick Start Guide](BUMBLEBEE_QUICK_START.md) for how to install.<br><br>
+Refer to the [Quick Start Guide](BUMBLEBEE_QUICK_START.md) for how to install.
 
-- For information on the current _Bumblebee_ project status, see [this](STATUS.md).<br><br>
+- For information on the current _Bumblebee_ project status, see [this](STATUS.md).
 
 - Bumblebee is a CLI.  For the status of the current command implementations, see the
-[Command Implementation Status](COMMAND_DEFINITIONS.md).<br><br>
+[Command Implementation Status](COMMAND_DEFINITIONS.md).
 
-- For info on the future goals of this project, see the [Project Road Map](ROAD_MAP.md).<br><br>
+- For info on the future goals of this project, see the [Project Road Map](ROAD_MAP.md).
 
 - The [Technical Details](TECHNICAL_DETAILS.md) document provides a detailed description of the 
 crypto implementation logic, the specific crypto algorithms used, and their corresponding code sources.

@@ -25,12 +25,10 @@ After the setup is done, we will walk through steps to demonstrate the general p
 sharing files with other _Bumblebee_ users.  
 
 The basic pattern is as follows:
-<pre>
 1. Run the <b>bundle</b> command and create the encrypted <em>bundle</em> for another user.  
 2. Supply the encrypted <em>bundle</em> to that user.
 3. The other user then decrypts the <em>bundle</em> with their private keys using the <b>open</b> command. 
 4. <em>Bumblebee</em> validates the sender's identity when it opens the <em>bundle</em>.
-</pre>
 
 _**Note**: In this guide, we will be setting up a scenario where the sender and receiver are the same identity.  This
 is so that you can do these steps without requiring another user.  However, the steps themselves are the same

@@ -159,4 +159,4 @@ If you wish to contribute, you may fork and submit pull requests.
 Please follow this GitHub guide to do so: 
 [GitHub: Contributing to Projects](https://docs.github.com/en/get-started/quickstart/contributing-to-projects) 
 
-I will review those as I have time.
+Those will be reviewed as time permits.

@@ -62,7 +62,7 @@ the _Bumblebee_ project.
 - The initial CLI environment is still in progress.
 - MVP flows are complete and tested, including critical cipher paths.
 - It is ok to use now.
-- Nevertheless, you may run into bugs. If so, please report them.
+- Nevertheless, you may run into bugs. If so, please report them as described [here](#reporting).
 
 ## An Overview Of The Bumblebee Project
 _BumbleBee_ is a system for sharing secrets.

@@ -37,7 +37,7 @@ when interacting with other users._
 ## Step 1. Installing _Bumblebee_
 
 ### Option A: Download binary or archive from GitHub repository
-_Bumblebee_ is a single runtime.  You can download the latest, pre-built binary or archive for your platform
+_Bumblebee_ is a single binary.  You can download the latest, pre-built binary or archive for your platform
 in the “Releases” section of the GitHub project [here](https://github.com/thoughtrealm/bumblebee/releases/latest).
 
 _**NOTE**: Be sure to validate the binary and/or archive with the hashes provided.  They can be found in the

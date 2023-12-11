@@ -29,42 +29,42 @@ To accomplish this, a profile contains two separate ***stores***.
     One store is referred to as the ***Keypair Store***.  This store contains your keypair identities that
     are referenced by a name, with the possible exception of the **default** identity.  It can store any
     number of identities.  During initialization, a **default** identity is created.  However, you may 
-    create an identity named "home", or "work", or whatever.<br><br>
+    create an identity named "home", or "work", or whatever.<br>
     
     Each of these identities consists of two 25519 key sets.  One is a curve25519 for encrypting data, while the
-    other is an ed25519 key set for signing data.<br><br>
+    other is an ed25519 key set for signing data.<br>
 
     Two additional system key sets are created for each profile named ***keystore_read*** and ***keystore_write***.
     These system keys are used for encrypting the ***User Store***.  They can also be used for encrypting personal
-    assets that are not intended for delivery to another user, such as encrypting files for backup, etc.<br><br>
+    assets that are not intended for delivery to another user, such as encrypting files for backup, etc.<br>
 
     The ***Key Pair Store*** is stored in your local config path.  It can be optionally encrypted with a
     symmetric key, which you would provide in order to decrypt the store's file stream.  If the store
     is encrypted with a symmetric key, it is requested during launch when running a Bumblebee command.  It
-    can also be provided using a local environment variable.<br><br>
+    can also be provided using a local environment variable.<br>
 
     This store contains all of your private keys. If this store is lost in some way, you will not be able to 
-    decrypt assets that have been encrypted with these keys.<br><br>
+    decrypt assets that have been encrypted with these keys.<br>
 
-    These identities are stored stored in a single file.<br><br>
+    These identities are stored in a single file.<br>
     
 2. **The Store of User Identities**<br>
     The other store is called the ***User Store***.  This stores the identities of other users that you
     share secrets with. The user is stored based on names, which can be handles, email addresses,
-    LDAP account names, etc.<br><br>
+    LDAP account names, etc.<br>
 
     Each user identity consists of two public keys.  One is the user's curve25519 cipher public key.  
     The other is the user's ed25519 signing public key.  These keys are used when creating bundles, as well
-    as when validating _bundle_ signatures.<br><br>
+    as when validating _bundle_ signatures.<br>
 
-    The User Store is stored in a single file.<br><br>
+    The User Store is stored in a single file.<br>
 
 The profile consists of these two store files, plus some metadata stored in YAML files.
 
 To back up these profiles, their stores and all their data, you only need to archive and/or copy the
 config path to some backup path or container.
 
-## Cryptographic code used and their origins
+## Cryptographic code used and the related origins
 1. Bumblebee is written in the **Go** language.  All functionality is contained in **Go** code.<br><br>
 
 2. The Asymmetric functionality is provided by the **NATS** **NKEYS** packages.<br><br>
@@ -89,7 +89,7 @@ config path to some backup path or container.
 ## Creating a Combined Bundle
 A combined bundle is where the bundle's header and payload (data) are emitted to the same stream.
 
-The following is general logic for creating a combined bundle:
+The following describes the logic for creating a combined bundle:
 1. Create a random symmetric key.
 2. Sign a random construction with the sender's private signing key.
 3. Store the symmetric key, signature stream and some related metadata in a bundle header.
@@ -100,7 +100,7 @@ The following is general logic for creating a combined bundle:
 XChacha20-poly1305 and an AD value.  Emit each encrypted chunk to the output stream in order.
 
 ## Opening a Combined Bundle
-The following is general logic for reading a combined bundle:
+The following describes the logic for reading a combined bundle:
 1. Extract the bundle header from the stream.
 2. Decrypt bundle header using the receiver's private key.
 3. Extract and validate that the signature stream in the header was signed by the expected sender.
@@ -119,7 +119,7 @@ When reading the data, read the header stream and process it as you would the co
 you have the key in-hand and have validated the header info, read and decrypt the separate payload stream. 
 
 ## Bundle stream diagram
-[This diagram](docs/StreamCompositionOfBundles.pdf) describes the general layout of the combined and split stream bundles. 
+[This diagram](docs/StreamCompositionOfBundles.pdf) describes the layout of the combined and split stream bundles. 
 
 ## Describing the Bundle With an Analogy of "**Two Stages of Locked Boxes**"
 To better understand the bundling process, as well as it's strengths and weaknesses of the bundles, we

@@ -65,26 +65,26 @@ To back up these profiles, their stores and all their data, you only need to arc
 config path to some backup path or container.
 
 ## Cryptographic code used and the related origins
-1. Bumblebee is written in the **Go** language.  All functionality is contained in **Go** code.<br><br>
+1. Bumblebee is written in the **Go** language.  All functionality is contained in **Go** code.
 
-2. The Asymmetric functionality is provided by the **NATS** **NKEYS** packages.<br><br>
+2. The Asymmetric functionality is provided by the **NATS** **NKEYS** packages.<br>
 
    **NATS** is an open source, cloud scale messaging server and related ecosystem.  The project is found at
-   https://nats.io/. <br><br>
+   https://nats.io/. <br>
 
    The **NKEYS** packages provide the distributed security mechanisms for **NATS**.  They are found at
-   https://github.com/nats-io/nkeys.  <br><br>
+   https://github.com/nats-io/nkeys.  <br>
 
    **NKEYS** provides functionality for ed25519 signing and verification. 
    **XKEYS** is a package within **NKEYS** that provides curve25519 encryption.
    These packages provide a _SALT/NaCL_ compatible library that wraps the corresponding **Go** implementations,
-   providing easier key handling formats and other helper logic.<br><br>
+   providing easier key handling formats and other helper logic.<br>
 
 3. The symmetric functionality utilizes the _XChacha20-poly1305_ cipher. Key strengthening utilizes
-   _Argon2_. All of these are provided by the **Go** crypto packages.<br><br>
+   _Argon2_. All of these are provided by the **Go** crypto packages.
 
 4. The random sequence generations are done using **Go**'s _crypto/rand_ package, which provides crypto strength
-   random functionality on all supported platforms.<br><br>
+   random functionality on all supported platforms.
 
 ## Creating a Combined Bundle
 A combined bundle is where the bundle's header and payload (data) are emitted to the same stream.
@@ -110,7 +110,7 @@ XChacha20-poly1305, using the AD value for data validation, and then write each 
 the output stream. 
 
 ## Minor Logic Differences for Split Stream Outputs
-The logic differences between combined and split stream support are very minor.
+The logic differences between combined and split stream file support are very minor.
 
 When creating the bundle, terminate the stream after writing out the header.  Initialize the data stream
 and emit the encrypted data to that stream.

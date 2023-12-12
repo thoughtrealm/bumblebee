@@ -36,5 +36,5 @@ Status  Command                           Notes
  [ X ]  Import                            Supports user exports only.  Will need keypair and profile when those are supported by export.
  [   ]  Backup
  [ X ]  -- Pipe support                   Completed for relevant commands
- 
+ [   ]  Refresh                           An ability to initialize new keypairs - how to re-key bundles and local-keys assets?
 ```

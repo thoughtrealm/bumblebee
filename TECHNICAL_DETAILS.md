@@ -255,7 +255,7 @@ advances), then using split streams will mitigate that concern to some degree.  
 most modern cryptographic systems will be rendered ineffective as well.
 
 The soon coming public reveal of post-quantum solutions will shed more light on this.  Once a post-quantum
-solution is accepted by the community, perhaps _Bumblebee_ would be updated to use those N.I.S.T.
+solution is accepted by the community, perhaps _Bumblebee_ would be updated to use those NIST
 recommended algorithms accordingly.
 
 ## A General Technical Description Of The **BUNDLE** Process

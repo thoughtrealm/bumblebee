@@ -141,7 +141,7 @@ You will find details of crypto and related tech in the [Technical Details](TECH
 
 You will find a some details of file construction and formats [here](docs/StreamCompositionOfBundles.pdf).
 
-A Threat Assessment document is not available yet.  We do intend to provide one.
+A Threat Model document is not available yet.  We do intend to provide one.
 
 ## License
 _BumbleBee_ is licensed under an MIT license.  For license details see [License](LICENSE).

@@ -13,7 +13,7 @@ paths are complete.
 
 ## What's left to do
 - Add more debug output
-- Provide Threat Model document
+- Provide Threat Assessment document
 - Consider key rotation of some type, an ability to change/update key sets and possibly re-key bundles.  
 This would also need to be considered for future server/service efforts.  Perhaps, just deprecate current
 keyset and create a new one.

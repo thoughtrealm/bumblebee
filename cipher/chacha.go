@@ -24,13 +24,31 @@ import (
 )
 
 /*
-	This implementation is based partly on a pattern demonstrated in the following article:
-		Author: Rahul Pandit
-		Link  : https://www.rahulpandit.com/post/file-encryption-using-xchaha20-poly1305-in-golang/
+	Regarding the Encrypt functionality and Chacha20-Poly1305's Associated Data and Nonce construction...
 
-	At the time of this implementation, Rahul's article granted license for usage in this quote in the article:
-		"I'm releasing this code into the public domain. You are free to use it however you want.
-		If you find a bug, please let me know. My email address is listed on the about page. Thank you!"
+	In our implementation, we follow recommendations from IETF RFC#7539, section 4,
+	at https://datatracker.ietf.org/doc/html/rfc7539#section-4,
+	which states...
+
+	   "The most important security consideration in implementing this
+	   document is the uniqueness of the nonce used in ChaCha20.  Counters
+	   and LFSRs are both acceptable ways of generating unique nonces, as is
+	   encrypting a counter using a 64-bit cipher such as DES.  Note that it
+	   is not acceptable to use a truncation of a counter encrypted with a
+	   128-bit or 256-bit cipher, because such a truncation may repeat after
+	   a short time.
+
+	   Consequences of repeating a nonce: If a nonce is repeated, then both
+	   the one-time Poly1305 key and the keystream are identical between the
+	   messages.  This reveals the XOR of the plaintexts, because the XOR of
+	   the plaintexts is equal to the XOR of the ciphertexts.
+
+	   The Poly1305 key MUST be unpredictable to an attacker.  Randomly
+	   generating the key would fulfill this requirement, except that
+	   Poly1305 is often used in communications protocols, so the receiver
+	   should know the key.  Pseudorandom number generation such as by
+	   encrypting a counter is acceptable.  Using ChaCha with a secret key
+	   and a nonce is also acceptable."
 */
 
 const (

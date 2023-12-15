@@ -139,9 +139,9 @@ below.  Any practically valid concerns that are reported will be addressed.
 
 You will find details of crypto and related tech in the [Technical Details](TECHNICAL_DETAILS.md) document.
 
-You will find a some details of file construction and formats [here](docs/StreamCompositionOfBundles.pdf).
+You will find some details of file construction and layouts [here](docs/StreamCompositionOfBundles.pdf).
 
-A Threat Model document is not available yet.  We do intend to provide one.
+A Threat Model document is currently in progress and will be provided soon.
 
 ## License
 _BumbleBee_ is licensed under an MIT license.  For license details see [License](LICENSE).

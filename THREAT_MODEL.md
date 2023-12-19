@@ -126,7 +126,7 @@ Each _profile_ stores identities and their related key data in two distinct iden
 a single file that is located in that profile's path.  These two files store all identities for that
 profile, both your personal local identities and remote user identities.  
 
-##### **4.a. Local Identities Store**
+#### **4.a. Local Identities Store**
 This store contains your local personal identities for that profile.  These contain the private keys that are
 necessary to decrypt _bundles_ sent to you, as well as sign _bundles_ that you send to other users.
 
@@ -142,7 +142,7 @@ _Bumblebee_ will obtain the key from the environment variable.
 If you forget this key or lose it, such as due to a drive or environment failure, you will not be
 able to access your local identities anymore.  You are advised to securely back up this key in some way.
 
-##### **4.b. User Identities Store**
+#### **4.b. User Identities Store**
 This store contains the identities of other users.  These identities contain the public keys necessary to
 encrypt _bundles_ you send to those users, as well as their public signing key so that you can verify
 that the sender of the _bundle_ is the expected user identity.

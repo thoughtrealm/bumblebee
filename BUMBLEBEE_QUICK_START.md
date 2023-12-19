@@ -36,9 +36,9 @@ when interacting with other users._
 
 ## Step 1. Installing _Bumblebee_
 
-### Option A: Download binary or archive from GitHub repository
-_Bumblebee_ is a single binary.  You can download the latest, pre-built binary or archive for your platform
-in the “Releases” section of the GitHub project [here](https://github.com/thoughtrealm/bumblebee/releases/latest).
+### Option A: Download the pre-built binary or archive from GitHub repository
+_Bumblebee_ is a single binary.  You can download the latest pre-built binary or archive for your platform
+in the ***Releases*** section of the GitHub project [here](https://github.com/thoughtrealm/bumblebee/releases/latest).
 
 _**NOTE**: Be sure to validate the binary and/or archive with the hashes provided.  They can be found in the
 release page description, as well as attached as a project artifact, or in the related description file
@@ -48,20 +48,30 @@ Simply download and place the binary in a common path in your OS.  You can place
 execute it directly from there, but that can result in command line constructions that are longer than
 necessary, depending on your OS. Therefore, it is recommended to place the binary in a common path.
 
-### Option B: Build and install using the Go compiler
-If you have the Go compiler installed, you can clone the repo, then run “make install” in the
-root path of the repo.
+### Option B: Build and/or install using the Go compiler and the **Make** utility
+If you have the Go compiler installed, you can clone the repo, then run **make installo** from the root path of
+the repo to build and install the _Bumblebee_ binary for the default platform.
 
-If you are on _Windows_ and do not have the make utility installed, you can run ***go install*** instead.
-That form of build should work fine, with the one exception that the output of the ***bee version***
-command will not be populated with build times.
+If you wish to just build the binary without installing it in a common path, then you can run **make** 
+to just build _Bumblebee_ for the default platform.
+
+### Option C: Build and/or install using the Go compiler **WITHOUT** using the **Make** utility
+If you are on _Windows_ and do not have the **make** utility installed, you can run ***go install*** instead.
+While that approach to building _Bumblebee_ will create a binary that works fine, **there are two issues**
+to be aware of when you build using **go build** or **go install**.  
+
+- One is that the created binary name will have the name ***bumblebee.exe*** instead of ***bee.exe***.  You can
+rename it to **bee** or **bee.exe** as needed, if you wish.  Or you can invoke it with the full name of
+**bumblebee** or **bumblebee.exe**.  
+
+- The other issue is that the output of the **bee version** command will not be populated with build times.
 
 ### Validate _Bumblebee_ is installed and working
 Once installed, you can verify it is running correctly by typing...
 
     bee
 
-That will output the root help info.  You can check the version by running...
+That will output the root help info.  You can also check the version by running...
 
     bee version
 
@@ -72,7 +82,7 @@ The first step is to initialize the _Bumblebee_ environment.  This process will 
 3. Create a default identity and related key sets
 4. Create additional elements in the profile that are required for sharing secrets.
 
-To do so, just run...
+To do so, run...
 
     bee init
 

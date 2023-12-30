@@ -5,20 +5,20 @@
 ## **I. Document Purpose**
 Like all security-related projects, the _Bumblebee_ project consists of a number of trade-offs,
 attempting to balance security objectives with practical software realities.  It is not perfect and 
-may find that it is more appropriate for some use-cases and usage scenarios than others.  
+you may find that it is more appropriate for some use-cases and usage scenarios than others.  
 
 The purpose of this document is to provide you with an overview of the security concerns relating to
 the _Bumblebee_ project.  This will include its components and technologies, strengths, recommended usage,
 areas of concerns and risks, as well as how to address them when it is possible to do.  
 
-The goal is for you or your agency to be sufficiently informed that you are able to determine if Bumblebee
+The goal is for you or your agency to be sufficiently informed so that you are able to determine if Bumblebee
 is an appropriate technology for your specific use case and environment.
 
 ## **II. Definitions**
-We will define a few terms here.
+The following are some terms we will define for the sake of document clarity.
 
 ### **A. Bumblebee**
-_Bumblebee_ will refer to both the project itself, as well as any related binaries or artifacts that
+_Bumblebee_ will refer to both the project itself, and any related binaries or artifacts that
 provide Bumblebee's functionality. For example "_Bumblebee_" the project, "CLI" the binary,
 and "_the Bumblebee CLI_" may be used interchangeably. When a distinction is required, it will be provided
 using an explicit form, such as _"the CLI"_.
@@ -147,13 +147,21 @@ This store contains the identities of other users.  These identities contain the
 encrypt _bundles_ you send to those users, as well as their public signing key so that you can verify
 that the sender of the _bundle_ is the expected user identity.
 
-This store file is always encrypted using the profile's system read and write identities.  Those identities
-are located in the _Local Identities Store_ described above in section **a**.
+This store file is always encrypted. It is saved as a user bundle.  However, the system read and write
+identities are used for the sender and receiver identities. Those identities are located in the
+_Local Identities Store_ described above in section **a**.
 
-If you choose to encrypt the _Local Identities Store_ with a user-supplied symmetric key, and then somehow
-lose or forget the key, then you will be unable to decrypt the _Local Identities Store_.  As a result, 
-you will also not be able to access this _User Identities Store_, since the system read and write identities
-are no longer available.
+As previously mentioned, if you choose to encrypt the _Local Identities Store_ with a user-supplied
+symmetric key, and then somehow lose or forget the key, not only will you be unable to decrypt the 
+_Local Identities Store_, but you will be unable to access the _User Identities Store_ as well. This is
+because the system read and write identities are no longer available, which are used to encrypt the
+_User Identities Store_.  In this sense, the optional user-supplied symmetric key used to encrypt
+the _Local Identities Store_ also protects the _User Identities Store_, since it protects access to
+the system read and write keys in the _Local Identities Store_.
+
+Similar to the _User Bundles_, the _User Identities Store_ is written out as a single bundle file and
+the same cryptographic techniques are used to encrypt it.  Those are ed25519 and curve25519 for signing and
+encryption.
 
 ## **IV. Bumblebee Assets**
 The following is a list of assets relating to the Bumblebee CLI environment.

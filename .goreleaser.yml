@@ -1,0 +1,32 @@
+builds:
+  - binary: bee
+    goos:
+      - darwin
+      - linu
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -mod=vendor
+release:
+  prerelease: auto
+
+universal_binaries:
+  - replace: true
+
+brews:
+  -
+    name: bumblebee
+    hompepage: https://github.com/thoughtrealm/bumblebee
+    tap:
+      owner: ThoughtRealm
+      name: homebrew-thoughtrealm-tap
+    commit_author:
+      name: hoby
+      email: hoby@thoughtrealm.com
+
+checksum:
+  name_template: 'checksums.txt'

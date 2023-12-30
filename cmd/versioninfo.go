@@ -27,7 +27,7 @@ var (
 	AppPatchVersion = "0"
 
 	// For any pre-release version, it would need to provide leading ".", like ".dev01"
-	AppPreReleaseVer  = "-alpha-2"
+	AppPreReleaseVer  = ""
 	AppVersion        = AppMajorVersion + "." + AppMinorVersion + "." + AppPatchVersion + AppPreReleaseVer
 	AppShortBuildTime = "[sbt]"
 	AppLongBuildTime  = "[lbt]"

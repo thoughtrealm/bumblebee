@@ -2,7 +2,7 @@ builds:
   - binary: bee
     goos:
       - darwin
-      - linu
+      - linux
       - windows
     goarch:
       - amd64

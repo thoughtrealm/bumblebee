@@ -22,7 +22,7 @@ brews:
   -
     name: bumblebee
     homepage: https://github.com/thoughtrealm/bumblebee
-    tap:
+    repository:
       owner: ThoughtRealm
       name: homebrew-thoughtrealm-tap
     commit_author:

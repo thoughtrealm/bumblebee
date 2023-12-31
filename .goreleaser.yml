@@ -1,5 +1,5 @@
 builds:
-  - binary: bee
+  - binary: bbee
     goos:
       - darwin
       - linux
@@ -15,18 +15,18 @@ release:
   prerelease: auto
 
 universal_binaries:
-  - replace: true
+  - replace: false
 
 brews:
   -
-    name: bumblebee
-    homepage: https://github.com/thoughtrealm/bumblebee
     repository:
-      owner: ThoughtRealm
-      name: homebrew-thoughtrealm-tap
+      owner: thoughtrealm
+      name: homebrew-thoughtrealm
     commit_author:
       name: hoby
       email: hoby@thoughtrealm.com
+    name: bumblebee
+    homepage: https://github.com/thoughtrealm/bumblebee
 
 checksum:
   name_template: 'checksums.txt'

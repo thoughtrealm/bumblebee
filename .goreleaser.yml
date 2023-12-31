@@ -21,7 +21,7 @@ brews:
   -
     repository:
       owner: thoughtrealm
-      name: homebrew-thoughtrealm
+      name: homebrew-solutions
     commit_author:
       name: hoby
       email: hoby@thoughtrealm.com

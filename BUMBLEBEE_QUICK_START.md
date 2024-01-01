@@ -36,7 +36,21 @@ when interacting with other users._
 
 ## Step 1. Installing _Bumblebee_
 
-### Option A: Download the pre-built binary or archive from GitHub repository
+### Option A: Install with Homebrew
+You can use the Homebrew package manager to install _Bumblebee_ on _Mac_ ARM64 and AMD64.  You can also
+use Homebrew on Intel based _Linux_ systems.  Currently, Homebrew does not support ARM-based _Linux_ systems.
+
+To install using Homebrew, use the following two steps:
+
+First create the tap...
+    
+    brew tap thoughtrealm/solutions
+
+Then install _Bumblebee_...
+
+    brew install bumblebee
+
+### Option B: Download the pre-built binary or archive from GitHub repository
 _Bumblebee_ is a single binary.  You can download the latest pre-built binary or archive for your platform
 in the ***Releases*** section of the GitHub project [here](https://github.com/thoughtrealm/bumblebee/releases/latest).
 
@@ -48,14 +62,14 @@ Simply download and place the binary in a common path in your OS.  You can place
 execute it directly from there, but that can result in command line constructions that are longer than
 necessary, depending on your OS. Therefore, it is recommended to place the binary in a common path.
 
-### Option B: Build and/or install using the Go compiler and the **Make** utility
+### Option C: Build and/or install using the Go compiler and the **Make** utility
 If you have the Go compiler installed, you can clone the repo, then run **make installo** from the root path of
 the repo to build and install the _Bumblebee_ binary for the default platform.
 
 If you wish to just build the binary without installing it in a common path, then you can run **make** 
 to just build _Bumblebee_ for the default platform.
 
-### Option C: Build and/or install using the Go compiler **WITHOUT** using the **Make** utility
+### Option D: Build and/or install using the Go compiler **WITHOUT** using the **Make** utility
 If you are on _Windows_ and do not have the **make** utility installed, you can run ***go install*** instead.
 While that approach to building _Bumblebee_ will create a binary that works fine, **there are two issues**
 to be aware of when you build using **go build** or **go install**.  
@@ -67,7 +81,7 @@ rename it to **bee** or **bee.exe** as needed, if you wish.  Or you can invoke i
 - The other issue is that the output of the **bumblebee version** command will not be populated with build times.
 
 ### Validate _Bumblebee_ is installed and working
-Once installed, you can verify it is running correctly by typing...
+Once installed, you can verify it is running correctly by running...
 
     bumblebee
 

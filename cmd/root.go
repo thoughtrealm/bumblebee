@@ -33,7 +33,7 @@ var sharedRootCommandVals = &rootCommandVals{}
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "bee",
+	Use:   "bumblebee",
 	Short: "Bumblebee - A utility for sharing secrets",
 	Long:  "Bumblebee - A utility for sharing secrets",
 	Run: func(cmd *cobra.Command, args []string) {

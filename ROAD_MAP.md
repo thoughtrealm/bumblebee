@@ -50,7 +50,7 @@ following functionality:
 mechanisms might be sufficient.  They could support fairly large user sets, but would
 incur relatively high latency on rights with large user sets.  
 - Allow optional support for TLS
-- Use a cipher exchange approach similar to the bee asymmetric+symmetric encoding format for
+- Use a cipher exchange approach similar to the bumblebee asymmetric+symmetric encoding format for
 when no TLS is configured.  This should be fine for any scenario, including public transports,
 but definitely should be fine for local or internal networks.
 - It would be managed by a user admin role.
@@ -91,5 +91,5 @@ be utilized, would be security.  Maybe, the CLI spawns a local web UI and commun
 web socket.  That approach should be considered along with native libs.
 
 ## Phase 5 - Mobile Support
-Phase 4 will provide the Bee feature set on mobile platforms.  The exact solution and
+Phase 4 will provide the Bumblebee feature set on mobile platforms.  The exact solution and
 requirements are TBD.

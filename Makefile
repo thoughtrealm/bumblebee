@@ -1,4 +1,4 @@
-BINARY_NAME=bee
+BINARY_NAME=bumblebee
 SHORT_DATE := $(shell date +%Y-%m-%d\ %H:%M:%S)
 LONG_DATE := $(shell date)
 FLAGS := -X 'github.com/thoughtrealm/bumblebee/cmd.AppShortBuildTime=${SHORT_DATE}' -X 'github.com/thoughtrealm/bumblebee/cmd.AppLongBuildTime=${LONG_DATE}'
@@ -11,7 +11,7 @@ build:
 install: build
 	@echo
 	@echo Installing Bumblebee to ${GOPATH}/bin...
-	@cp bee ${GOPATH}/bin
+	@cp ${BINARY_NAME} ${GOPATH}/bin
 
 mac-arm64:
 	@echo Building Mac ARM64 target...

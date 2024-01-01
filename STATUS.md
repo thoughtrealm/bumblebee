@@ -4,11 +4,11 @@ _Last updated Nov 3, 2023_
 Currently working on Phase 1.  See ROAD_MAP.md for details on phase descriptions.
 
 ## Current General Status
-- Bee is MVP functional.  All necessary CLI commands are complete.  All use cases for encrypt/decrypt 
+- Bumblebee is MVP functional.  All necessary CLI commands are complete.  All use cases for encrypt/decrypt 
 paths are complete.
 - All input and output code paths are supported.
 - All input and output encodings are working.
-- "bee read" functionality provided for pipe support and/or replacement on Windows
+- "bumblebee read" functionality provided for pipe support and/or replacement on Windows
 - Tested on Mac, Windows and Linux.
 
 ## What's left to do

@@ -1,5 +1,5 @@
 builds:
-  - binary: bbee
+  - binary: bumblebee
     goos:
       - darwin
       - linux

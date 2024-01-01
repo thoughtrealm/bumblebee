@@ -62,9 +62,9 @@ type BundleInfo struct {
 	FromName string
 	// SenderSig contains the RandomSignatureData struct data
 	SenderSig []byte
-	// HdrVer identifies the version of the bee functionality that built the hdr
+	// HdrVer identifies the version of the Bumblebee functionality that built the hdr
 	HdrVer string
-	// PayloadVer identifies the version of the bee functionality that builtthe payload
+	// PayloadVer identifies the version of the Bumblebee functionality that builtthe payload
 	PayloadVer string
 }
 

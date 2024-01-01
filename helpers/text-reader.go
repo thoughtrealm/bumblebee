@@ -32,7 +32,7 @@ var dataBlockMarkers = []string{
 
 // TODO: This scanner/parser is NOT the most efficient or highly performing code... maybe do something else in the future
 
-// TextScanner will scan text input and parse bee encrypted data.  It will provide a reader interface for that parsed data.
+// TextScanner will scan text input and parse bumblebee encrypted data.  It will provide a reader interface for that parsed data.
 //   - if no start/end tokens are encountered, it will assume the input is a single, combined data blob and serve accordingly from the read interface.
 //
 // - This is NOT intended to handle vary large datasets.

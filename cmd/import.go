@@ -68,7 +68,7 @@ func init() {
 If this is not provided and the input stream is password protected,
 then you will be prompted for it.  Please be aware that providing 
 passwords on the command line is not considered secure.
-But if you are piping input or using bee in a pipe/process flow, then you can
+But if you are piping input or using bumblebee in a pipe/process flow, then you can
 use this flag to provide passwords for input streams as needed.`)
 }
 

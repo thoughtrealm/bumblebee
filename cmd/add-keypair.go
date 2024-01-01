@@ -54,7 +54,7 @@ func addNewKeyPair(keypairName string) {
 
 	// This empty value for keypairName functionality was supported in the original implementation.
 	// However, now, the keypairName should never be an empty string due to the logic in the calling
-	// command.  Although, the user could use a construction like 'bee add keypair ""', or something
+	// command.  Although, the user could use a construction like 'bumblebee add keypair ""', or something
 	// else, that could result in an argument that is an empty string.
 	// So, for now, instead of throwing an error, we will leave this support here, in case we want to
 	// support this again in the future. Or, as a safeguard, if some other code should call this from

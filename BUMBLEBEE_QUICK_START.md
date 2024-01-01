@@ -64,16 +64,16 @@ to be aware of when you build using **go build** or **go install**.
 rename it to **bee** or **bee.exe** as needed, if you wish.  Or you can invoke it with the full name of
 **bumblebee** or **bumblebee.exe**.  
 
-- The other issue is that the output of the **bee version** command will not be populated with build times.
+- The other issue is that the output of the **bumblebee version** command will not be populated with build times.
 
 ### Validate _Bumblebee_ is installed and working
 Once installed, you can verify it is running correctly by typing...
 
-    bee
+    bumblebee
 
 That will output the root help info.  You can also check the version by running...
 
-    bee version
+    bumblebee version
 
 ## Step 2. Initialize the _Bumblebee_ Environment
 The first step is to initialize the _Bumblebee_ environment.  This process will do the following...
@@ -84,7 +84,7 @@ The first step is to initialize the _Bumblebee_ environment.  This process will 
 
 To do so, run...
 
-    bee init
+    bumblebee init
 
 You will be asked about a few options.
 
@@ -101,13 +101,13 @@ For any other questions, just press _return_ for each to accept the default opti
 
 Once the initialization is completed, you can view the default profile identities by running...
 
-    bee list keypairs
+    bumblebee list keypairs
 
 That will show you the public keys only for the default and system identities.
 
 You can use the ***--show-all*** flag to see the seed and private keys as well...
 
-    bee list keypairs --show-all
+    bumblebee list keypairs --show-all
 
 Be aware that you must **NEVER** share your private keys with anyone.  By default, they are
 not printed out when listing the key pairs unless you provide the ***--show-all*** flag.
@@ -124,7 +124,7 @@ identity.  The curve25519 support is found in the **XKEYS** package of the **NKE
 
 You can see the users that have been set up by running...
 
-    bee list users
+    bumblebee list users
 
 Of course, at this point, you will find that your user list is empty.  You must add or import
 users to your local profile(s).
@@ -138,7 +138,7 @@ To do so, run the following command.  For the argument _<username>_, use the nam
 in **Step 2**, when you initialized the environment.  And when prompted for a password, just
 press _return_ to not provide a password.
 
-    bee export user <username> --from-keypair --output-file export-user.txt
+    bumblebee export user <username> --from-keypair --output-file export-user.txt
 
 The export will have generated the file export-user.txt.  If you dump the file contents on _Mac_ or _Linux_
 by using...
@@ -177,7 +177,7 @@ open and import the info.
 Another option is to run the following command, which will output the data to the console instead
 of a file.
 
-    bee export user <username> --from-keypair --output-target console
+    bumblebee export user <username> --from-keypair --output-target console
 
 With the output in the console, you can copy it and paste it to the other user.  Perhaps paste it in
 their Slack channel.  If you provide it through some public transport outside your trusted network, you will
@@ -199,11 +199,11 @@ exported name.  This will be your own name.  However, this is not an issue, beca
 identity is stored as a key pair set in the key pair store.  This is not a conflict with the same name
 in the user store.
 
-	bee import --input-file export-user.txt
+	bumblebee import --input-file export-user.txt
 
 Now, list your users again.
 
-	bee list users
+	bumblebee list users
 
 You should see your name in the list of users.  You can now share secrets with that user.
 
@@ -217,7 +217,7 @@ To encrypt a file for another user, we use the **bundle** command.  We supply th
 to tell _BumbleBee_ who the receiving user is so that it knows which keys to use for encrypting the
 **bundle** header.
 
-	bee bundle --input-file testfile.txt --to <username>
+	bumblebee bundle --input-file testfile.txt --to <username>
 
 _**Note**: When you omit the “**--from**” flag, _BumbleBee_ will use the default key pair identity as the
 sender.  It is possible to have multiple local identities with _BumbleBee_, as well as multiple profiles,
@@ -253,7 +253,7 @@ To demonstrate this, rename the current **testfile.txt** to something like **tes
 
 Now, use the ***open*** command to decrypt the bundle.
 
-	bee open --input-file testfile.bcomb –-from <username>
+	bumblebee open --input-file testfile.bcomb –-from <username>
 
 _**Note**: Similar to the bundle command, in this case, if you omit the “**--to**” flag, _BumbleBee_
 will assume that the default key pair identity should be used as the receiving key pair. The receiver's private
@@ -293,7 +293,7 @@ don’t mean to do so._
 
 To bundle a secret directly from the console, use the **--input-source console** flag value.
 
-	bee bundle --input-source console --to <username>
+	bumblebee bundle --input-source console --to <username>
 
 Bumblebee will provide a prompt for entering text, which you enter one line at a time.  You complete 
 entering text by just pressing **return** on an empty line.
@@ -307,7 +307,7 @@ Similar to the output you saw with the **export** comand, you should see an outp
 though with different hex values than this specific example.
 
 <pre>
-~/bee-demo : <b>bee bundle --input-source console --to Bob</b>
+~/bee-demo : <b>bumblebee bundle --input-source console --to Bob</b>
 Enter one or more lines for the bundle input. Enter an empty line to stop. CTRL-C to cancel.
  : User root
  : password foo
@@ -352,7 +352,7 @@ as shown in this example...
 
 However, on _Debian_ with xclip installed, you can use...
 
-    xclip -o | bee open --output-target console --from <username>
+    xclip -o | bumblebee open --output-target console --from <username>
 
 Otherwise, for any other operating system or configuration, you would use whatever command formation is
 needed, such as using **pbpaste** on _Mac_.  _Linux_ has a number of options for clipboard access,
@@ -361,7 +361,7 @@ so refer to whatever your distro or environment needs.
 Regardless, you should see something like the following output...
 
 <pre>
-~/bee-demo : <b>xclip -o | bee open --output-target console --from Bob</b>
+~/bee-demo : <b>xclip -o | bumblebee open --output-target console --from Bob</b>
 Starting OPEN request...
 
 Decoded data...
@@ -397,7 +397,7 @@ system key pairs.
 When you run the command...
 
 <pre>
-bee list keypairs
+bumblebee list keypairs
 </pre>
 
 You will see the system key pairs output with the names **keystore_read** and **keystore_write**.  These
@@ -410,7 +410,7 @@ construction.
 Similar to the prior example where we used the console for input, here's an example using **--local-keys** ...
 
 <pre>
-~/bee-demo : <b>bee bundle --input-source console --output-file test --local-keys</b>
+~/bee-demo : <b>bumblebee bundle --input-source console --output-file test --local-keys</b>
 Enter one or more lines for the bundle input. Enter an empty line to stop. CTRL-C to cancel.
  : User root
  : password fbar2
@@ -466,13 +466,13 @@ we'll assume that these would be in addition to the default identity created whe
 To do so, you would add a new identity like this...
 
 <pre>
-bee add keypair home
+bumblebee add keypair home
 </pre>
 
 And...
 
 <pre>
-bee add keypair work
+bumblebee add keypair work
 </pre>
 
 _BumbleBee_ will create the new identities and output the key pair info.
@@ -480,7 +480,7 @@ _BumbleBee_ will create the new identities and output the key pair info.
 Now, when you run the command...
 
 <pre>
-bee list keypairs
+bumblebee list keypairs
 </pre>
 
 You will see the new **home** and **work** key pairs.
@@ -488,27 +488,27 @@ You will see the new **home** and **work** key pairs.
 You can export these identities to other users like this...
 
 <pre>
-bee export user home --from-keypair --output-file export-home.txt
+bumblebee export user home --from-keypair --output-file export-home.txt
 </pre>
 
 To reference this identity when creating a bundle, specify it with the **--from** flag...
 
 <pre>
-bee bundle --input-source console --output-file test --from home --to Bob
+bumblebee bundle --input-source console --output-file test --from home --to Bob
 </pre>
 
 The other user would import your identity like it would for any user, and then reference it when opening
 the bundle, like this...
 
 <pre>
-bee open --input-file test.bcomb --output-target console --from home
+bumblebee open --input-file test.bcomb --output-target console --from home
 </pre>
 
 Of course, the other use may use a different name for your identity than just "**home**",
 such as "BobHome" or something like that.
 
 Using this process, you can add as many identities in a single profile as you wish.  You can
-remove them using **bee remove keypair**.
+remove them using **bumblebee remove keypair**.
 
 ## Using multiple profiles
 _BumbleBee_ allows you to create any number of profiles.  Each profile provides its own security
@@ -523,13 +523,13 @@ To do so, create a new profile with the following command.  This is the same pro
 when creating the new profile's environment.
 
 <pre>
-bee add profile home
+bumblebee add profile home
 </pre>
 
 Now, you can list your profiles using this command...
 
 <pre>
-bee list profiles
+bumblebee list profiles
 </pre>
 
 You will see your **default** profile, as well as the new **home** profile.
@@ -541,23 +541,23 @@ You can use the profile in a couple of ways.
 One way is by setting the active profile using the **--use** flag as follows...
 
 <pre>
-bee use home
+bumblebee use home
 </pre>
 
 You can then use this command to see the currently active profile...
 
 <pre>
-bee show profile
+bumblebee show profile
 </pre>
 
 When you run a _BumbleBee_ command, it uses the active profile.  So, if you change the active
-profile to **home** using the ***bee use <profile>*** command, then any commands you run will
+profile to **home** using the ***bumblebee use <profile>*** command, then any commands you run will
 do so in the **home** profile.
 
 For example, any users or identities you add will be added to that profile.  If you then switch to another
 profile, those users and identities will not be there.
 
-To change the active profile back to the _default_ profile, simply run ***bee use default***.
+To change the active profile back to the _default_ profile, simply run ***bumblebee use default***.
 
 ### Referencing a different profile with the **--use** flag
 Another way to reference a different profile is to provide the ***--use <profile>*** flag with any command.
@@ -567,14 +567,14 @@ profile.
 
 For example...
 
-    bee bundle --input-source console --output-file test --to <username> --use home
+    bumblebee bundle --input-source console --output-file test --to <username> --use home
 
 That command will bundle the file using the default identity in the **home** profile, as well as the user
 info in the **home** profile's user store.
 
 You can also see the profile config for any profile like this...
 
-    bee show profile [profilename]
+    bumblebee show profile [profilename]
 
 Notice that command does not require the **--use** flag.  If **profilename** is provided, then 
 that profile is shown.  If not provided, then it will show the active profile info.

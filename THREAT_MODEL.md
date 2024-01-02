@@ -34,6 +34,11 @@ to know.  For example, your username and password for you online banking account
 that you definitely do not want other entities to know your banking credentials.  In that sense, any info
 you want to keep private is a secret, wither it is credentials, documents, etc.
 
+### **D. Bundles**
+Bundles are data streams that store your secrets.  Generally these are files, but may be console outputs,
+clipboard data, or pipe data.  Bundles refer specifically to the data sequence formats and constructions
+that _Bumblebee_ uses to move secrets around.
+
 ## **III. A Description Of The Bumblebee Project**
 
 ### **A. Overview of the CLI**
@@ -167,26 +172,136 @@ encryption.
 The following is a list of assets relating to the Bumblebee CLI environment.
 
 ### **A. Local Profiles**
+Local Profiles are local file paths that store keys and related data, which are used for sending and 
+receiving bundles with other Bumblebee users. There may be more than one profile per local installation.
 
 #### **1. Keypair Identity Store**
+The KeyPair Identity Store is a single file that contains the private keys used for reading bundles you
+receive, as well as signing bundles you send.  A pair of two key sets, one for encryption and one for
+signing, defines an identity.  Identities are referenced by a username.  You may have any number of
+identities.  The private key components of identities are only stored locally in the KeyPair Identity Store.
+The public components are shared with other users.
+
+This store is optionally encrypted with a user supplied symmetric key.  When encrypted, it is always
+encrypted as a complete stream on every write.
 
 #### **2. User Identity Store**
+The User Identity Store is a single file that contains the public key components for other _Bumblebee_ users. 
+Each user identity contains two public keys, one for encrypting secrets and another for validating the
+signature provided with the secret.
 
-### **B. Short Lived Bundles**
+This file is always encrypted as a complete stream on every write using system keys stored in the
+Keypair Identity Store.
+
+### **B. Short-Lived Bundles**
+Short-lived bundles define a lifecycle where a message is intended to be shared and then discarded.
+Meaning, you create a bundle for another user, provide that bundle to the user in some way,
+then the user consumes the bundle.  After it is consumed, it is discarded. 
+
+The primary distinction here is that this bundle has no expectation of long-term scope.  Usually,
+these are secrets with a transient life scope.  It might be credentials for a system.  While the credentials
+themselves may have a longer life, you do not expect the bundle with that data to be relevant for very long.
 
 ### **C. Long Lived Bundles**
+Long-lived bundles have an indefinite life expectancy.  They may need to be maintained in an accessible
+form for a long time, from days to months to years.  Generally, these would be bundles you create for
+your own purposes, specifically use cases involving storage or backup in some form.
 
-## **V. Potential Threats And Concerns**
+_Bumblebee_ provides explicit functionality for this use case in the form of the ***--local-keys***
+flag.
 
-### **A. Compromise of private keys**
+The scope of a long-lived bundle infers that the key sets must endure in accessible state for the duration
+of the bundle.
 
-### **B. Compromise of public keys**
+## **V. Potential Threats**
+The following is a list of potential threats that an attacker would target within the _Bumblebee_
+ecosystem.  These are not necessarily unique to _Bumblebee_ and are generally known threats for any
+hybrid encryption system similar in nature to _Bumblebee_.
 
-### **C. Brute force attack of the key for the symmetric payload**
+### **A. Attacker gains access to local system and user account data**
+These class of threats concern outcomes when an attacker is able to gain access to the local system
+that _Bumblebee_ is installed on.  Specifically, they must either gain access to the system's user account
+that has installed _Bumblebee_, or they must gain root or system admin level access.  This will differ per
+operating system.
 
-### **D. Loss of keys**
+If this access is achieved, the follow potential threats are concerns.
+
+### **1. Access to account stores**
+The attacker has access to the _Bumblebee_ profile paths that contain both the local private identities,
+and the shared public keys of other users.  If they obtain the private keys of the local identities,
+they can potentially use them to executive successful MitM (Man in the Middle) attacks on messages that are
+sent to the compromised user's account.
+
+In addition, they could use combinations of those keys offline to send messages to those public key entities
+that appear to come from you.
+
+Of course, they could just use _Bumblebee_ to send messages to others on your behalf, without having to
+directly access the key data itself.
+
+They could also copy the entire _Bumblebee_ profile path and move it to their own system, basically
+reproducing your environment.  This would allow them to send and recieve messages on your behalf.
+
+### **2. Change of identity keys**
+With this access, they could change keys at will.  The resulting gains from this would be varied in nature.
+
+### **3. Loss of key data**
+They could destroy key data, which would prevent you from decrypting messages you receive, or prevent you
+from sending messages to other entities as you did before.
+
+You would also lose the ability to decrypt any long-lived bundles.  Those bundles would be rendered
+unreadable.
+
+### **B. Attacker destroys or damages local system**
+If an attacker gains physical access to your system, they can physically destroy it. In addition,
+if they gain remote control in some way, depending on the operating system and other factors, they could
+potentially destroy the operating environment in such a way it is no longer usable.  
+
+Both of those scenarios, whether physical or remote, can result in rendering your system unusable.  In such
+an event, the following potential threats are concerns.
+
+### **1. Loss of keys**
+All of your identities contained on the system be lost.  You would no longer be able to decrypt
+messages you receive from other users.  You would also not be able to send messages to the other users.
+
+Any long-lived bundles would no longer be readable.
+
+### **2. Loss of bundles**
+The loss of the system would mean any bundles contained in the system would be lost.  This would include
+long-lived bundles.  Any bundles not decrypted and accessed previously would be lost.
+
+### **C. Brute force attack of bundle payload's symmetric key**
+Each bundle consists of a header and a payload.  The payload is encrypted with a random, complex
+symmetric key.  That key is further strengthened with Argon2 and then stored in the header using
+asymmetric encryption.  
+
+While retrieving the payload key from the header is assumed not possible without the receiver's private
+key, an attacker could executive a brute-force attack on the symmetric key of the payload itself.
+If such an attack were successful, it would grant the attacker full access to the original payload
+data.
 
 ## **VI. Potential Vulnerabilities**
+
+### **A. PKI private/public relationship deconstruction**
+
+### **B. Compromise of _Bumblebee_'s code**
+
+### **B. Compromise of third party libraries**
+
+### **1. Go crypto library**
+This includes random functionality and crypto implementations
+
+### **2. NKEYS Libraries**
+
+### **C. Compromise of system's random sources**
+These are the system entropy sources utilized by the crypto code
+
+### **D. Compromise of local identities**
+Discuss MITM issues if private keys are compromised.
+
+### **E. Compromise of user identities**
+Ability to fake signature verification identity
+
+### **F. System crash resulting in loss of local and remote identities**
 
 ## **VII. Risk Assessments**
 

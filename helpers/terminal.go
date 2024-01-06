@@ -192,7 +192,7 @@ func GetPasswordWithConfirm(label string) ([]byte, error) {
 // AcquireKey will check to see if the key env var is available.  If not,
 // it will prompt the user for the key
 func AcquireKey(ProfileName string) ([]byte, error) {
-	keyVal := os.Getenv(GetEnvSafeName(ProfileName) + "_KEY")
+	keyVal := os.Getenv("BB_" + strings.ToUpper(GetEnvSafeName(ProfileName)) + "_KEY")
 	if keyVal != "" {
 		return []byte(keyVal), nil
 	}

@@ -1,7 +1,5 @@
 # A Threat Model Of The Bumblebee Project
 
-## ***!!!NOTE: This document is still in process and is NOT complete at this time!!!***
-
 ## **I. Document Purpose**
 Like all security-related projects, the _Bumblebee_ project consists of a number of trade-offs,
 attempting to balance security objectives with practical software realities.  It is not perfect and 
@@ -29,10 +27,10 @@ may be invoked directly from a terminal interface, or it may be called from shel
 binaries.
 
 ### **C. Secret**
-In the context of _Bumblebee_, a "_secret_" is simply something you do not want other people or systems
-to know.  For example, your username and password for you online banking account is a ***secret***, in
+In the context of _Bumblebee_, a "**Secret**" is simply something you do not want other people or systems
+to know.  For example, your username and password for your online banking account is a ***secret***, in
 that you definitely do not want other entities to know your banking credentials.  In that sense, any info
-you want to keep private is a secret, wither it is credentials, documents, etc.
+you want to keep private is a secret, whether it is credentials, documents, etc.
 
 ### **D. Bundles**
 Bundles are data streams that store your secrets.  Generally these are files, but may be console outputs,
@@ -41,7 +39,7 @@ that _Bumblebee_ uses to move secrets around.
 
 ## **III. A Description Of The Bumblebee Project**
 
-### **A. Overview of the CLI**
+### **A. Overview Of The CLI**
 Currently, _Bumblebee_ is implemented as a CLI (Command Line Interface).  Other implementations
 may be available in the future and will be addressed in changes to this document as needed.
 
@@ -74,7 +72,7 @@ Given your particular environment, you may have additional options.  For example
 provide commands and utilities that can re-direct inputs and outputs in various ways that _Windows_ or
 _Mac_ may not provide, or may provide that functionality using different mechanisms.
 
-### **B. Cryptographic Techniques and Algorithms Employed**
+### **B. Cryptographic Techniques And Algorithms Employed**
 _Bumblebee_ utilizes a number of cryptographic techniques and algorithms to achieve its goals. How
 these are used, as well as the source code origins used in _Bumblebee_, is described in detail
 in the [Technical Details Document](TECHNICAL_DETAILS.md).  For this document, we will only mention the specific 
@@ -218,7 +216,7 @@ The following is a list of potential threats that an attacker would target withi
 ecosystem.  These are not necessarily unique to _Bumblebee_ and are generally known threats for any
 hybrid encryption system similar in nature to _Bumblebee_.
 
-### **A. Attacker gains access to local system and user account data**
+### **A. Attacker Gains Access To Local System And User Account Data**
 These class of threats concern outcomes when an attacker is able to gain access to the local system
 that _Bumblebee_ is installed on.  Specifically, they must either gain access to the system's user account
 that has installed _Bumblebee_, or they must gain root or system admin level access.  This will differ per
@@ -226,32 +224,36 @@ operating system.
 
 If this access is achieved, the follow potential threats are concerns.
 
-### **1. Access to account stores**
-The attacker has access to the _Bumblebee_ profile paths that contain both the local private identities,
+### **1. Access To Account Stores**
+The attacker would have access to the _Bumblebee_ profile paths that contain both the local private identities,
 and the shared public keys of other users.  If they obtain the private keys of the local identities,
-they can potentially use them to executive successful MitM (Man in the Middle) attacks on messages that are
-sent to the compromised user's account.
+they could read bundles sent to your local identities by other users. 
 
-In addition, they could use combinations of those keys offline to send messages to those public key entities
-that appear to come from you.
+_Bumblebee_ currently does not provide any network
+functionality or transfer protocols, so in this case, there are no practical MITM (Man In The Middle) concerns.
+Even if an attacker were able to gain access to bundles that you have sent to another user, they cannot read
+them or reconstruct them into a workable bundle, without the other user's private keys.
 
-Of course, they could just use _Bumblebee_ to send messages to others on your behalf, without having to
-directly access the key data itself.
+However, they could use your identities to sign and send bundles to other users that would appear to come
+from you.
+
+Of course, they could just use your local _Bumblebee_ environment to send messages to others on your behalf,
+or read bundles send to you, without having to directly access the key data itself.
 
 They could also copy the entire _Bumblebee_ profile path and move it to their own system, basically
-reproducing your environment.  This would allow them to send and recieve messages on your behalf.
+reproducing your environment.  This would allow them to send and receive messages on your behalf.
 
-### **2. Change of identity keys**
+### **2. Change Of Identity Keys**
 With this access, they could change keys at will.  The resulting gains from this would be varied in nature.
 
-### **3. Loss of key data**
-They could destroy key data, which would prevent you from decrypting messages you receive, or prevent you
-from sending messages to other entities as you did before.
+### **3. Loss Of Identity Data**
+They could destroy identity data, which would prevent you from decrypting messages you receive, and/or
+prevent you from sending messages to other entities as you did before.
 
 You would also lose the ability to decrypt any long-lived bundles.  Those bundles would be rendered
 unreadable.
 
-### **B. Attacker destroys or damages local system**
+### **B. Attacker Destroys Or Damages Local System**
 If an attacker gains physical access to your system, they can physically destroy it. In addition,
 if they gain remote control in some way, depending on the operating system and other factors, they could
 potentially destroy the operating environment in such a way it is no longer usable.  
@@ -259,17 +261,17 @@ potentially destroy the operating environment in such a way it is no longer usab
 Both of those scenarios, whether physical or remote, can result in rendering your system unusable.  In such
 an event, the following potential threats are concerns.
 
-### **1. Loss of keys**
-All of your identities contained on the system be lost.  You would no longer be able to decrypt
+### **1. Loss Of Identities**
+All of your identities contained on the system could be lost. You would no longer be able to decrypt
 messages you receive from other users.  You would also not be able to send messages to the other users.
 
 Any long-lived bundles would no longer be readable.
 
-### **2. Loss of bundles**
+### **2. Loss Of Bundles**
 The loss of the system would mean any bundles contained in the system would be lost.  This would include
 long-lived bundles.  Any bundles not decrypted and accessed previously would be lost.
 
-### **C. Brute force attack of bundle payload's symmetric key**
+### **C. Brute Force Attack Of Bundle Payload's Symmetric Key**
 Each bundle consists of a header and a payload.  The payload is encrypted with a random, complex
 symmetric key.  That key is further strengthened with Argon2 and then stored in the header using
 asymmetric encryption.  
@@ -280,31 +282,262 @@ If such an attack were successful, it would grant the attacker full access to th
 data.
 
 ## **VI. Potential Vulnerabilities**
+The following is a list of known vulnerabilities that may apply to _Bumblebee_.  These vulnerabilities
+are not necessarily unique to _Bumblebee_, but may be generally applicable to any crypto system that is
+similar in nature to _Bumblebee_.
 
-### **A. PKI private/public relationship deconstruction**
+### **A. PKI Private/Public Relationship Deconstruction**
+_Bumblebee_ uses ***hybrid crypography***, which means it employs both **asymmetric** and **symmetric**
+cryptographic technology to achieve its goals.  The **asymmetric** functionality relies on theories
+of key pair systems, where two keys are used to accomplish encrypting and decrypting of data.
 
-### **B. Compromise of _Bumblebee_'s code**
+In this system, one key is designated as the **private key** and one is designated as the **public key**.
+You provide your **public key** to other users so that they can exchange messages and data with you.
+However, you are required to keep your **private key** secret. As long as you do not provide your
+**private key** to someone else, and your system is not compromised or accessed to obtain the 
+**private key** in some way, then your key is secure.
 
-### **B. Compromise of third party libraries**
+Your public and private keys are linked mathematically in a way that makes it very difficult to derive one
+from the other, and is considered not possible with known, current technologies.  Generally,
+most of the modern cryptography industry designs systems around this assumption.  
 
-### **1. Go crypto library**
-This includes random functionality and crypto implementations
+However, if this assumption that keys are not derivable from each other were to be found to be not true,
+this would break _Bumblebee_'s entire security context.  Currently, this is not believed to be the case.
+However, two scenarios are of possible concern here.
+
+The first scenario is if a very sophisticated technology group were to somehow invent a way to derive a
+private key from the public key.  This is not believed to be possible, but if it were to occur, then this would
+result in a vulnerability within the asymmetric functionality.
+
+The second involves theoretical abilities of emerging quantum computing technology.  It is possible that
+once quantum computing attains some level of ability, it could potentially bypass or defeat specific key pair
+associations.  This is a theoretical concern, but one that is being addressed by NIST in its 
+"post-quantum security" efforts.
+
+It is not known when quantum computing will obtain such an ability, if ever.
+
+### **B. Compromise Of Future Security**
+_Bumblebee_ does not use a networking solution to connect to other users.  All processes occur "offline",
+in that you perform them on your local system without the need for a network interaction with the user
+to whom you are sending messages and data.
+
+As a result, unlike TLS and similar network protocols, there is no way to establish ephemeral session keys
+and states.  This means there is also no mechanism for achieving future secrecy, such as DH exchanges.
+
+So, while the symmetric keys for each bundle are random and are not susceptible to future secrecy concerns,
+the asymmetric functionality is susceptible to this.
+
+This means that if an attacker is able to obtain your private key, they will be able to read bundles
+sent to you.  It also means that they will be able to read any bundle that has ever been sent to you,
+or any bundle that will be sent to you in the future, with that same key set.  This is known as
+"future secrecy."
+
+If any entity has collected all of the bundles sent to you, then they somehow obtained your private key,
+they could conceivably read all those bundles.
+
+Future technologies in _Bumblebee_ may address this for certain use cases.
+
+### **C. Compromise Of _Bumblebee_'s Code**
+_Bumblebee_ is an open source project.  The source code is publicly available.  It would be very difficult
+for a programmer with ill intent to inject a compromise into the source code of the project.  There are
+controls in place to prevent this.  However, it is worth mentioning in this list, regardless of how
+improbable such an event would be.  Nevertheless, if somehow someone was able to do so, this could result
+in a number of unpredictable compromises.
+
+### **D. Compromise Of Dependent Libraries**
+_Bumblebee_ uses a number of other open source projects to accomplish its goals.  Similar to the
+unlikely event with _Bumblebee_'s code, it would be rather difficult to inject a compromise into those
+libraries as well, for the same reasons.
+
+Regardless, we will call out those critical dependencies here.
+
+### **1. Go Crypto Library**
+_Bumblebee_ is highly dependent on the Go language crypto libraries.  This includes both for the use of
+its cryptographic algorithms, and for cross-platform random number input sources.
+
+This library is predominantly controlled by staff at Google, which would make it difficult to compromise
+without community awareness.
 
 ### **2. NKEYS Libraries**
+Synadia maintains the NKEYS packages.  _Bumblebee_ uses the NKEYS library for asymmetric functionality
+and some helper functionality.  Synadia uses these packages for their own security requirements in the
+NATS ecosystem.  Any compromise here would be known before it is used in the _Bumblebee_ environment.
 
-### **C. Compromise of system's random sources**
-These are the system entropy sources utilized by the crypto code
+### **C. Compromise Of System's Random Sources**
+The Go crypto packages provide functionality for accessing cryptographically strong random input
+sources. These system mechanisms differ per operating system.
 
-### **D. Compromise of local identities**
-Discuss MITM issues if private keys are compromised.
+If the system's random input source itself is somehow compromised, this could result in weakening certain
+cryptographic functions that _Bumblebee_ uses.
 
-### **E. Compromise of user identities**
-Ability to fake signature verification identity
+### **D. Compromise Of Local Environment And User Account**
+If an attacker gains access to your local environment, and specifically, the assets of a user account with 
+_Bumblebee_ installed, they could access your _Bumblebee_ profile data. This would include your private
+identities and the public identities of other _Bumblebee_ users that you interact with.  
 
-### **F. System crash resulting in loss of local and remote identities**
+Access to your private identities would allow them to read bundles sent to you, as well as sign data on your
+behalf that is sent to other users.  Additionally, access to the public identities of other users would
+allow them to send data to those users on your behalf.
+
+### **E. System Crash Resulting In Loss Of Local And Remote Identities**
+If your system crashes, you may lose some or all of your _Bumblebee_ environment.  This would include
+some or all of your profile data.  If you lose your local identities, you would no longer be able to read
+bundles sent to you.  If you had long-lived bundles, such as for backup purposes, you would not be able
+to read those anymore.
 
 ## **VII. Risk Assessments**
+The following are general assessments of impact severity for various compromise scenarios.  Given that
+the core purpose of _Bumblebee_ is to exchange data securely, risks are generally related to a scenario
+where that data is compromised.  All other risks are operational level, including the impact of time to
+restore processes or mitigate the results of some attack.
 
-## **VIII. Mitigations**
+### **A. Compromise of Private Keys: Low to High**
+If someone was able to access your private keys, this would allow them to read bundles sent to you.
+The impact would be commensurate to the nature of the data that is sent to you.  This could vary from a low to
+high level of impact, depending on the sensitivity and classification of that data.
 
-## **IX. Incident Response Plans**
+### **B. Loss of Local Environment Due To Crash Or Attack: Low To High**
+If your local system crashes or is destroyed for some reason, it would be very frustrating.  However,
+this will not result in a compromise.  To the contrary, it would likely result in loss of data.
+
+If the lost data was of nominal value, the severity would be low.
+
+If the lost data represented mission-critical artifacts, the impact would be commensurate to the value
+of that data.
+
+## **VIII. Mitigating and Preventing The Potential of Threats and Vulnerabilities**
+Because _Bumblebee_ does not currently use any networking functionality, the majority of prevention
+and mitigation really boils down to I.T. best practices and awareness.  Most of the following
+recommendations will fall into those categories.
+
+### **A. Preventing Loss Of Environment Using Standard Recoverability Practices**
+_Bumblebee_ intentionally uses simple file constructions for your profile data.  All profiles and
+identity-related data is stored under a single path in your user's configuration path.  This will differ
+per operating system.
+
+The config path for each operating system should be:
+
+    Linux: $HOME/.config/bumblebee
+    
+    MacOS: $HOME/Library/Application Support/bumblebee
+    
+    Windows: C:\Users\%USER%\AppData\Roaming\bumblebee
+
+All _Bumblebee_ profile configs are located in that path.  Each profile will be stored in a separate
+directory under that root path.  
+
+You can back up all of your identity and config by backing up that directory. If you should have a system
+failure or someone should destroy your _Bumblebee_ enviornment, you can simply restore it to a set point
+in time.  Be sure to back up your data after any major change to your local _Bumblebee_ environment,
+such as after creating a new identity.
+
+Before backing up the directory, you can optionally apply a symmetric password to each profile using the
+command **bumblebee set password keypairs**. This is to prevent access to your identities if your backup
+is compromised. If you should need to restore it later for use, then you can remove the password at that
+time.  There is a _Bumblebee_ future feature planned to provide functionality for encrypted backups of your
+config and environment data.
+
+If you have any long-lived bundles, you will want to back those up as well, in case of a loss of system
+data or functionality.
+
+### **B. Implement System Access Policies And Configurations**
+For any system with _Bumblebee_ installed on it, you will want to implement access control measures.
+This means your system should require a full login that at least includes a username and password to
+access your system. You can also implement multifactor auth for stronger security requirements if you need.
+
+### **C. Apply Profile Passwords To Encrypt Your Local Identities**
+If your environment is high risk for access, or you are bundling very sensitive data, you can apply
+a password to your profiles using the command **bumblebee set password keypairs**.  This will encrypt
+your local identity store with strong symmetric encryption using the supplied password.  This also
+restricts access to the user identity store, because the system keys are now encrypted in the
+local identity store.
+
+When you apply a password in this way, _Bumblebee_ will require you to enter the password every time you run
+_Bumblebee_.  There is an option to supply the password via an environment variable, if that is a secure
+and viable option for you.
+
+Be sure to securely store that password in some way, unless you don't need to for some reason.
+If you forget it or lose it in some way, you will no longer be able to access that profile and your
+identities that are located there.
+
+There may be a future feature added to _Bumblebee_ to support hardware-based keys, such as dongles or
+storing keys on removable drives.
+
+## **IX. Incident Response Plan**
+The primary concern relating to a _Bumblebee_ compromise is if an attacker gains access to your
+private identities stored in your local environment, or just access to the _Bumblebee_ environment
+itself.
+
+In either case, depending on the specifics of the compromise, this allows an attacker to read bundles
+sent to you, as well as send bundles to other users on your behalf.
+
+If a compromise of this nature occurs, you may respond differently depending on whether you had used
+a password to encrypt your local identities.  If you were not using a password, you definitely want to
+process with the recommended steps below.
+
+If you were using a password, then you want to consider how strong the password is and how sensitive
+are the secrets you are protecting?
+
+If your password was weak, something like "abc123" or your birthday, then proceed with the steps listed.
+
+If your password was strong, then you may want to consider the fact that the only known successful
+attack on your identity data is going to be a brute-force attack on the symmetric key.
+
+If the data you are protecting is not critically sensitive, and you were using a strong password for
+your local identity store, you MIGHT consider this a low level compromise and do nothin other than
+**Step A** below.
+
+However, it is recommended that you want to err on the side of considering this a high-level compromise
+and execute the steps listed below.
+
+Whatever you decide, you always want to follow **Step A** at least.
+
+### **A. Resolve The Vulnerability Used To Compromise Your Environment**
+The first step is to fix whatever vulnerability was used to gain access to your _Bumblebee_ environment.
+Before you go through the effort to reset your identities, you want to make sure that they can't easily
+compromise your environment again.
+
+### **B. Recover Any Secrets Captured In Long-lived Bundles**
+If you have stored secrets in long-lived bundles, you will want to retrieve those secrets BEFORE you
+deprecate the compromised identities.  For example, if you use the **--local-keys** option to encrypt
+files for backups, you will want to recover the data stored in those files.  If you have a strong access
+control to your files, you MIGHT consider keeping a backup of the compromised keys for future access.
+However, now that those identities are compromised, it's best to stop using those identities going forward.
+
+### **C. Deprecate The Compromised Identities By Initializing New Identities**
+To deprecate the current identities and generate new ones, you would follow the same steps as when
+you first setup _Bumblebee_.  This would be to run the **bumblebee init** command.
+
+Since you already have profiles created, _Bumblebee_ will ask you if you wish to remove them.  Select
+_YES_ and _Bumblebee_ will remove all current profiles and create a new, clean environment.
+
+Just like when you first setup _Bumblebee_, you will now have an environment with just a single
+profile named **default**.  Completely new keys are generated in the new environment and are safe to
+use.
+
+At this point, you will need to import other users as you did before.
+
+If you have more than a default profile, you will need to re-create those now, which will also
+be generated with new identities.
+
+### **D. Inform Other Users About Your Compromise And Provide Them With Your New Public Keys**
+You will want to let any associated users know that your identity has been deleted and re-created.
+They should no longer use your prior public keys.
+
+There are several ways to do this, but the easiest for them is to just delete the current reference to
+your public account and re-import your data.
+
+They can remove your current user info with this command...
+
+    bumblebee remove user <username>
+
+Then, you will provide them with an export of any new identities you created for them to use.  This is
+the command for exporting your private identity...
+
+    bumblebee export user [name] --from-keypair
+
+Then they will import your data with this command...
+
+    bumblebee import --input-file [filename]
+
+At this point, the other users can safely send and receive bundles with you again.

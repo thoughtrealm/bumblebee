@@ -1,9 +1,9 @@
 # A Threat Model Of The Bumblebee Project
 
 ## **I. Document Purpose**
-Like all security-related projects, the _Bumblebee_ project consists of a number of trade-offs,
-attempting to balance security objectives with practical software realities.  It is not perfect and 
-you may find that it is more appropriate for some use-cases and usage scenarios than others.  
+Like all security-related solutions, the _Bumblebee_ project consists of a number of trade-offs,
+attempting to balance security objectives with practical software realities.  In light of these trade-offs, 
+you may find that _Bumblebee_ is more appropriate for some use-cases and usage scenarios than others.  
 
 The purpose of this document is to provide you with an overview of the security concerns relating to
 the _Bumblebee_ project.  This will include its components and technologies, strengths, recommended usage,

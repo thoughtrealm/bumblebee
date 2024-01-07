@@ -53,6 +53,9 @@ Refer to the [Quick Start Guide](BUMBLEBEE_QUICK_START.md) for how to install.
 - The [Technical Details](TECHNICAL_DETAILS.md) document provides a detailed description of the 
 crypto implementation logic, the specific crypto algorithms used, and their corresponding code sources.
 
+- A Threat Model document can be found [here](THREAT_MODEL.md), which describes threats, vulns,
+  mitigations and a response plan.
+
 - There is a brief [YouTube Overview Presentation](https://youtu.be/d8Ay6VDspAk) that discusses the general goals and status of
 the _Bumblebee_ project.
 

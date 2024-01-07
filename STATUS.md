@@ -27,7 +27,9 @@ patterns or byte values relating to location biases
 - Scan code for missing wipes where sensitive values are handled... should be covered, but maybe double/triple check
 - Currently, Bee only supports a single file or text input.  Probably, it should support encrypting whole directories.
 Or maybe just multiple secrets per bundle in some form. Due to certain complexities, 
-that may be in a follow-on version.  
+that may be in a follow-on version.
+- Error outputs need to be cleaned up.  Currently, most errors are wrapped on returns and do not
+print out very well.  They should be easier to read.
 
 ## Known issues
 Issues with "make" utility on Windows. Possible workarounds...

@@ -509,7 +509,7 @@ To deprecate the current identities and generate new ones, you would follow the 
 you first setup _Bumblebee_.  This would be to run the **bumblebee init** command.
 
 Since you already have profiles created, _Bumblebee_ will ask you if you wish to remove them.  Select
-_YES_ and _Bumblebee_ will remove all current profiles and create a new, clean environment.
+_Y_ for yes and _Bumblebee_ will remove all current profiles and create a new, clean environment.
 
 Just like when you first setup _Bumblebee_, you will now have an environment with just a single
 profile named **default**.  Completely new keys are generated in the new environment and are safe to

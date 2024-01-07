@@ -67,7 +67,7 @@ func TestNKeysCipher_SuccessOnNormalOperation(t *testing.T) {
 	assert.Equal(t, secretBytes, decryptWriteBuffer.Bytes())
 }
 
-func TestNKeysCipher_FailOnRogueSender(t *testing.T) {
+func TestNKeysCipher_FailOnDecryptWithAttackerSenderPublicKey(t *testing.T) {
 	receiverKP, err := nkeys.CreateCurveKeys()
 	assert.Nil(t, err)
 	assert.NotNil(t, receiverKP)
@@ -121,9 +121,68 @@ func TestNKeysCipher_FailOnRogueSender(t *testing.T) {
 	decryptReadBuffer := bytes.NewBuffer(encryptWriteBuffer.Bytes())
 	decryptWriteBuffer := bytes.NewBuffer(nil)
 	_, err = nkeysDecrypter.Decrypt(decryptReadBuffer, decryptWriteBuffer)
+	assert.NotNil(t, err)
+
+	assert.NotEqual(t, secretBytes, decryptWriteBuffer.Bytes())
+}
+
+func TestNKeysCipher_FailOnDecryptWithIncorrectSenderPublicKey(t *testing.T) {
+	receiverKP, err := nkeys.CreateCurveKeys()
+	assert.Nil(t, err)
+	assert.NotNil(t, receiverKP)
+
+	receiverSeed, err := receiverKP.Seed()
+	assert.Nil(t, err)
+	assert.NotNil(t, receiverSeed)
+
+	receiverPubKey, err := receiverKP.PublicKey()
+	assert.Nil(t, err)
+	assert.NotEmpty(t, receiverPubKey)
+
+	senderGoodKP, err := nkeys.CreateCurveKeys()
+	assert.Nil(t, err)
+	assert.NotNil(t, senderGoodKP)
+
+	senderGoodSeed, err := senderGoodKP.Seed()
+	assert.Nil(t, err)
+	assert.NotNil(t, senderGoodSeed)
+
+	senderGoodPubKey, err := senderGoodKP.PublicKey()
+	assert.Nil(t, err)
+	assert.NotEmpty(t, senderGoodPubKey)
+
+	senderEvilKP, err := nkeys.CreateCurveKeys()
+	assert.Nil(t, err)
+	assert.NotNil(t, senderEvilKP)
+
+	senderEvilSeed, err := senderEvilKP.Seed()
+	assert.Nil(t, err)
+	assert.NotNil(t, senderEvilSeed)
+
+	senderEvilPubKey, err := senderEvilKP.PublicKey()
+	assert.Nil(t, err)
+	assert.NotEmpty(t, senderEvilPubKey)
+
+	nkeysGoodEncrypter, err := NewNKeysCipherEncrypter(receiverPubKey, senderGoodSeed)
+	assert.Nil(t, err)
+	assert.NotNil(t, nkeysGoodEncrypter)
+
+	nkeysDecrypter, err := NewNKeysCipherDecrypter(receiverSeed, senderEvilPubKey)
+	assert.Nil(t, err)
+	assert.NotNil(t, nkeysDecrypter)
+
+	secretBytes := werner_bytes
+	encryptReadBuffer := bytes.NewBuffer(secretBytes)
+	encryptWriteBuffer := bytes.NewBuffer(nil)
+	_, err = nkeysGoodEncrypter.Encrypt(encryptReadBuffer, encryptWriteBuffer)
 	assert.Nil(t, err)
 
-	assert.Equal(t, secretBytes, decryptWriteBuffer.Bytes())
+	decryptReadBuffer := bytes.NewBuffer(encryptWriteBuffer.Bytes())
+	decryptWriteBuffer := bytes.NewBuffer(nil)
+	_, err = nkeysDecrypter.Decrypt(decryptReadBuffer, decryptWriteBuffer)
+	assert.NotNil(t, err)
+
+	assert.NotEqual(t, secretBytes, decryptWriteBuffer.Bytes())
 }
 
 func TestSigningSuccess(t *testing.T) {

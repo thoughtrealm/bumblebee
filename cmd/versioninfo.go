@@ -24,7 +24,7 @@ var (
 	AppName         = "Bumblebee - A utility for sharing secrets"
 	AppMajorVersion = "0"
 	AppMinorVersion = "1"
-	AppPatchVersion = "0"
+	AppPatchVersion = "1"
 
 	// For any pre-release version, it would need to provide leading ".", like ".dev01"
 	AppPreReleaseVer  = ""

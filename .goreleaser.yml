@@ -13,8 +13,7 @@ builds:
       - -mod=vendor
 
     ldflags:
-      - -s -w -X github.com/thoughtrealm/bumblebee/cmd.AppVersion={{.Version}} -X github.com/thoughtrealm/bumblebee/cmd.AppBuiltBy=goreleaser -X github.com/thoughtrealm/bumblebee/cmd.AppCommit={{.Commit}} -X github.com/thoughtrealm/bumblebee/cmd.AppDateTime={{.Date}}
-      - ./usemsan=-msan
+      - -s -w -X cmd.AppVersion={{.Version}} -X cmd.AppBuiltBy=goreleaser -X cmd.AppCommit={{.Commit}} -X cmd.AppDateTime={{.Date}}
 
 release:
   prerelease: auto

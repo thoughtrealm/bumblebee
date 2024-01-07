@@ -11,6 +11,11 @@ builds:
       - CGO_ENABLED=0
     flags:
       - -mod=vendor
+
+    ldflags:
+      - -s -w -X github.com/thoughtrealm/bumblebee/cmd.AppVersion={{.Version}} -X github.com/thoughtrealm/bumblebee/cmd.AppBuiltBy=goreleaser -X github.com/thoughtrealm/bumblebee/cmd.AppCommit={{.Commit}}-X github.com/thoughtrealm/bumblebee/cmd.AppDateTime={{.Date}}
+      - ./usemsan=-msan
+
 release:
   prerelease: auto
 

@@ -1,7 +1,7 @@
 BINARY_NAME=bumblebee
-SHORT_DATE := $(shell date +%Y-%m-%d\ %H:%M:%S)
-LONG_DATE := $(shell date)
-FLAGS := -X 'github.com/thoughtrealm/bumblebee/cmd.AppShortBuildTime=${SHORT_DATE}' -X 'github.com/thoughtrealm/bumblebee/cmd.AppLongBuildTime=${LONG_DATE}'
+APP_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+APP_COMMIT := $(shell git rev-parse HEAD)
+FLAGS := -X 'github.com/thoughtrealm/bumblebee/cmd.AppBuiltBy=make util' -X 'github.com/thoughtrealm/bumblebee/cmd.AppCommit=${APP_COMMIT}' -X 'github.com/thoughtrealm/bumblebee/cmd.AppDateTime=${APP_DATE}'
 .DEFAULT_GOAL := build
 
 build:

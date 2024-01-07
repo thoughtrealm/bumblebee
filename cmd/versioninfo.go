@@ -21,27 +21,23 @@ import (
 // relevant values are inserted.
 
 var (
-	AppName         = "Bumblebee - A utility for sharing secrets"
-	AppMajorVersion = "0"
-	AppMinorVersion = "1"
-	AppPatchVersion = "1"
-
-	// For any pre-release version, it would need to provide leading ".", like ".dev01"
-	AppPreReleaseVer  = ""
-	AppVersion        = AppMajorVersion + "." + AppMinorVersion + "." + AppPatchVersion + AppPreReleaseVer
-	AppShortBuildTime = "[sbt]"
-	AppLongBuildTime  = "[lbt]"
-	AppProject        = "GITHUB https://github.com/thoughtrealm/bumblebee"
-	AppLicense        = "MIT License https://github.com/thoughtrealm/bumblebee/blob/main/LICENSE"
+	AppName     = "Bumblebee - A utility for sharing secrets"
+	AppVersion  = "0.1.1" // overwritten during builds by goreleaser
+	AppDateTime = "[datetime]"
+	AppCommit   = "[commit]"
+	AppBuiltBy  = "[builtby]"
+	AppProject  = "GITHUB https://github.com/thoughtrealm/bumblebee"
+	AppLicense  = "MIT License https://github.com/thoughtrealm/bumblebee/blob/main/LICENSE"
 )
 
 func printVersionInfo(inPromptMode bool) {
 	fmt.Println("")
 	fmt.Printf("%s\n\n", AppName)
-	fmt.Printf("Version          : %s\n", AppVersion)
-	fmt.Printf("Build Time[short]: %s\n", AppShortBuildTime)
-	fmt.Printf("Build Time[long] : %s\n", AppLongBuildTime)
-	fmt.Printf("Project          : %s\n", AppProject)
-	fmt.Printf("License          : %s\n", AppLicense)
+	fmt.Printf("Version      : %s\n", AppVersion)
+	fmt.Printf("Build Date   : %s\n", AppDateTime)
+	fmt.Printf("Build Commit : %s\n", AppCommit)
+	fmt.Printf("Built By     : %s\n", AppBuiltBy)
+	fmt.Printf("Project      : %s\n", AppProject)
+	fmt.Printf("License      : %s\n", AppLicense)
 	fmt.Println("")
 }

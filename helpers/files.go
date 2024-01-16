@@ -82,7 +82,23 @@ func DirExists(dirPath string) bool {
 	return true
 }
 
-func FileExistsInfo(filePath string) (found, isDir bool) {
+func IncludeTrailingPathSeparator(aPath string) string {
+	if strings.HasSuffix(aPath, string(filepath.Separator)) {
+		return aPath
+	}
+
+	return aPath + string(filepath.Separator)
+}
+
+func RemoveTrailingPathSeparator(aPath string) string {
+	if !strings.HasSuffix(aPath, string(filepath.Separator)) {
+		return aPath
+	}
+
+	return aPath[:len(aPath)-1]
+}
+
+func PathExistsInfo(filePath string) (found, isDir bool) {
 	info, err := os.Stat(filePath)
 	if err != nil {
 		return false, false

@@ -465,7 +465,7 @@ func validateOutputPath() error {
 	}
 
 	// a path is defined, let's validate that it does exist, and it is a path
-	exists, isDir := helpers.FileExistsInfo(localBundleCommandVals.outputPath)
+	exists, isDir := helpers.PathExistsInfo(localBundleCommandVals.outputPath)
 	if !exists {
 		return fmt.Errorf("provided output path does not exist: %s", localBundleCommandVals.outputPath)
 	}

@@ -192,7 +192,7 @@ func (cfw *CipherWriter) WriteToSplitStreamsFromReader(r io.Reader, wHdr io.Writ
 
 func (cfw *CipherWriter) WriteBundleHeader(writer io.Writer) (int, error) {
 	var err error
-	cfw.SymmetricCipher, err = beecipher.NewSymmetricCipher(cfw.OutputBundleInfo.SymmetricKey, CHUNK_SIZE)
+	cfw.SymmetricCipher, err = beecipher.NewSymmetricCipher(cfw.OutputBundleInfo.SymmetricKey, DEFAULT_CHUNK_SIZE)
 	if err != nil {
 		return 0, fmt.Errorf("failed generating symmetric sc: %s", err)
 	}

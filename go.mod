@@ -17,6 +17,7 @@ go 1.20
 
 require (
 	github.com/kirsle/configdir v0.0.0-20170128060238-e45d2f54772f
+	github.com/klauspost/compress v1.17.4
 	github.com/nats-io/nkeys v0.4.6
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.6.1

@@ -20,9 +20,9 @@ import (
 )
 
 const (
-	BundleHeaderVersion = "1"
-	BundleDataVersion   = "1"
-	CHUNK_SIZE          = 32000
+	BundleHeaderVersion = "2"
+	BundleDataVersion   = "2"
+	DEFAULT_CHUNK_SIZE  = 64000
 )
 
 type BundleInputSource int

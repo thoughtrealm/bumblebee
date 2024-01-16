@@ -167,7 +167,7 @@ func (cfr *CipherReader) readBundleHeaderFrom(r io.Reader) (*BundleInfo, error) 
 }
 
 func (cfr *CipherReader) readBundleDataTo(bundleInfo *BundleInfo, r io.Reader, w io.Writer) (int, error) {
-	sc, err := cipher.NewSymmetricCipherFromSalt(bundleInfo.SymmetricKey, bundleInfo.Salt, CHUNK_SIZE)
+	sc, err := cipher.NewSymmetricCipherFromSalt(bundleInfo.SymmetricKey, bundleInfo.Salt, DEFAULT_CHUNK_SIZE)
 	if err != nil {
 		return 0, fmt.Errorf("failed creating symmetric cipher: %w", err)
 	}

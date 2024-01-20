@@ -27,7 +27,7 @@ type ItemNode struct {
 	DirID         int
 	ItemID        int
 	Name          string
-	NodeTime      time.Time
+	NodeTime      string
 	OriginalSize  int64
 	PermBits      uint16
 	PropsIncluded bool
@@ -73,7 +73,7 @@ type DirNode struct {
 	DirID         int
 	Name          string
 	Path          string
-	NodeTime      time.Time
+	NodeTime      string
 	PermBits      uint16
 	PropsIncluded bool
 }
@@ -108,7 +108,7 @@ type Tree interface {
 	GetItemNodes() []*ItemNode
 	ListDirs(caseInsensitive bool) []string
 	ScanPath(rootPath string) error
-	Stats() (dirCount, itemCount int)
+	Stats() (dirCount, itemCount int, totalBytesOfItems int64)
 	ToBytes() ([]byte, error)
 }
 
@@ -129,8 +129,8 @@ type DirectoryTree struct {
 
 	// IncludeItemDetails will populate the ItemNode's detail fields.  When the data is extracted,
 	// Bumblebee will attempt to apply the detail values to the created file.
-	// When IncludeItemDetails is not set, only the ID, NodeID and Name are set.  All other values are
-	// left as default values when creating the item during extraction.
+	// When IncludeItemDetails is not set, only the ID, NodeID, Name and OriginalSize are set.  All other
+	// values are left as default values when creating the item during extraction.
 	IncludeItemDetails bool
 
 	// DirectorySearchPattern will be used to determine the directories to include when scanning the root path.
@@ -269,9 +269,14 @@ func (dt *DirectoryTree) doScanPath(fullPath string) (itemsAdded bool, err error
 		DirID:         dt.GetNextDirID(),
 		Name:          "",
 		Path:          relativePath,
-		NodeTime:      time.Time{},
+		NodeTime:      info.ModTime().UTC().Format(time.RFC3339),
 		PermBits:      uint16(uint32(info.Mode()) & uint32(0x1FF)),
 		PropsIncluded: false,
+	}
+
+	if relativePath == "" {
+		// This is the root path, set to path separator for easier extraction patterns
+		thisDirNode.Path = "/"
 	}
 
 	itemsHaveBeenAdded := false
@@ -335,20 +340,20 @@ func (dt *DirectoryTree) addDirNode(aDirNode *DirNode) {
 }
 
 func (dt *DirectoryTree) addItemNodeFromDirEntry(dirNodeID int, entry os.DirEntry) error {
+	fileInfo, err := entry.Info()
+	if err != nil {
+		return fmt.Errorf("failed attempting to retrieve info on DirEntry: %w", err)
+	}
+
 	thisItemNode := &ItemNode{
-		DirID:  dirNodeID,
-		ItemID: dt.GetNextItemID(),
-		Name:   entry.Name(),
+		DirID:        dirNodeID,
+		ItemID:       dt.GetNextItemID(),
+		Name:         entry.Name(),
+		OriginalSize: fileInfo.Size(),
 	}
 
 	if dt.IncludeItemDetails {
-		fileInfo, err := entry.Info()
-		if err != nil {
-			return fmt.Errorf("failed attempting to retrieve info on DirEntry: %w", err)
-		}
-
-		thisItemNode.NodeTime = time.Time{}
-		thisItemNode.OriginalSize = fileInfo.Size()
+		thisItemNode.NodeTime = fileInfo.ModTime().UTC().Format(time.RFC3339)
 		thisItemNode.PermBits = uint16(uint32(fileInfo.Mode()) & uint32(0x1FF))
 		thisItemNode.PropsIncluded = true
 	}
@@ -482,9 +487,10 @@ func (dt *DirectoryTree) ListDirs(caseInsensitive bool) []string {
 }
 
 type TreeStream struct {
-	IsCompressed bool
-	TreeVersion  int
-	TreeBytes    []byte
+	IsCompressed       bool
+	IncludeItemDetails bool
+	TreeVersion        int
+	TreeBytes          []byte
 }
 
 func (dt *DirectoryTree) ToBytes() ([]byte, error) {
@@ -499,9 +505,10 @@ func (dt *DirectoryTree) ToBytes() ([]byte, error) {
 	}
 
 	treeStream := &TreeStream{
-		IsCompressed: false,
-		TreeVersion:  1,
-		TreeBytes:    dataBytes,
+		IsCompressed:       false,
+		IncludeItemDetails: dt.IncludeItemDetails,
+		TreeVersion:        1,
+		TreeBytes:          dataBytes,
 	}
 
 	treeStreamBytes, err := msgpack.Marshal(treeStream)
@@ -520,6 +527,8 @@ func (dt *DirectoryTree) FromBytes(treeStreamBytes []byte) error {
 	if err != nil {
 		return fmt.Errorf("failed unmarshaling treeStreamBytes: %w", err)
 	}
+
+	dt.IncludeItemDetails = treeStream.IncludeItemDetails
 
 	if len(treeStream.TreeBytes) == 0 {
 		return fmt.Errorf("provided tree stream contains no tree data")
@@ -550,6 +559,10 @@ func (dt *DirectoryTree) GetItemNodes() []*ItemNode {
 	return slices.Clone(dt.ItemNodes)
 }
 
-func (dt *DirectoryTree) Stats() (dirCount, itemCount int) {
-	return len(dt.DirNodes), len(dt.ItemNodes)
+func (dt *DirectoryTree) Stats() (dirCount, itemCount int, totalBytesOfItems int64) {
+	for _, itemNode := range dt.ItemNodes {
+		totalBytesOfItems += itemNode.OriginalSize
+	}
+
+	return len(dt.DirNodes), len(dt.ItemNodes), totalBytesOfItems
 }

@@ -17,7 +17,7 @@ func TestNewDirectoryTree(t *testing.T) {
 
 	assert.NotNil(t, dt)
 
-	dirCount, itemCount := dt.Stats()
+	dirCount, itemCount, _ := dt.Stats()
 	assert.Equal(t, 0, dirCount)
 	assert.Equal(t, 0, itemCount)
 
@@ -30,7 +30,7 @@ func TestNewDirectoryTreeFromPathWithEmptyPaths(t *testing.T) {
 	assert.NotNil(t, dt)
 	assert.Nil(t, err)
 
-	dirCount, itemCount := dt.Stats()
+	dirCount, itemCount, _ := dt.Stats()
 	assert.Equal(t, 7, dirCount)
 	assert.Equal(t, 3, itemCount)
 
@@ -43,7 +43,7 @@ func TestNewDirectoryTreeFromPathNoEmptyPaths(t *testing.T) {
 	assert.NotNil(t, dt)
 	assert.Nil(t, err)
 
-	dirCount, itemCount := dt.Stats()
+	dirCount, itemCount, _ := dt.Stats()
 	assert.Equal(t, 6, dirCount)
 	assert.Equal(t, 3, itemCount)
 
@@ -58,7 +58,7 @@ func TestNewDirectoryTreeFromPathIncludedDirOnly(t *testing.T) {
 	assert.NotNil(t, dt)
 	assert.Nil(t, err)
 
-	dirCount, itemCount := dt.Stats()
+	dirCount, itemCount, _ := dt.Stats()
 	assert.Equal(t, 3, dirCount)
 	assert.Equal(t, 1, itemCount)
 
@@ -73,7 +73,7 @@ func TestNewDirectoryTreeFromPathWithPathExcludesAndNoEmptyPaths(t *testing.T) {
 	assert.NotNil(t, dt)
 	assert.Nil(t, err)
 
-	dirCount, itemCount := dt.Stats()
+	dirCount, itemCount, _ := dt.Stats()
 	assert.Equal(t, 2, dirCount)
 	assert.Equal(t, 1, itemCount)
 
@@ -90,7 +90,7 @@ func TestNewDirectoryTreeFromPathWithPathIncludesAndExcludesAndEmptyPaths(t *tes
 	assert.NotNil(t, dt)
 	assert.Nil(t, err)
 
-	dirCount, itemCount := dt.Stats()
+	dirCount, itemCount, _ := dt.Stats()
 	assert.Equal(t, 3, dirCount)
 	assert.Equal(t, 1, itemCount)
 
@@ -104,7 +104,7 @@ func TestDirectoryTree_ListDirs(t *testing.T) {
 
 	dirs := dt.ListDirs(true)
 	assert.Equal(t, []string{
-		"",
+		"/",
 		"/dir1",
 		"/dir1/dir1-2",
 		"/dir1/dironly",
@@ -115,7 +115,7 @@ func TestDirectoryTree_ListDirs(t *testing.T) {
 
 	dirs = dt.ListDirs(false)
 	assert.Equal(t, []string{
-		"",
+		"/",
 		"/Dir2",
 		"/Dir2/empty-dir",
 		"/dir1",
@@ -126,17 +126,29 @@ func TestDirectoryTree_ListDirs(t *testing.T) {
 }
 
 func TestDirectoryTree_ToAndFromBytes(t *testing.T) {
-	dtSourceTree, err := NewDirectoryTreeFromPath(TREE_TEST_PATH, WithEmptyPaths())
+	dtSourceTree, err := NewDirectoryTreeFromPath(TREE_TEST_PATH, WithEmptyPaths(), WithItemDetails())
 	assert.NotNil(t, dtSourceTree)
 	assert.Nil(t, err)
+
+	dirCount, itemCount, totalBytes := dtSourceTree.Stats()
+	t.Logf("dirCount  : %d", dirCount)
+	t.Logf("itemCount : %d", itemCount)
+	t.Logf("totalBytes: %d", totalBytes)
 
 	toBytes, err := dtSourceTree.ToBytes()
 	assert.NotNil(t, toBytes)
 	assert.Nil(t, err)
 
-	dtFromTree := NewDirectoryTree()
+	t.Logf("len(toBytes): %d", len(toBytes))
+	dtFromTree := NewDirectoryTree(WithEmptyPaths())
 	err = dtFromTree.FromBytes(toBytes)
 	assert.Nil(t, err)
+
+	// Get the concrete type so we can tell if the props on the directory are the same as the source tree
+	dtFromTreeConcrete, isValid := dtFromTree.(*DirectoryTree)
+	assert.True(t, isValid)
+	assert.IsType(t, dtFromTreeConcrete, &DirectoryTree{})
+	assert.True(t, dtFromTreeConcrete.IncludeItemDetails)
 
 	sourceDirNodes := dtSourceTree.GetDirNodes()
 	fromDirNodes := dtFromTree.GetDirNodes()

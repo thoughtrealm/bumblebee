@@ -14,7 +14,6 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/thoughtrealm/bumblebee/bootstrap"
@@ -101,7 +100,7 @@ func GetRootCmd() *cobra.Command {
 func startBootStrap(loadKeystore, loadKeypairStore bool) error {
 	err := bootstrap.Run(loadKeystore, loadKeypairStore)
 	if err != nil {
-		fmt.Printf("Error loading bee: unable to load stores: %s\n", errors.Unwrap(err))
+		fmt.Printf("Error loading bee: unable to load stores: %s\n", err)
 		return err
 	}
 

@@ -16,16 +16,16 @@ import (
 		- use zstandard/zstd for compression
 */
 
-type BundleCompressor interface{}
+type Compressor interface{}
 
-type Compressor struct {
+type BeeCompressor struct {
 	compressor *zstd.Encoder
 }
 
-func NewCompressor() (BundleCompressor, error) {
+func NewCompressor() (Compressor, error) {
 	// var err error
 
-	comp := &Compressor{}
+	comp := &BeeCompressor{}
 	return comp, nil
 	/*
 		comp.compressor, err = zstd.NewWriter(nil)

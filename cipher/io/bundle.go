@@ -43,6 +43,7 @@ func BundleInputSourceToText(bis BundleInputSource) string {
 	}
 }
 
+// Todo: Inject a randomizer stage into the output/intput streams.  Store the initialization/key in the bundle.
 type BundleInfo struct {
 	// SymmetricKey is a random value used to encrypt the payload using Chacha20/Poly1305
 	SymmetricKey []byte

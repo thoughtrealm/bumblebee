@@ -1,6 +1,7 @@
 package streams
 
 import (
+	"errors"
 	"fmt"
 	"github.com/thoughtrealm/bumblebee/helpers"
 	"github.com/vmihailenco/msgpack/v5"
@@ -240,7 +241,15 @@ func (dt *DirectoryTree) ScanPath(rootPath string) error {
 	dt.RootPath = pathToScan
 
 	_, err := dt.doScanPath(pathToScan)
-	return err
+	if err != nil {
+		return err
+	}
+
+	if len(dt.ItemNodes) == 0 {
+		return errors.New("no items found")
+	}
+
+	return nil
 }
 
 func (dt *DirectoryTree) doScanPath(fullPath string) (itemsAdded bool, err error) {

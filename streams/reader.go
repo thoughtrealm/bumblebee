@@ -1,9 +1,21 @@
 package streams
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
+	"time"
 )
+
+// Todo: This read pattern is really inefficient.  The temp cache write ahead approach will work, but
+// way over complicates the requisite functionality for stream writing. It requires too much state
+// management to track the oputput states between requested Read() calls.
+// A much better approach would be to make this a WriteTo() pattern, passing in some target writer,
+// perhaps the cipher writer. In that pattern, the stream writing functionality could be reduced to
+// a simple set of nested for loops that emit the output to the target writer.
 
 type StreamReader interface {
 	io.Reader
@@ -11,41 +23,141 @@ type StreamReader interface {
 	StartStream() (io.Reader, error)
 }
 
-const streamReaderBlockSize = 64000
+// StreamBlockType indicates the type or function of data being written to a section of the stream
+type StreamBlockType uint8
 
-type streamReaderState int
+// StreamBlockType constants DO NOT use iota, because these are written to a persistent file
+// stream.  We do not want possible future changes to break our ability to read a previously
+// written file stream.
 
 const (
-	streamReaderStateNone streamReaderState = iota
-	streamReaderStateReady
-	streamReaderStateToBytes
-	streamReaderStateItems
+	StreamBlockTypeTreeData   StreamBlockType = 1
+	StreamBlockTypeItemHeader StreamBlockType = 2
+	StreamBlockTypeItemData   StreamBlockType = 3
 )
 
-func streamReaderStateToText(state streamReaderState) string {
-	switch state {
-	case streamReaderStateNone:
-		return "NONE"
-	case streamReaderStateReady:
-		return "READY"
-	case streamReaderStateToBytes:
-		return "TOBYTES"
-	case streamReaderStateItems:
-		return "ITEMS"
-	default:
-		return "ERROR: UNKNOWN STATE"
+// StreamBlockFlag indicates various properties of the block
+type StreamBlockFlag uint8
+
+// StreamBlockFlag constants DO NOT use iota, because these are written to a persistent file
+// stream.  We do not want possible future changes to break our ability to read a previously
+// written file stream.
+
+const (
+	StreamBlockFlagLastDataBlock StreamBlockFlag = 1
+)
+
+// General stream constants
+
+const (
+	StreamBlockDescriptorLength         = 7
+	StreamBlockDescriptorCurrentVersion = 1
+	StreamItemHeaderLength              = 9
+	StreamItemHeaderCurrentVersion      = 1
+	StreamBlockDefaultMaxLength         = 20000000
+	StreamFileReadBlockSize             = 64000
+)
+
+type StreamBlockDescriptor struct {
+	Version  uint8
+	Flags    uint8
+	DataType StreamBlockType
+	Len      uint32
+}
+
+func NewStreamBlockDescriptorFromBytes(input []byte) *StreamBlockDescriptor {
+	if len(input) != StreamBlockDescriptorLength {
+		panic(fmt.Sprintf("invalid StreamBlockDescriptor length.  Expected %d bytes, got %d bytes",
+			StreamBlockDescriptorLength,
+			len(input)),
+		)
+	}
+
+	return &StreamBlockDescriptor{
+		Version:  input[0],
+		Flags:    input[1],
+		DataType: StreamBlockType(input[2]),
+		Len:      binary.BigEndian.Uint32(input[3:]),
 	}
 }
 
+func (sbd *StreamBlockDescriptor) ToBytes() []byte {
+	descBytes := make([]byte, StreamBlockDescriptorLength)
+	descBytes[0] = sbd.Version
+	descBytes[1] = sbd.Flags
+	descBytes[2] = uint8(sbd.DataType)
+	binary.BigEndian.PutUint32(descBytes[3:], sbd.Len)
+	return descBytes
+}
+
+func (sbd *StreamBlockDescriptor) HasFlag(f StreamBlockFlag) bool {
+	if sbd.Flags&uint8(f) == uint8(f) {
+		return true
+	}
+
+	return false
+}
+
+type ItemHeader struct {
+	Version uint8
+	ItemID  uint32
+	DirID   uint32
+}
+
+func NewItemHeaderFromBytes(itemHeaderBytes []byte) *ItemHeader {
+	if len(itemHeaderBytes) != StreamItemHeaderLength {
+		panic(fmt.Sprintf("invalid ItemHeader length.  Expected %d bytes, got %d bytes",
+			StreamItemHeaderLength,
+			len(itemHeaderBytes)),
+		)
+	}
+
+	return &ItemHeader{
+		Version: itemHeaderBytes[0],
+		ItemID:  binary.BigEndian.Uint32(itemHeaderBytes[1:]),
+		DirID:   binary.BigEndian.Uint32(itemHeaderBytes[5:]),
+	}
+}
+
+func (ih ItemHeader) ToBytes() []byte {
+	ihBytes := make([]byte, StreamItemHeaderLength)
+	ihBytes[0] = ih.Version
+	binary.BigEndian.PutUint32(ihBytes[1:], ih.ItemID)
+	binary.BigEndian.PutUint32(ihBytes[5:], ih.DirID)
+	return ihBytes
+}
+
+type iteratorSendInfo struct {
+	err  error
+	data []byte
+}
+
+type emitterRequestInfo struct {
+	bytesNeeded int
+}
+
+type emitterResponseInfo struct {
+	err  error
+	data []byte
+}
+
+type CollectorSyncChannel chan *iteratorSendInfo
+type AbortStreamChannel chan any
+type RequestForDataChannel chan *emitterRequestInfo
+type ResponseDataChannel chan *emitterResponseInfo
+
 type MultiDirectoryStreamReader struct {
-	state                 streamReaderState
-	tempBytes             []byte
+	cachedBytes           []byte
 	currentTreesListIndex int
 	currentDirNode        int
 	currentItemsNode      int
-	outputBlock           []byte
 	Comp                  Compressor
 	Trees                 []Tree
+	file                  *os.File
+	totalBytesRead        int64
+	startTime             time.Time
+	chanRequestForData    RequestForDataChannel
+	chanResponseData      ResponseDataChannel
 }
 
 func NewMultiDirectoryStreamReader() (StreamReader, error) {
@@ -55,7 +167,6 @@ func NewMultiDirectoryStreamReader() (StreamReader, error) {
 	}
 
 	return &MultiDirectoryStreamReader{
-		state: streamReaderStateNone, // set explicitly in case we change the constants in the future
 		Comp:  comp,
 		Trees: make([]Tree, 0),
 	}, nil
@@ -82,14 +193,6 @@ func NewMultiDirectoryStreamReaderFromDirs(dirs []string, options ...DirectoryOp
 }
 
 func (mdsr *MultiDirectoryStreamReader) AddDir(dir string, options ...DirectoryOption) (newTree Tree, err error) {
-	if mdsr.state != streamReaderStateNone {
-		return nil,
-			fmt.Errorf(
-				"invalid stream reader state for AddDir: %s.  Expected NONE",
-				streamReaderStateToText(mdsr.state),
-			)
-	}
-
 	newTree, err = NewDirectoryTreeFromPath(dir, options...)
 	if err != nil {
 		return nil, err
@@ -105,88 +208,266 @@ func (mdsr *MultiDirectoryStreamReader) StartStream() (io.Reader, error) {
 		return nil, fmt.Errorf("no directory trees loaded for reading")
 	}
 
-	mdsr.outputBlock = make([]byte, streamReaderBlockSize)
-	mdsr.state = streamReaderStateReady
-
 	// It is possible that this is called multiple times to effectively restart the stream after an error.
 	// So, we explicitly set these values, even though they are the default values.
 	mdsr.currentTreesListIndex = 0
 	mdsr.currentDirNode = 0
 	mdsr.currentItemsNode = 0
+	mdsr.file = nil
+	mdsr.totalBytesRead = 0
+	mdsr.startTime = time.Now()
+	mdsr.chanRequestForData = make(chan *emitterRequestInfo)
+	mdsr.chanResponseData = make(chan *emitterResponseInfo)
+
+	go mdsr.Controller() // start the iterator/collector/emitter machine
 
 	return mdsr, nil
 }
 
+func (mdsr *MultiDirectoryStreamReader) Controller() {
+	var chanCollectorSync = make(CollectorSyncChannel)
+	var chanAbortStream = make(AbortStreamChannel)
+
+	go mdsr.Collector(chanCollectorSync, chanAbortStream, mdsr.chanRequestForData, mdsr.chanResponseData)
+	go mdsr.Iterator(chanCollectorSync, chanAbortStream)
+}
+
+func (mdsr *MultiDirectoryStreamReader) Iterator(chanCollectorSync CollectorSyncChannel, chanAbortStream AbortStreamChannel) {
+	for treeIdx, tree := range mdsr.Trees {
+		treeAsBytes, err := tree.ToBytes()
+		if err != nil {
+			chanCollectorSync <- &iteratorSendInfo{
+				err: fmt.Errorf("failed serializing tree data for tree index %d: %w", treeIdx, err),
+			}
+			return
+		}
+
+		blockHeader := &StreamBlockDescriptor{
+			Version:  StreamBlockDescriptorCurrentVersion,
+			DataType: StreamBlockTypeTreeData,
+			Len:      uint32(len(treeAsBytes)),
+		}
+		blockHeaderBytes := blockHeader.ToBytes()
+
+		chanCollectorSync <- &iteratorSendInfo{
+			data: append(blockHeaderBytes, treeAsBytes...),
+		}
+
+		// check for abort
+		select {
+		case <-chanAbortStream:
+			return
+		default:
+			// ignore this
+		}
+
+		rootPath := tree.GetRootPath()
+
+		for itemIndex := 0; itemIndex < tree.ItemCount(); itemIndex++ {
+			// encapsulate in block to allow for defer to close file when done with reading
+			func() {
+				itemNode, err := tree.GetItemNodeByIndex(itemIndex)
+				if err != nil {
+					chanCollectorSync <- &iteratorSendInfo{
+						err: fmt.Errorf("failed retrieving tree node: %w", err),
+					}
+					return
+				}
+
+				dirNode := tree.GetDirNodeByID(itemNode.DirID)
+				if dirNode == nil {
+					chanCollectorSync <- &iteratorSendInfo{
+						err: fmt.Errorf("failed retrieving dir node for DirID: %d", itemNode.DirID),
+					}
+					return
+				}
+
+				file, err := os.Open(filepath.Join(rootPath, dirNode.Path, itemNode.Name))
+				if err != nil {
+					chanCollectorSync <- &iteratorSendInfo{
+						err: fmt.Errorf("failed opening itemNode related file: %w", err),
+					}
+					return
+				}
+
+				defer func() {
+					// Todo: How do we want to handle an error here?  Log it?  In a defer like this,
+					// we are not sure what state the process is in when this is called.  It might be
+					// returning from a completed file send, or maybe still looping on items/trees.
+					_ = file.Close()
+				}()
+
+				ih := ItemHeader{
+					Version: StreamItemHeaderCurrentVersion,
+					ItemID:  uint32(itemNode.ItemID),
+					DirID:   uint32(itemNode.DirID),
+				}
+				ihBytes := ih.ToBytes()
+
+				blockHeader = &StreamBlockDescriptor{
+					Version:  StreamBlockDescriptorCurrentVersion,
+					DataType: StreamBlockTypeItemHeader,
+					Len:      uint32(len(ihBytes)),
+				}
+				blockHeaderBytes = blockHeader.ToBytes()
+
+				chanCollectorSync <- &iteratorSendInfo{
+					data: append(blockHeaderBytes, ihBytes...),
+				}
+
+				select {
+				case <-chanAbortStream:
+					return
+				default:
+					// ignore this
+				}
+
+				done := false
+				fileBytes := make([]byte, StreamFileReadBlockSize)
+				for done == false {
+					bytesRead, err := file.Read(fileBytes)
+
+					blockHeader = &StreamBlockDescriptor{
+						Version:  StreamBlockDescriptorCurrentVersion,
+						DataType: StreamBlockTypeItemData,
+						Len:      uint32(bytesRead),
+					}
+
+					if err == io.EOF {
+						blockHeader.Flags = uint8(StreamBlockFlagLastDataBlock)
+					}
+
+					blockHeaderBytes = blockHeader.ToBytes()
+
+					// build byte stream with the block header followed by the block's data bytes
+					sendInfo := &iteratorSendInfo{}
+					sendInfo.data = append(blockHeaderBytes, fileBytes[:bytesRead]...)
+
+					if err != nil && err != io.EOF {
+						sendInfo.err = err
+					}
+
+					chanCollectorSync <- sendInfo
+					if err != nil && err != io.EOF {
+						// Due to error reading file, we will just abort, instead of waiting for
+						// abort channel signal
+						return
+					}
+
+					// check for abort
+					select {
+					case <-chanAbortStream:
+						return
+					default:
+						// ignore this
+					}
+
+					if err == io.EOF {
+						done = true
+					}
+				}
+			}()
+		}
+	}
+
+	// Send a 0-byte data block with an EOF error... collector or controller may close the abort channel
+	chanCollectorSync <- &iteratorSendInfo{err: io.EOF}
+}
+
+func (mdsr *MultiDirectoryStreamReader) Collector(
+	chanCollectorSync CollectorSyncChannel,
+	chanAbortStream AbortStreamChannel,
+	chanRequestForData RequestForDataChannel,
+	chanResponseData ResponseDataChannel) {
+
+	var data []byte
+	var lastErr error
+
+	for {
+		select {
+		case <-chanAbortStream:
+			return
+
+		case requestForData := <-chanRequestForData:
+			if lastErr != nil {
+				chanResponseData <- &emitterResponseInfo{err: lastErr}
+				return
+			}
+
+			if requestForData.bytesNeeded > len(data) {
+				// not enough data cached to service request so cycle on collector requests until
+				// we have enough data
+				for {
+					sendInfo := <-chanCollectorSync
+
+					if len(sendInfo.data) > 0 {
+						data = append(data, sendInfo.data...)
+					}
+
+					if sendInfo.err != nil {
+						lastErr = sendInfo.err
+						sendLen := mdsr.getSmallest(len(data), requestForData.bytesNeeded)
+						chanResponseData <- &emitterResponseInfo{err: lastErr, data: data[:sendLen]}
+						return
+					}
+
+					if len(data) >= requestForData.bytesNeeded {
+						break
+					}
+				}
+			}
+
+			// The following checks against bytesNeeded and len(data) could be combined in one <=,
+			// but breaking apart checks for < and == allows for a bit of optimization
+			if requestForData.bytesNeeded < len(data) {
+				chanResponseData <- &emitterResponseInfo{
+					err:  lastErr,
+					data: data[:requestForData.bytesNeeded],
+				}
+				data = bytes.Clone(data[requestForData.bytesNeeded:])
+
+				if lastErr != nil {
+					return
+				}
+			}
+
+			if requestForData.bytesNeeded == len(data) {
+				chanResponseData <- &emitterResponseInfo{
+					err:  lastErr,
+					data: data,
+				}
+				data = nil
+
+				if lastErr != nil {
+					return
+				}
+			}
+		}
+	}
+}
+
 func (mdsr *MultiDirectoryStreamReader) Read(p []byte) (n int, err error) {
 	if len(p) == 0 {
-		return 0, fmt.Errorf("requested 0 bytes from Read()")
+		// can this ever occur?
+		return 0, nil
 	}
 
-	// These calls will prep and populate the p argument
-	switch mdsr.state {
-	case streamReaderStateReady:
-		return mdsr.prepOutputBlockFromReady(p)
-	case streamReaderStateToBytes:
-		return mdsr.prepOutputBlockFromToBytes(p)
-	case streamReaderStateItems:
-		return mdsr.prepOutputBlockFromItems(p)
-	default:
-		return 0, fmt.Errorf(
-			"invalid state for Read(): %s. Expected READY, TOBYTES or ITEMS",
-			streamReaderStateToText(mdsr.state),
-		)
+	mdsr.chanRequestForData <- &emitterRequestInfo{len(p)}
+	dataResponse := <-mdsr.chanResponseData
+	var sendLen int
+	if len(dataResponse.data) != 0 {
+		sendLen = mdsr.getSmallest(len(p), len(dataResponse.data))
+		copy(p, dataResponse.data[:sendLen])
 	}
+
+	return sendLen, dataResponse.err
 }
 
-func (mdsr *MultiDirectoryStreamReader) prepOutputBlockFromReady(p []byte) (int, error) {
-	// READY means we haven't started yet.  So, this is the very beginning of reading
-	// the tree list.
-
-	// We have already validated that len(p) > 0.
-
-	// we know there is at least one tree, due to prior checks and the current state
-	// so no need to validate if there is at least one tree or not
-	mdsr.currentTreesListIndex = 0
-	mdsr.currentDirNode = 0
-	mdsr.currentItemsNode = 0
-
-	// The first step is to serialize the first tree we are going to read in
-	mdsr.state = streamReaderStateToBytes
-	toBytes, err := mdsr.Trees[0].ToBytes()
-	if err != nil {
-		return 0, err
+func (mdsr *MultiDirectoryStreamReader) getSmallest(val1, val2 int) int {
+	if val1 < val2 {
+		return val1
 	}
 
-	if len(toBytes) > len(p) {
-		// Copies up to the lenght of p
-		copy(p, toBytes)
-		mdsr.tempBytes = toBytes[len(p):]
-		return len(p), nil
-	}
-
-	if len(toBytes) == len(p) {
-		mdsr.state = streamReaderStateItems
-		copy(p, toBytes)
-		mdsr.currentDirNode = -1
-		return len(p), err
-	}
-
-	// At this point, we know that toBytes is less than the size of the request block
-	// So we need to fill it with the toBytes data, then fill the remaining buffer with
-	// the first node stream.
-	copy(p, toBytes)
-
-	// Todo: Confirm that p[pos:] is actually pointing within that slice where I want
-	mdsr.state = streamReaderStateItems
-	bytesWritten, err := mdsr.prepOutputBlockFromItems(p[len(toBytes):])
-
-	return len(toBytes) + bytesWritten, err
-}
-
-func (mdsr *MultiDirectoryStreamReader) prepOutputBlockFromToBytes(p []byte) (int, error) {
-	return 0, nil
-}
-
-func (mdsr *MultiDirectoryStreamReader) prepOutputBlockFromItems(p []byte) (int, error) {
-	return 0, nil
+	// They are either equal or val2 is smallest.  Either way, val2 is correct.
+	return val2
 }

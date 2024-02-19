@@ -7,3 +7,5 @@ tests/distributions/distributions
 **/.DS_Store
 **/Thumbs.db
 archives/*
+testdata
+testdir_out/

@@ -105,8 +105,13 @@ func (dirNode *DirNode) Compare(targetNode *DirNode) bool {
 
 type Tree interface {
 	FromBytes(treeStreamBytes []byte) error
+	GetDirNodeByID(dirID int) *DirNode
 	GetDirNodes() []*DirNode
+	GetItemNodeByIndex(nodeIndex int) (*ItemNode, error)
+	GetItemNodeByID(itemID int) *ItemNode
 	GetItemNodes() []*ItemNode
+	GetRootPath() string
+	ItemCount() int
 	ListDirs(caseInsensitive bool) []string
 	ScanPath(rootPath string) error
 	Stats() (dirCount, itemCount int, totalBytesOfItems int64)
@@ -117,7 +122,12 @@ type DirectoryTreeData struct {
 	// DirNodes will contain a DirNode for each included directory path
 	DirNodes []*DirNode
 
-	// ItemNodes will contain an ItemNode for every file included in the tree
+	// ItemNodes will contain an ItemNode for every file included in the tree.
+	// It is not included in the serialized data built by ToBytes().  This is because
+	// each ItemNode will emitted into the stream with the item data.  When the stream
+	// is later read in, the item headers will be added to this tree data at that time.
+	// This keeps the size of the serialized tree data smaller, by preventing duplicate
+	// data in the serialized data.
 	ItemNodes []*ItemNode
 }
 
@@ -224,6 +234,10 @@ func (dt *DirectoryTree) Clear() {
 	dt.RootPath = ""
 	dt.NextDirID = 0
 	dt.NextItemID = 0
+}
+
+func (dt *DirectoryTree) GetRootPath() string {
+	return dt.RootPath
 }
 
 func (dt *DirectoryTree) ScanPath(rootPath string) error {
@@ -417,6 +431,13 @@ func (dt *DirectoryTree) shouldIncludeDirectory(name string) (shouldInclude bool
 }
 
 func (dt *DirectoryTree) shouldIncludeFile(name string) (shouldInclude bool, err error) {
+	// These are default exlusion patterns.  These may need to be changed in the future, but
+	// they should be safe to exclude.
+	defaultExcludeFiles := []string{".", "..", ".DS_Store"}
+	if slices.Contains(defaultExcludeFiles, name) {
+		return false, nil
+	}
+
 	if len(dt.FileIncludePatterns) == 0 && len(dt.FileExcludePatterns) == 0 {
 		return true, nil
 	}
@@ -492,7 +513,6 @@ func (dt *DirectoryTree) ListDirs(caseInsensitive bool) []string {
 	})
 
 	return dirNames
-	return dirNames
 }
 
 type TreeStream struct {
@@ -528,6 +548,7 @@ func (dt *DirectoryTree) ToBytes() ([]byte, error) {
 	return treeStreamBytes, nil
 }
 
+// FromBytes reads the input stream and rebuilds the DirNodes and ItemNodes structures of the tree.
 func (dt *DirectoryTree) FromBytes(treeStreamBytes []byte) error {
 	dt.Clear()
 
@@ -564,8 +585,48 @@ func (dt *DirectoryTree) GetDirNodes() []*DirNode {
 	return slices.Clone(dt.DirNodes)
 }
 
+func (dt *DirectoryTree) GetDirNodeByID(dirID int) *DirNode {
+	// Todo: Doing a scan of DirNodes will be really inefficient for large DirNode lists.
+	// On the other hand, it may be more efficient for small lists.
+	// Maybe we add functionality to build maps for DirNodes and ItemNodes if they are
+	// over certain amounts and search the maps instead of scanning if they exist.
+	for _, dirNode := range dt.DirNodes {
+		if dirNode.DirID == dirID {
+			return dirNode.Clone()
+		}
+	}
+
+	return nil
+}
+
+func (dt *DirectoryTree) ItemCount() int {
+	return len(dt.ItemNodes)
+}
+
 func (dt *DirectoryTree) GetItemNodes() []*ItemNode {
 	return slices.Clone(dt.ItemNodes)
+}
+
+func (dt *DirectoryTree) GetItemNodeByIndex(nodeIndex int) (*ItemNode, error) {
+	if nodeIndex >= len(dt.ItemNodes) {
+		return nil, fmt.Errorf(
+			"nodeIndex %d requested from ItemNodes with only %d items",
+			nodeIndex,
+			len(dt.ItemNodes),
+		)
+	}
+
+	return dt.ItemNodes[nodeIndex], nil
+}
+
+func (dt *DirectoryTree) GetItemNodeByID(itemID int) *ItemNode {
+	for _, itemNode := range dt.ItemNodes {
+		if itemNode.ItemID == itemID {
+			return itemNode
+		}
+	}
+
+	return nil
 }
 
 func (dt *DirectoryTree) Stats() (dirCount, itemCount int, totalBytesOfItems int64) {

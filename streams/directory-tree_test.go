@@ -144,7 +144,7 @@ func TestDirectoryTree_ToAndFromBytes(t *testing.T) {
 	err = dtFromTree.FromBytes(toBytes)
 	assert.Nil(t, err)
 
-	// Get the concrete type so we can tell if the props on the directory are the same as the source tree
+	// Get the concrete type so that we can tell if the props on the directory are the same as the source tree
 	dtFromTreeConcrete, isValid := dtFromTree.(*DirectoryTree)
 	assert.True(t, isValid)
 	assert.IsType(t, dtFromTreeConcrete, &DirectoryTree{})

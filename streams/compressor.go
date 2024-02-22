@@ -16,29 +16,33 @@ import (
 		- use zstandard/zstd for compression
 */
 
-type Compressor interface{}
+type Compressor interface {
+	CompressData(inputData []byte, inputLen int) (dataLen int, isCompressed bool, err error)
+}
 
 type BeeCompressor struct {
 	compressor *zstd.Encoder
 }
 
 func NewCompressor() (Compressor, error) {
-	// var err error
+	var err error
+	beecomp := &BeeCompressor{}
+	beecomp.compressor, err = zstd.NewWriter(nil, zstd.WithEncoderConcurrency(1))
+	if err != nil {
+		return nil, err
+	}
 
-	comp := &BeeCompressor{}
-	return comp, nil
-	/*
-		comp.compressor, err = zstd.NewWriter(nil)
+	return beecomp, nil
+}
 
-		enc, err := zstd.NewWriter(out)
-		if err != nil {
-			return err
-		}
-		_, err = io.Copy(enc, in)
-		if err != nil {
-			enc.Close()
-			return err
-		}
-		return enc.Close()
-	*/
+func (bc *BeeCompressor) CompressData(inputData []byte, inputLen int) (dataLen int, isCompressed bool, err error) {
+	encodedBytes := make([]byte, 0, inputLen)
+	newData := bc.compressor.EncodeAll(inputData, encodedBytes)
+
+	if len(newData) >= inputLen {
+		return inputLen, false, nil
+	}
+
+	bytesCopied := copy(inputData, newData)
+	return bytesCopied, true, nil
 }

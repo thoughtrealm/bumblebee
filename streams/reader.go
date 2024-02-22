@@ -45,6 +45,7 @@ type StreamBlockFlag uint8
 
 const (
 	StreamBlockFlagLastDataBlock StreamBlockFlag = 1
+	StreamBlockFlagIsCompressed  StreamBlockFlag = 2
 )
 
 // General stream constants
@@ -141,6 +142,14 @@ type emitterResponseInfo struct {
 	data []byte
 }
 
+type StreamOption func(streamReader *MultiDirectoryStreamReader)
+
+func WithCompression() StreamOption {
+	return func(streamReader *MultiDirectoryStreamReader) {
+		streamReader.compressionEnabled = true
+	}
+}
+
 type CollectorSyncChannel chan *iteratorSendInfo
 type AbortStreamChannel chan any
 type RequestForDataChannel chan *emitterRequestInfo
@@ -148,6 +157,7 @@ type ResponseDataChannel chan *emitterResponseInfo
 
 type MultiDirectoryStreamReader struct {
 	cachedBytes           []byte
+	compressionEnabled    bool
 	currentTreesListIndex int
 	currentDirNode        int
 	currentItemsNode      int
@@ -160,30 +170,39 @@ type MultiDirectoryStreamReader struct {
 	chanResponseData      ResponseDataChannel
 }
 
-func NewMultiDirectoryStreamReader() (StreamReader, error) {
-	comp, err := NewCompressor()
-	if err != nil {
-		return nil, err
+func NewMultiDirectoryStreamReader(options ...StreamOption) (StreamReader, error) {
+	streamReader := &MultiDirectoryStreamReader{
+		Trees: make([]Tree, 0),
 	}
 
-	return &MultiDirectoryStreamReader{
-		Comp:  comp,
-		Trees: make([]Tree, 0),
-	}, nil
+	for _, option := range options {
+		option(streamReader)
+	}
+
+	if streamReader.compressionEnabled {
+		comp, err := NewCompressor()
+		if err != nil {
+			return nil, err
+		}
+
+		streamReader.Comp = comp
+	}
+
+	return streamReader, nil
 }
 
-func NewMultiDirectoryStreamReaderFromDirs(dirs []string, options ...DirectoryOption) (StreamReader, error) {
+func NewMultiDirectoryStreamReaderFromDirs(dirs []string, dirOptions []DirectoryOption, streamOptions []StreamOption) (StreamReader, error) {
 	if len(dirs) == 0 {
 		return nil, fmt.Errorf("no directories provided")
 	}
 
-	mdsr, err := NewMultiDirectoryStreamReader()
+	mdsr, err := NewMultiDirectoryStreamReader(streamOptions...)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, dir := range dirs {
-		_, err = mdsr.AddDir(dir, options...)
+		_, err = mdsr.AddDir(dir, dirOptions...)
 		if err != nil {
 			return nil, err
 		}
@@ -324,8 +343,25 @@ func (mdsr *MultiDirectoryStreamReader) Iterator(chanCollectorSync CollectorSync
 
 				done := false
 				fileBytes := make([]byte, StreamFileReadBlockSize)
+				isCompressed := false
+				dataLen := 0
+				var errCompression error
 				for done == false {
 					bytesRead, err := file.Read(fileBytes)
+
+					if mdsr.compressionEnabled {
+						dataLen, isCompressed, errCompression = mdsr.Comp.CompressData(fileBytes, bytesRead)
+						if errCompression != nil {
+							chanCollectorSync <- &iteratorSendInfo{
+								err: fmt.Errorf("failed compressing data block: %w", errCompression),
+							}
+							return
+						}
+
+						if isCompressed {
+							bytesRead = dataLen
+						}
+					}
 
 					blockHeader = &StreamBlockDescriptor{
 						Version:  StreamBlockDescriptorCurrentVersion,
@@ -333,8 +369,12 @@ func (mdsr *MultiDirectoryStreamReader) Iterator(chanCollectorSync CollectorSync
 						Len:      uint32(bytesRead),
 					}
 
+					if isCompressed {
+						blockHeader.Flags = uint8(StreamBlockFlagIsCompressed)
+					}
+
 					if err == io.EOF {
-						blockHeader.Flags = uint8(StreamBlockFlagLastDataBlock)
+						blockHeader.Flags = blockHeader.Flags | uint8(StreamBlockFlagLastDataBlock)
 					}
 
 					blockHeaderBytes = blockHeader.ToBytes()

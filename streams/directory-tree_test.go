@@ -55,6 +55,10 @@ func TestNewDirectoryTreeFromPathIncludedDirOnly(t *testing.T) {
 		WithDirectoryIncludePatterns([]string{"dir1", "dir1-2"}),
 	)
 
+	if dt == nil {
+		t.Fatalf("failed creating new directory tree: %s", err)
+	}
+
 	assert.NotNil(t, dt)
 	assert.Nil(t, err)
 

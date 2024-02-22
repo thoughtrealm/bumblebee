@@ -98,6 +98,14 @@ func RemoveTrailingPathSeparator(aPath string) string {
 	return aPath[:len(aPath)-1]
 }
 
+func AddTrailingPathSeparator(aPath string) string {
+	if strings.HasSuffix(aPath, string(filepath.Separator)) {
+		return aPath
+	}
+
+	return aPath + string(filepath.Separator)
+}
+
 func PathExistsInfo(filePath string) (found, isDir bool) {
 	info, err := os.Stat(filePath)
 	if err != nil {

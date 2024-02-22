@@ -14,30 +14,27 @@ const WriterReceiveBuffSize = 64000
 type StreamWriter interface {
 	io.Writer
 	StartStream() (io.Writer, error)
-	TotalBytesReceived() int
+	TotalBytesRead() int
 	TotalBytesWritten() int
 }
 
 type MultiDirectoryStreamWriter struct {
-	rootPath           string
-	decomp             Decompressor
-	Trees              []Tree
-	currentBlock       *StreamBlockDescriptor
-	currentItemHeader  *ItemHeader
-	currentFile        *os.File
-	currentTree        Tree
-	blockBytesReceived int
-	totalBytesReceived int
-	totalBytesWritten  int
-	recvBuff           []byte
-	totalFiles         int
+	rootPath          string
+	decomp            Decompressor
+	Trees             []Tree
+	currentBlock      *StreamBlockDescriptor
+	currentItemHeader *ItemHeader
+	currentFile       *os.File
+	currentTree       Tree
+	blockBytesRead    int
+	totalBytesRead    int
+	totalBytesWritten int
+	recvBuff          []byte
+	totalFiles        int
 }
 
 func NewMultiDirectoryStreamWriter(rootPath string) (StreamWriter, error) {
-	decomp, err := NewDecompressor()
-	if err != nil {
-		return nil, err
-	}
+	decomp := NewDecompressor()
 
 	return &MultiDirectoryStreamWriter{
 		rootPath: rootPath,
@@ -46,8 +43,8 @@ func NewMultiDirectoryStreamWriter(rootPath string) (StreamWriter, error) {
 	}, nil
 }
 
-func (mdsw *MultiDirectoryStreamWriter) TotalBytesReceived() int {
-	return mdsw.totalBytesReceived
+func (mdsw *MultiDirectoryStreamWriter) TotalBytesRead() int {
+	return mdsw.totalBytesRead
 }
 
 func (mdsw *MultiDirectoryStreamWriter) TotalBytesWritten() int {
@@ -57,8 +54,8 @@ func (mdsw *MultiDirectoryStreamWriter) TotalBytesWritten() int {
 func (mdsw *MultiDirectoryStreamWriter) StartStream() (io.Writer, error) {
 	// We explicitly write these 0 values in case StartStream is called after prior usage,
 	// so that this is a reset on the stream writer.
-	mdsw.blockBytesReceived = 0
-	mdsw.totalBytesReceived = 0
+	mdsw.blockBytesRead = 0
+	mdsw.totalBytesRead = 0
 	mdsw.totalBytesWritten = 0
 	mdsw.totalFiles = 0
 	mdsw.currentFile = nil
@@ -82,7 +79,7 @@ func (mdsw *MultiDirectoryStreamWriter) Write(p []byte) (n int, err error) {
 	}
 
 	mdsw.recvBuff = append(mdsw.recvBuff, p...)
-	mdsw.totalBytesReceived += len(p)
+	mdsw.totalBytesRead += len(p)
 
 	for {
 		if mdsw.currentBlock == nil {
@@ -93,7 +90,7 @@ func (mdsw *MultiDirectoryStreamWriter) Write(p []byte) (n int, err error) {
 
 			mdsw.currentBlock = NewStreamBlockDescriptorFromBytes(mdsw.recvBuff[:StreamBlockDescriptorLength])
 			mdsw.recvBuff = mdsw.recvBuff[StreamBlockDescriptorLength:]
-			mdsw.blockBytesReceived = 0
+			mdsw.blockBytesRead = 0
 		}
 
 		if mdsw.currentBlock.DataType == StreamBlockTypeTreeData {
@@ -110,7 +107,10 @@ func (mdsw *MultiDirectoryStreamWriter) Write(p []byte) (n int, err error) {
 			}
 
 			// processTreeData will iterate all dirs and create them in the target output folder
-			mdsw.processTreeData(tree)
+			err = mdsw.processTreeData(tree)
+			if err != nil {
+				return len(p), fmt.Errorf("failed processing tree data: %w", err)
+			}
 
 			blockLen := mdsw.currentBlock.Len
 
@@ -169,6 +169,14 @@ func (mdsw *MultiDirectoryStreamWriter) Write(p []byte) (n int, err error) {
 
 			// Read the item data from the recvBuff and write it to the current file
 			data := mdsw.recvBuff[:mdsw.currentBlock.Len]
+
+			if mdsw.currentBlock.HasFlag(StreamBlockFlagIsCompressed) {
+				data, err = mdsw.decomp.DecompressData(data)
+				if err != nil {
+					return len(p), fmt.Errorf("failed decompressing item data block: %w", err)
+				}
+			}
+
 			fileBytesWritten, err := mdsw.currentFile.Write(data)
 			if err != nil {
 				return len(p), fmt.Errorf("failed writing item data: %w", err)
@@ -215,7 +223,7 @@ func (mdsw *MultiDirectoryStreamWriter) Write(p []byte) (n int, err error) {
 func (mdsw *MultiDirectoryStreamWriter) processTreeData(tree Tree) error {
 	dirNodes := tree.GetDirNodes()
 	for _, dirNode := range dirNodes {
-		targetPath := filepath.Join(mdsw.rootPath, dirNode.Path)
+		targetPath := filepath.Join(mdsw.rootPath, tree.GetParentPathPrefix(), dirNode.Path)
 		err := helpers.ForcePath(targetPath)
 		if err != nil {
 			return fmt.Errorf(
@@ -244,7 +252,12 @@ func (mdsw *MultiDirectoryStreamWriter) processItemHeader() error {
 			mdsw.currentItemHeader.ItemID)
 	}
 
-	file, err := os.Create(filepath.Join(mdsw.rootPath, dirNode.Path, fileNode.Name))
+	file, err := os.Create(filepath.Join(
+		mdsw.rootPath,
+		mdsw.currentTree.GetParentPathPrefix(),
+		dirNode.Path,
+		fileNode.Name),
+	)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}

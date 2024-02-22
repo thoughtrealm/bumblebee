@@ -110,6 +110,7 @@ type Tree interface {
 	GetItemNodeByIndex(nodeIndex int) (*ItemNode, error)
 	GetItemNodeByID(itemID int) *ItemNode
 	GetItemNodes() []*ItemNode
+	GetParentPathPrefix() string
 	GetRootPath() string
 	ItemCount() int
 	ListDirs(caseInsensitive bool) []string
@@ -168,6 +169,10 @@ type DirectoryTree struct {
 
 	// NextItemID identifies the ItemNode and will be incremented for each ItemNode
 	NextItemID int
+
+	// ParentPathPrefix provides the main parent dir for adding as a prefix to all file paths.
+	// During extraction, this allows for a unique directory for each tree added to multi tree file stores.
+	ParentPathPrefix string
 }
 
 type DirectoryOption func(tree *DirectoryTree)
@@ -242,6 +247,14 @@ func (dt *DirectoryTree) GetRootPath() string {
 
 func (dt *DirectoryTree) ScanPath(rootPath string) error {
 	pathToScan := helpers.RemoveTrailingPathSeparator(rootPath)
+	_, file := filepath.Split(pathToScan)
+	if file == "" {
+		// In theory, this would be the drive root, so don't use a parent folder on output?
+		dt.ParentPathPrefix = ""
+	} else {
+		dt.ParentPathPrefix = helpers.AddTrailingPathSeparator(file)
+	}
+
 	found, isDir := helpers.PathExistsInfo(pathToScan)
 	if !found {
 		return fmt.Errorf("root path not found: \"%s\"", pathToScan)
@@ -520,6 +533,7 @@ type TreeStream struct {
 	IncludeItemDetails bool
 	TreeVersion        int
 	TreeBytes          []byte
+	ParentPathPrefix   string
 }
 
 func (dt *DirectoryTree) ToBytes() ([]byte, error) {
@@ -538,6 +552,7 @@ func (dt *DirectoryTree) ToBytes() ([]byte, error) {
 		IncludeItemDetails: dt.IncludeItemDetails,
 		TreeVersion:        1,
 		TreeBytes:          dataBytes,
+		ParentPathPrefix:   dt.ParentPathPrefix,
 	}
 
 	treeStreamBytes, err := msgpack.Marshal(treeStream)
@@ -559,6 +574,7 @@ func (dt *DirectoryTree) FromBytes(treeStreamBytes []byte) error {
 	}
 
 	dt.IncludeItemDetails = treeStream.IncludeItemDetails
+	dt.ParentPathPrefix = treeStream.ParentPathPrefix
 
 	if len(treeStream.TreeBytes) == 0 {
 		return fmt.Errorf("provided tree stream contains no tree data")
@@ -605,6 +621,10 @@ func (dt *DirectoryTree) ItemCount() int {
 
 func (dt *DirectoryTree) GetItemNodes() []*ItemNode {
 	return slices.Clone(dt.ItemNodes)
+}
+
+func (dt *DirectoryTree) GetParentPathPrefix() string {
+	return dt.ParentPathPrefix
 }
 
 func (dt *DirectoryTree) GetItemNodeByIndex(nodeIndex int) (*ItemNode, error) {

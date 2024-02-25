@@ -130,6 +130,7 @@ func openBundle() {
 
 	var err error
 
+	// Check for various practical and common scenarios that we can use to infer options the user has explicitly supplied
 	if localOpenCommandVals.inputSourceText == "" && localOpenCommandVals.inputFilePath != "" {
 		localOpenCommandVals.inputSourceText = "file"
 	}
@@ -154,6 +155,7 @@ func openBundle() {
 	}
 
 	if localOpenCommandVals.inputSourceText == "" {
+		// nothing was provided for this and we were unable to infer the source from other flags
 		fmt.Println("No input-source provided.  --input-source is required.")
 		helpers.ExitCode = helpers.ExitCodeInvalidInput
 		return
@@ -208,9 +210,9 @@ func openBundle() {
 	}
 
 	if localOpenCommandVals.outputTarget == keystore.OutputTargetFile || localOpenCommandVals.outputTarget == keystore.OutputTargetPath {
-		err = validateOutputFileForOpen()
+		err = validateOutputTargetForOpen()
 		if err != nil {
-			fmt.Printf("Unable to validate output file(s): %s\n", err)
+			fmt.Printf("Unable to validate output target(s): %s\n", err)
 			helpers.ExitCode = helpers.ExitCodeInvalidInput
 			return
 		}
@@ -432,27 +434,67 @@ func validateInputFileForOpen() error {
 	return nil
 }
 
-// validateOutputFileForOpen is called when the output target is FILE or PATH.
+// validateOutputTargetForOpen is called when the output target is FILE or PATH.
 // The user can leave the output path or file reference empty, in which case
-// we need to derive the necessary output components.
-//   - When the input is  file, we want to output to the same path as the input file. In that case, the cipher writer
+// we need to derive the necessary output elements.
 //
+// - When the input is  file, we want to output to the same path as the input file. In that case, the cipher writer
 // will use the original file name from the bundle if it is available, otherwise
 // it will use the input filename and change the extension.
-//   - When the input is not a file, such as clipboard or console, we need to do ... something else?
-func validateOutputFileForOpen() error {
+//
+// - When the input is not a file, such as clipboard or console, we need to do ... something else?
+func validateOutputTargetForOpen() error {
 	if localOpenCommandVals.inputSource == keystore.InputSourceFile {
-		return validateOutputFileForFileInputForOpen()
+		err := validateOutputTargetForFileInputForOpen()
+		if err != nil {
+			return err
+		}
+	} else {
+		err := validateOutputTargetForNonFileInputsForOpen()
+		if err != nil {
+			return err
+		}
 	}
 
-	return validateOutputFileForNonFileInputsForOpen()
-}
-
-func validateOutputFileForFileInputForOpen() error {
-	if localOpenCommandVals.outputFile != "" {
+	if localOpenCommandVals.outputPath == "" {
+		// The validations determined that an output path was not necessary, so nothing else to validate
 		return nil
 	}
 
+	if helpers.DirExists(localOpenCommandVals.outputPath) {
+		// Output path exists
+		return nil
+	}
+
+	// Todo: Add a flag to suppress this prompt and create or fail this check as needed without input
+	fmt.Printf("The output path \"%s\" does not exist.\n\n", localOpenCommandVals.outputPath)
+
+	response, err := helpers.GetYesNoInput("Create it?", helpers.InputResponseValNo)
+	fmt.Println("")
+	if err != nil {
+		return fmt.Errorf("Error confirming output path creation: %w", err)
+	}
+
+	if response != helpers.InputResponseValYes {
+		return errors.New("user aborted output path creation")
+	}
+
+	err = helpers.ForcePath(localOpenCommandVals.outputPath)
+	if err != nil {
+		return fmt.Errorf("unable to create the output path: %w", err)
+	}
+
+	return nil
+}
+
+func validateOutputTargetForFileInputForOpen() error {
+	if localOpenCommandVals.outputFile != "" {
+		// we will not validate anything else about the output file.  Any issues will occur during
+		// the requested process.
+		return nil
+	}
+
+	// With no output file defined, we will validate a path-based target.
 	var usePath string
 	if localOpenCommandVals.outputPath == "" {
 		cwd, err := os.Getwd()
@@ -468,14 +510,14 @@ func validateOutputFileForFileInputForOpen() error {
 	// Force output target to PATH
 	localOpenCommandVals.outputTarget = keystore.OutputTargetPath
 
-	// Use the input path for the output file
+	// Set the output path as determined above
 	localOpenCommandVals.outputPath = usePath
 
 	return nil
 }
 
-// validateOutputFileForNonFileInputsForOpen assumes that no input file values exist
-func validateOutputFileForNonFileInputsForOpen() error {
+// validateOutputTargetForNonFileInputsForOpen assumes that no input file values exist
+func validateOutputTargetForNonFileInputsForOpen() error {
 	if localOpenCommandVals.outputTarget == keystore.OutputTargetFile {
 		if localOpenCommandVals.outputFile == "" {
 			return errors.New("output target is \"file\", but no output file reference is provided")
@@ -498,10 +540,8 @@ func validateOutputFileForNonFileInputsForOpen() error {
 		return errors.New("output type is \"path\", but no output path reference is provided")
 	}
 
-	if !helpers.DirExists(localOpenCommandVals.outputPath) {
-		return fmt.Errorf("the output path does not exist: %s", localOpenCommandVals.outputPath)
-	}
-
+	// We are just validating tha a value exists for the output path.
+	// The current existence of the output path will be validated by the calling functionality.
 	return nil
 }
 
@@ -512,9 +552,9 @@ func getOutputWriter() (io.Writer, error) {
 	case keystore.OutputTargetClipboard:
 		return getClipboardWriter()
 	case keystore.OutputTargetFile:
-		return nil, nil // for type file, we pass the filename
+		return nil, nil
 	case keystore.OutputTargetPath:
-		return nil, nil // for type path, we pass the filepath
+		return nil, nil
 	}
 
 	return nil, errors.New("unknown input source obtaining stream reader")

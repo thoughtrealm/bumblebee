@@ -28,29 +28,33 @@ type StreamWriter interface {
 }
 
 type MultiDirectoryStreamWriter struct {
-	rootPath          string
-	decomp            Decompressor
-	Trees             []Tree
-	currentBlock      *StreamBlockDescriptor
-	currentItemHeader *ItemHeader
-	currentFile       *os.File
-	currentTree       Tree
-	blockBytesRead    int
-	totalBytesRead    int
-	totalBytesWritten int
-	recvBuff          []byte
-	totalFiles        int
-	preProcessFilter  PreProcessFilter
-	preWriteFilter    PreWriteFilter
+	rootPath                string
+	decomp                  Decompressor
+	Trees                   []Tree
+	currentBlock            *StreamBlockDescriptor
+	currentItemHeader       *ItemHeader
+	currentFile             *os.File
+	currentTree             Tree
+	blockBytesRead          int
+	totalBytesRead          int
+	totalBytesWritten       int
+	recvBuff                []byte
+	totalFiles              int
+	preProcessFilter        PreProcessFilter
+	preWriteFilter          PreWriteFilter
+	requireConfirm          bool
+	overwriteDenyAll        bool
+	ignoreCurrentItemOutput bool
 }
 
 func NewMultiDirectoryStreamWriter(rootPath string) (StreamWriter, error) {
 	decomp := NewDecompressor()
 
 	return &MultiDirectoryStreamWriter{
-		rootPath: rootPath,
-		decomp:   decomp,
-		Trees:    make([]Tree, 0),
+		rootPath:       rootPath,
+		decomp:         decomp,
+		Trees:          make([]Tree, 0),
+		requireConfirm: true,
 	}, nil
 }
 
@@ -205,9 +209,11 @@ func (mdsw *MultiDirectoryStreamWriter) Write(p []byte) (n int, err error) {
 					data = mdsw.preWriteFilter(data)
 				}
 
-				fileBytesWritten, err = mdsw.currentFile.Write(data)
-				if err != nil {
-					return len(p), fmt.Errorf("failed writing item data: %w", err)
+				if !mdsw.ignoreCurrentItemOutput {
+					fileBytesWritten, err = mdsw.currentFile.Write(data)
+					if err != nil {
+						return len(p), fmt.Errorf("failed writing item data: %w", err)
+					}
 				}
 			}
 
@@ -215,10 +221,16 @@ func (mdsw *MultiDirectoryStreamWriter) Write(p []byte) (n int, err error) {
 
 			// Check if all item data has been received for this file
 			if mdsw.currentBlock.HasFlag(StreamBlockFlagLastDataBlock) {
-				// Close the current file
-				err = mdsw.currentFile.Close()
-				if err != nil {
-					return len(p), fmt.Errorf("failed closing item file: %w", err)
+				if !mdsw.ignoreCurrentItemOutput {
+					// Close the current file
+					err = mdsw.currentFile.Close()
+					if err != nil {
+						return len(p), fmt.Errorf("failed closing item file: %w", err)
+					}
+				}
+
+				if mdsw.ignoreCurrentItemOutput {
+					mdsw.ignoreCurrentItemOutput = false
 				}
 
 				// Reset the current file and item header
@@ -281,16 +293,84 @@ func (mdsw *MultiDirectoryStreamWriter) processItemHeader() error {
 			mdsw.currentItemHeader.ItemID)
 	}
 
-	file, err := os.Create(filepath.Join(
+	filePath := filepath.Join(
 		mdsw.rootPath,
 		mdsw.currentTree.GetParentPathPrefix(),
 		dirNode.Path,
-		fileNode.Name),
-	)
+		fileNode.Name)
+
+	if mdsw.requireConfirm && helpers.FileExists(filePath) {
+		if mdsw.overwriteDenyAll {
+			mdsw.ignoreCurrentItemOutput = true
+			return nil
+		}
+
+		shouldOverride, err := mdsw.confirmOverwrite(fileNode.Name, filePath)
+		if err != nil {
+			return fmt.Errorf("failed to confirm overwrite of current file: %w", err)
+		}
+
+		if !shouldOverride {
+			mdsw.ignoreCurrentItemOutput = true
+			return nil
+		}
+	}
+
+	file, err := os.Create(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
 
 	mdsw.currentFile = file
 	return nil
+}
+
+func (mdsw *MultiDirectoryStreamWriter) confirmOverwrite(fileName, filePath string) (bool, error) {
+	fmt.Printf("File \"%s\" already exists at \"%s\".\n", fileName, filePath)
+
+	listItems := []helpers.InputListItem{
+		{
+			Option: "Y",
+			Label:  "Yes, overwrite the current file",
+		},
+		{
+			Option: "N",
+			Label:  "No, do not overwrite the current file",
+		},
+		{
+			Option: "A",
+			Label:  "Yes to this and ALL future requests",
+		},
+		{
+			Option: "O",
+			Label:  "No to this and ALL future requests",
+		},
+		{
+			Option: "C",
+			Label:  "Cancel and exit the application",
+		},
+	}
+
+	selection, err := helpers.GetInputFromList("Overwrite the current file?", listItems, "N")
+	fmt.Println("")
+	if err != nil {
+		return false, err
+	}
+
+	switch selection {
+	case "Y":
+		return true, nil
+	case "N":
+		return false, nil
+	case "A":
+		mdsw.requireConfirm = false
+		return true, nil
+	case "O":
+		mdsw.overwriteDenyAll = true
+		return false, nil
+	case "C":
+		return false, errors.New("user cancelled")
+	}
+
+	return false, errors.New("invalid response on confirm: cancelling")
 }

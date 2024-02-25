@@ -72,7 +72,7 @@ func (cfr *CipherReader) ReadCombinedFileToBytes(combinedFilePath string) ([]byt
 	}()
 
 	// For file writing, we have to read the bundle first, because it contains the target filename.
-	bundleInfo, err := cfr.readBundleHeaderFrom(fileIn)
+	bundleInfo, err := cfr.readBundleHeaderFrom(fileIn, false)
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve bundle from input: %w", err)
 	}
@@ -88,10 +88,10 @@ func (cfr *CipherReader) ReadCombinedFileToBytes(combinedFilePath string) ([]byt
 }
 
 func (cfr *CipherReader) GetBundleDetailsFromReader(r io.Reader) (*BundleInfo, error) {
-	return cfr.readBundleHeaderFrom(r)
+	return cfr.readBundleHeaderFrom(r, true)
 }
 
-func (cfr *CipherReader) readBundleHeaderFrom(r io.Reader) (*BundleInfo, error) {
+func (cfr *CipherReader) readBundleHeaderFrom(r io.Reader, allowMultiDir bool) (*BundleInfo, error) {
 	// Get the bundle len first
 	bundleLenBytes := make([]byte, 2)
 	bytesRead, err := r.Read(bundleLenBytes)
@@ -164,6 +164,10 @@ func (cfr *CipherReader) readBundleHeaderFrom(r io.Reader) (*BundleInfo, error) 
 		return nil, errors.New("bundle signature does not match sender identity")
 	}
 
+	if !allowMultiDir && bundleInfo.InputSource == BundleInputSourceMultiDir {
+		return nil, errors.New("this bundle access request does not support multi-directory bundles")
+	}
+
 	return bundleInfo, nil
 }
 
@@ -188,7 +192,7 @@ func (cfr *CipherReader) ReadCombinedFileToWriter(combinedFilePath string, w io.
 		_ = fileIn.Close()
 	}()
 
-	bundleInfo, err := cfr.readBundleHeaderFrom(fileIn)
+	bundleInfo, err := cfr.readBundleHeaderFrom(fileIn, false)
 	if err != nil {
 		return 0, fmt.Errorf("unable to retrieve bundle header from input: %w", err)
 	}
@@ -213,7 +217,7 @@ func (cfr *CipherReader) ReadCombinedFileToPath(combinedFilePath, outputPath str
 		_ = fileIn.Close()
 	}()
 
-	bundleInfo, err := cfr.readBundleHeaderFrom(fileIn)
+	bundleInfo, err := cfr.readBundleHeaderFrom(fileIn, true)
 	if err != nil {
 		return 0, fmt.Errorf("unable to retrieve bundle header from input: %w", err)
 	}
@@ -269,7 +273,7 @@ func (cfr *CipherReader) ReadCombinedFileToPath(combinedFilePath, outputPath str
 }
 
 func (cfr *CipherReader) ReadStreamToPath(reader io.Reader, outputPath string) (int, error) {
-	bundleInfo, err := cfr.readBundleHeaderFrom(reader)
+	bundleInfo, err := cfr.readBundleHeaderFrom(reader, true)
 	if err != nil {
 		return 0, fmt.Errorf("unable to retrieve bundle header from input: %w", err)
 	}
@@ -311,7 +315,7 @@ func (cfr *CipherReader) ReadCombinedFileToFile(combinedFilePath, outputFilePath
 		_ = fileIn.Close()
 	}()
 
-	bundleInfo, err := cfr.readBundleHeaderFrom(fileIn)
+	bundleInfo, err := cfr.readBundleHeaderFrom(fileIn, false)
 	if err != nil {
 		return 0, fmt.Errorf("unable to retrieve bundle header from input: %w", err)
 	}
@@ -331,7 +335,7 @@ func (cfr *CipherReader) ReadCombinedFileToFile(combinedFilePath, outputFilePath
 }
 
 func (cfr *CipherReader) ReadStreamToFile(reader io.Reader, outputFilePath string) (int, error) {
-	bundleInfo, err := cfr.readBundleHeaderFrom(reader)
+	bundleInfo, err := cfr.readBundleHeaderFrom(reader, false)
 	if err != nil {
 		return 0, fmt.Errorf("unable to retrieve bundle header from input: %w", err)
 	}
@@ -361,7 +365,7 @@ func (cfr *CipherReader) ReadSplitFilesToWriter(bundleHeaderFilePath, bundleData
 		_ = fileHdrIn.Close()
 	}()
 
-	bundleInfo, err := cfr.readBundleHeaderFrom(fileHdrIn)
+	bundleInfo, err := cfr.readBundleHeaderFrom(fileHdrIn, false)
 	if err != nil {
 		return 0, fmt.Errorf("unable to retrieve bundle header from input: %w", err)
 	}
@@ -395,29 +399,46 @@ func (cfr *CipherReader) ReadSplitFilesToPath(bundleHeaderFilePath, bundleDataFi
 		_ = fileHdrIn.Close()
 	}()
 
-	bundleInfo, err := cfr.readBundleHeaderFrom(fileHdrIn)
+	bundleInfo, err := cfr.readBundleHeaderFrom(fileHdrIn, true)
 	if err != nil {
 		return 0, fmt.Errorf("unable to retrieve bundle header from input: %w", err)
 	}
 	defer bundleInfo.Wipe()
 
-	var outputFilePath string
-	if bundleInfo.OriginalFileName == "" {
-		// get input filename
-		_, fileName := filepath.Split(bundleHeaderFilePath)
-		outputFilePath = filepath.Join(outputPath, helpers.ReplaceFileExt(fileName, ".decrypted"))
+	var outputWriter io.Writer
+	var mdsw streams.StreamWriter
+	if bundleInfo.InputSource == BundleInputSourceMultiDir {
+		// For multi dir streams, we just need to initialize the stream writer with the output path
+		mdsw, err = streams.NewMultiDirectoryStreamWriter(outputPath)
+		if err != nil {
+			return 0, fmt.Errorf("unable to initialize multi directory stream writer: %w", err)
+		}
+
+		outputWriter, err = mdsw.StartStream()
+		if err != nil {
+			return 0, fmt.Errorf("unable to start multi directory stream: %w", err)
+		}
 	} else {
-		outputFilePath = filepath.Join(outputPath, bundleInfo.OriginalFileName)
-	}
+		var outputFilePath string
+		if bundleInfo.OriginalFileName == "" {
+			// get input filename
+			_, fileName := filepath.Split(bundleHeaderFilePath)
+			outputFilePath = filepath.Join(outputPath, helpers.ReplaceFileExt(fileName, ".decrypted"))
+		} else {
+			outputFilePath = filepath.Join(outputPath, bundleInfo.OriginalFileName)
+		}
 
-	fileOut, err := os.Create(outputFilePath)
-	if err != nil {
-		return 0, fmt.Errorf("unable to open output file: %s", err)
-	}
+		fileOut, err := os.Create(outputFilePath)
+		if err != nil {
+			return 0, fmt.Errorf("unable to open output file: %s", err)
+		}
 
-	defer func() {
-		_ = fileOut.Close()
-	}()
+		defer func() {
+			_ = fileOut.Close()
+		}()
+
+		outputWriter = fileOut
+	}
 
 	fileDataIn, err := os.Open(bundleDataFilePath)
 	if err != nil {
@@ -428,9 +449,15 @@ func (cfr *CipherReader) ReadSplitFilesToPath(bundleHeaderFilePath, bundleDataFi
 		_ = fileDataIn.Close()
 	}()
 
-	bytesWritten, err := cfr.readBundleDataTo(bundleInfo, fileDataIn, fileOut)
+	bytesWritten, err := cfr.readBundleDataTo(bundleInfo, fileDataIn, outputWriter)
 	if err != nil {
 		return bytesWritten, fmt.Errorf("unable to write bundle data: %w", err)
+	}
+
+	if mdsw != nil {
+		// The multi dir writer may emit more data than the decryptor is aware of.
+		// So, get the total from the multi dir writer when one is used.
+		return mdsw.TotalBytesWritten(), nil
 	}
 
 	return bytesWritten, nil
@@ -447,7 +474,7 @@ func (cfr *CipherReader) ReadSplitFilesToFile(bundleHeaderFilePath, bundleDataFi
 		_ = fileHdrIn.Close()
 	}()
 
-	bundleInfo, err := cfr.readBundleHeaderFrom(fileHdrIn)
+	bundleInfo, err := cfr.readBundleHeaderFrom(fileHdrIn, false)
 	if err != nil {
 		return 0, fmt.Errorf("unable to retrieve bundle header from input: %w", err)
 	}
@@ -480,7 +507,7 @@ func (cfr *CipherReader) ReadSplitFilesToFile(bundleHeaderFilePath, bundleDataFi
 }
 
 func (cfr *CipherReader) ReadCombinedStreamToWriter(r io.Reader, w io.Writer) (int, error) {
-	bundleInfo, err := cfr.readBundleHeaderFrom(r)
+	bundleInfo, err := cfr.readBundleHeaderFrom(r, false)
 	if err != nil {
 		return 0, fmt.Errorf("unable to retrieve bundle from input: %w", err)
 	}
@@ -495,7 +522,7 @@ func (cfr *CipherReader) ReadCombinedStreamToWriter(r io.Reader, w io.Writer) (i
 }
 
 func (cfr *CipherReader) ReadSplitStreamsToWriter(readerHdr io.Reader, readerData io.Reader, w io.Writer) (int, error) {
-	bundleInfo, err := cfr.readBundleHeaderFrom(readerHdr)
+	bundleInfo, err := cfr.readBundleHeaderFrom(readerHdr, false)
 	if err != nil {
 		return 0, fmt.Errorf("unable to retrieve bundle hdr from input: %w", err)
 	}
@@ -510,7 +537,7 @@ func (cfr *CipherReader) ReadSplitStreamsToWriter(readerHdr io.Reader, readerDat
 }
 
 func (cfr *CipherReader) ReadCombinedStreamToFile(r io.Reader, outputFilePath string) (int, error) {
-	bundleInfo, err := cfr.readBundleHeaderFrom(r)
+	bundleInfo, err := cfr.readBundleHeaderFrom(r, false)
 	if err != nil {
 		return 0, fmt.Errorf("unable to retrieve bundle from input: %w", err)
 	}

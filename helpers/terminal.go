@@ -134,6 +134,52 @@ func GetYesNoInput(inputMessage string, nullVal InputResponseVal) (InputResponse
 	}
 }
 
+// GetInputFromList will display a list of options and allow user to select one of them or cancel
+type InputListItem struct {
+	Option string
+	Label  string
+}
+
+func GetInputFromList(inputMessage string, listItems []InputListItem, nullOption string) (string, error) {
+	currentAttemptNumber := 0
+	for {
+		currentAttemptNumber += 1
+		fmt.Println(inputMessage + " ...")
+		for _, listItem := range listItems {
+			fmt.Printf("  %s: %s\n", listItem.Option, listItem.Label)
+		}
+
+		fmt.Println("")
+		promptText := fmt.Sprintf("Select (ENTER for %s)", nullOption)
+		if currentAttemptNumber > 1 {
+			promptText = fmt.Sprintf("Select (attempt %d of %d): ", currentAttemptNumber, MAX_TRY_RECOUNTS)
+		}
+
+		text, err := GetConsoleInputLine(promptText)
+		if err != nil {
+			return nullOption, err
+		}
+
+		text = strings.Trim(text, " \n\t")
+		if text == "" {
+			return nullOption, nil
+		}
+
+		for _, listItem := range listItems {
+			if CompareStrings(listItem.Option, text) == 0 {
+				return listItem.Option, nil
+			}
+		}
+
+		fmt.Println("** Invalid response **")
+		fmt.Println("")
+
+		if currentAttemptNumber == MAX_TRY_RECOUNTS {
+			return "", errors.New("retry count exceeded")
+		}
+	}
+}
+
 func GetPassword() ([]byte, error) {
 	bytepw, err := term.ReadPassword(int(os.Stdin.Fd()))
 	fmt.Println("")

@@ -11,11 +11,20 @@ import (
 
 const WriterReceiveBuffSize = 64000
 
+// PreProcessFilter is a testing mechanism that allows for altering the data sequence before it is processed,
+// such as decompressing
+type PreProcessFilter func(dataIn []byte) (dataOut []byte)
+
+// PreWriteFilter is a testing mechanism that allows for altering the output stream before it is written out
+type PreWriteFilter func(dataIn []byte) (dataOut []byte)
+
 type StreamWriter interface {
 	io.Writer
 	StartStream() (io.Writer, error)
 	TotalBytesRead() int
 	TotalBytesWritten() int
+	SetPreProcessFilter(preProcessFilter PreProcessFilter)
+	SetPreWriteFilter(preWriteFilter PreWriteFilter)
 }
 
 type MultiDirectoryStreamWriter struct {
@@ -31,6 +40,8 @@ type MultiDirectoryStreamWriter struct {
 	totalBytesWritten int
 	recvBuff          []byte
 	totalFiles        int
+	preProcessFilter  PreProcessFilter
+	preWriteFilter    PreWriteFilter
 }
 
 func NewMultiDirectoryStreamWriter(rootPath string) (StreamWriter, error) {
@@ -41,6 +52,14 @@ func NewMultiDirectoryStreamWriter(rootPath string) (StreamWriter, error) {
 		decomp:   decomp,
 		Trees:    make([]Tree, 0),
 	}, nil
+}
+
+func (mdsw *MultiDirectoryStreamWriter) SetPreWriteFilter(preWriteFilter PreWriteFilter) {
+	mdsw.preWriteFilter = preWriteFilter
+}
+
+func (mdsw *MultiDirectoryStreamWriter) SetPreProcessFilter(preProcessFilter PreProcessFilter) {
+	mdsw.preProcessFilter = preProcessFilter
 }
 
 func (mdsw *MultiDirectoryStreamWriter) TotalBytesRead() int {
@@ -94,14 +113,14 @@ func (mdsw *MultiDirectoryStreamWriter) Write(p []byte) (n int, err error) {
 		}
 
 		if mdsw.currentBlock.DataType == StreamBlockTypeTreeData {
-			if uint32(len(mdsw.recvBuff)) < mdsw.currentBlock.Len {
+			if uint32(len(mdsw.recvBuff)) < mdsw.currentBlock.Length {
 				// Not all tree data received yet, so return for now
 				return len(p), nil
 			}
 
 			// We at least have enough data for the tree structure, so read it in now
 			tree := NewDirectoryTree()
-			err = tree.FromBytes(mdsw.recvBuff[:mdsw.currentBlock.Len])
+			err = tree.FromBytes(mdsw.recvBuff[:mdsw.currentBlock.Length])
 			if err != nil {
 				return len(p), fmt.Errorf("failed loading tree data: %w", err)
 			}
@@ -112,7 +131,7 @@ func (mdsw *MultiDirectoryStreamWriter) Write(p []byte) (n int, err error) {
 				return len(p), fmt.Errorf("failed processing tree data: %w", err)
 			}
 
-			blockLen := mdsw.currentBlock.Len
+			blockLen := mdsw.currentBlock.Length
 
 			mdsw.currentBlock = nil
 			mdsw.currentTree = tree
@@ -132,7 +151,7 @@ func (mdsw *MultiDirectoryStreamWriter) Write(p []byte) (n int, err error) {
 		}
 
 		if mdsw.currentBlock.DataType == StreamBlockTypeItemHeader {
-			blockLen := mdsw.currentBlock.Len
+			blockLen := mdsw.currentBlock.Length
 			if uint32(len(mdsw.recvBuff)) < blockLen {
 				// not enough data yet for the item header
 				return len(p), nil
@@ -162,14 +181,18 @@ func (mdsw *MultiDirectoryStreamWriter) Write(p []byte) (n int, err error) {
 		}
 
 		if mdsw.currentBlock.DataType == StreamBlockTypeItemData {
-			if uint32(len(mdsw.recvBuff)) < mdsw.currentBlock.Len {
+			if uint32(len(mdsw.recvBuff)) < mdsw.currentBlock.Length {
 				// not enough data yet for the item data block
 				return len(p), nil
 			}
 
 			// Read the item data from the recvBuff and write it to the current file
-			data := mdsw.recvBuff[:mdsw.currentBlock.Len]
+			data := mdsw.recvBuff[:mdsw.currentBlock.Length]
+			if mdsw.preProcessFilter != nil {
+				data = mdsw.preProcessFilter(data)
+			}
 
+			fileBytesWritten := 0
 			if mdsw.currentBlock.HasFlag(StreamBlockFlagIsCompressed) {
 				data, err = mdsw.decomp.DecompressData(data)
 				if err != nil {
@@ -177,9 +200,15 @@ func (mdsw *MultiDirectoryStreamWriter) Write(p []byte) (n int, err error) {
 				}
 			}
 
-			fileBytesWritten, err := mdsw.currentFile.Write(data)
-			if err != nil {
-				return len(p), fmt.Errorf("failed writing item data: %w", err)
+			if len(data) != 0 {
+				if mdsw.preWriteFilter != nil {
+					data = mdsw.preWriteFilter(data)
+				}
+
+				fileBytesWritten, err = mdsw.currentFile.Write(data)
+				if err != nil {
+					return len(p), fmt.Errorf("failed writing item data: %w", err)
+				}
 			}
 
 			mdsw.totalBytesWritten += fileBytesWritten
@@ -197,7 +226,7 @@ func (mdsw *MultiDirectoryStreamWriter) Write(p []byte) (n int, err error) {
 				mdsw.currentItemHeader = nil
 			}
 
-			blockLen := mdsw.currentBlock.Len
+			blockLen := mdsw.currentBlock.Length
 			mdsw.currentBlock = nil
 
 			if uint32(len(mdsw.recvBuff)) == blockLen {

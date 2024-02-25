@@ -42,6 +42,7 @@ const (
 	InputSourceClipboard
 	InputSourcePiped
 	InputSourceUnknown
+	InputSourceDirs
 )
 
 func TextToInputSource(textName string) InputSource {
@@ -54,6 +55,8 @@ func TextToInputSource(textName string) InputSource {
 		return InputSourceClipboard
 	case "PIPED":
 		return InputSourcePiped
+	case "DIRS":
+		return InputSourceDirs
 	default:
 		return InputSourceUnknown
 	}

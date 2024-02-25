@@ -28,8 +28,9 @@ const (
 type BundleInputSource int
 
 const (
-	BundleInputSourceDirect BundleInputSource = iota
-	BundleInputSourceFile
+	BundleInputSourceDirect   BundleInputSource = 0
+	BundleInputSourceFile     BundleInputSource = 1
+	BundleInputSourceMultiDir BundleInputSource = 2
 )
 
 func BundleInputSourceToText(bis BundleInputSource) string {
@@ -38,6 +39,8 @@ func BundleInputSourceToText(bis BundleInputSource) string {
 		return "Direct"
 	case BundleInputSourceFile:
 		return "File"
+	case BundleInputSourceMultiDir:
+		return "MultiDir"
 	default:
 		return "Unknown"
 	}
@@ -65,7 +68,7 @@ type BundleInfo struct {
 	SenderSig []byte
 	// HdrVer identifies the version of the Bumblebee functionality that built the hdr
 	HdrVer string
-	// PayloadVer identifies the version of the Bumblebee functionality that builtthe payload
+	// PayloadVer identifies the version of the Bumblebee functionality that built the payload
 	PayloadVer string
 }
 

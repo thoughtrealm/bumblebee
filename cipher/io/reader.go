@@ -22,6 +22,7 @@ import (
 	"github.com/thoughtrealm/bumblebee/helpers"
 	"github.com/thoughtrealm/bumblebee/logger"
 	"github.com/thoughtrealm/bumblebee/security"
+	"github.com/thoughtrealm/bumblebee/streams"
 	"github.com/vmihailenco/msgpack/v5"
 	"io"
 	"os"
@@ -218,27 +219,50 @@ func (cfr *CipherReader) ReadCombinedFileToPath(combinedFilePath, outputPath str
 	}
 	defer bundleInfo.Wipe()
 
-	var outputFilePath string
-	if bundleInfo.OriginalFileName == "" {
-		// get input filename
-		_, fileName := filepath.Split(combinedFilePath)
-		outputFilePath = filepath.Join(outputPath, helpers.ReplaceFileExt(fileName, ".decrypted"))
+	var outputWriter io.Writer
+	var mdsw streams.StreamWriter
+	if bundleInfo.InputSource == BundleInputSourceMultiDir {
+		// For multi dir streams, we just need to initialize the stream writer with the output path
+		mdsw, err = streams.NewMultiDirectoryStreamWriter(outputPath)
+		if err != nil {
+			return 0, fmt.Errorf("unable to initialize multi directory stream writer: %w", err)
+		}
+
+		outputWriter, err = mdsw.StartStream()
+		if err != nil {
+			return 0, fmt.Errorf("unable to start multi directory stream: %w", err)
+		}
 	} else {
-		outputFilePath = filepath.Join(outputPath, bundleInfo.OriginalFileName)
+		var outputFilePath string
+		if bundleInfo.OriginalFileName == "" {
+			// get input filename
+			_, fileName := filepath.Split(combinedFilePath)
+			outputFilePath = filepath.Join(outputPath, helpers.ReplaceFileExt(fileName, ".decrypted"))
+		} else {
+			outputFilePath = filepath.Join(outputPath, bundleInfo.OriginalFileName)
+		}
+
+		fileOut, err := os.Create(outputFilePath)
+		if err != nil {
+			return 0, fmt.Errorf("unable to open output file: %w", err)
+		}
+
+		defer func() {
+			_ = fileOut.Close()
+		}()
+
+		outputWriter = fileOut
 	}
 
-	fileOut, err := os.Create(outputFilePath)
-	if err != nil {
-		return 0, fmt.Errorf("unable to open output file: %w", err)
-	}
-
-	defer func() {
-		_ = fileOut.Close()
-	}()
-
-	bytesWritten, err := cfr.readBundleDataTo(bundleInfo, fileIn, fileOut)
+	bytesWritten, err := cfr.readBundleDataTo(bundleInfo, fileIn, outputWriter)
 	if err != nil {
 		return bytesWritten, fmt.Errorf("unable to write bundle data: %w", err)
+	}
+
+	if mdsw != nil {
+		// The multi dir writer may emit more data than the decryptor is aware of.
+		// So, get the total from the multi dir writer when one is used.
+		return mdsw.TotalBytesWritten(), nil
 	}
 
 	return bytesWritten, nil

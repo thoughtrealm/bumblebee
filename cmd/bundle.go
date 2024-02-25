@@ -14,6 +14,7 @@
 package cmd
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
@@ -24,6 +25,7 @@ import (
 	"github.com/thoughtrealm/bumblebee/keystore"
 	"github.com/thoughtrealm/bumblebee/logger"
 	"github.com/thoughtrealm/bumblebee/security"
+	"github.com/thoughtrealm/bumblebee/streams"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 	"io"
@@ -59,7 +61,7 @@ type bundleCommandVals struct {
 	// If localKeys is true, then the read and write keypairs from the keypair store are used for sender and receiver.
 	localKeys bool
 
-	// inputSourceText should be console, clipboard or file
+	// inputSourceText should be console, clipboard, file or dirs
 	inputSourceText string
 
 	// inputSource is transformed from inputSourceText
@@ -67,6 +69,12 @@ type bundleCommandVals struct {
 
 	// inputFilePath is the name of a file to use as input.  Only relevant for inputSourceText=file.
 	inputFilePath string
+
+	// inputDir is the name of a directory to use as input.  Only relevant for inputSourceText=dirs.
+	inputDir string
+
+	// inputDescriptorPath is a path to a file that contains a list of input paths.  Only relevant for inputSourceText=dirs.
+	inputDescriptorPath string
 
 	// outputTargetText should be console, clipboard or file
 	outputTargetText string
@@ -95,6 +103,7 @@ type bundleSettings struct {
 	inputFile         *os.File
 	cipherWriter      *cipherio.CipherWriter
 	totalBytesWritten int
+	mdsr              streams.StreamReader
 	// pipeBuffer        *bytes.Buffer
 }
 
@@ -105,8 +114,10 @@ func init() {
 	bundleCmd.Flags().StringVarP(&localBundleCommandVals.toName, "to", "t", "", "The name of the key to use for the receiver's key data.  Not necessary if using local-keys.")
 	bundleCmd.Flags().StringVarP(&localBundleCommandVals.fromName, "from", "r", "", "The name of the keypair to use for the sender's key data.  If empty, uses the default keypair for the profile. Not necessary if using local-keys.")
 	bundleCmd.Flags().BoolVarP(&localBundleCommandVals.localKeys, "local-keys", "l", false, "If true, will use the local store keys to write the bundle data.")
-	bundleCmd.Flags().StringVarP(&localBundleCommandVals.inputSourceText, "input-source", "i", "", "The type of the input source.  Should be one of: console, clipboard or file.")
+	bundleCmd.Flags().StringVarP(&localBundleCommandVals.inputSourceText, "input-source", "i", "", "The type of the input source.  Should be one of: console, clipboard, file or dirs.")
 	bundleCmd.Flags().StringVarP(&localBundleCommandVals.inputFilePath, "input-file", "f", "", "The name of a file to use for input. Only relevant if input-source is file.")
+	bundleCmd.Flags().StringVarP(&localBundleCommandVals.inputDir, "input-dir", "", "", "The name of a directory to use for input. Only relevant if input-source is dirs.")
+	bundleCmd.Flags().StringVarP(&localBundleCommandVals.inputDescriptorPath, "input-descriptor", "", "", "The name of a file that contains a list of directories for input. Only relevant if input-source is dirs.")
 	bundleCmd.Flags().StringVarP(&localBundleCommandVals.outputTargetText, "output-target", "o", "", "The output target.  Should be one of: console, clipboard or file.")
 	bundleCmd.Flags().StringVarP(&localBundleCommandVals.outputFile, "output-file", "y", "", "The file name to use for output. Only relevant if output-target is FILE.")
 	bundleCmd.Flags().StringVarP(&localBundleCommandVals.outputPath, "output-path", "p", "", "The path name to use for output. Only relevant if output-target is PATH.")
@@ -122,8 +133,14 @@ func bundleData() {
 
 	var err error
 
-	if localBundleCommandVals.inputSourceText == "" && localBundleCommandVals.inputFilePath != "" {
-		localBundleCommandVals.inputSourceText = "file"
+	if localBundleCommandVals.inputSourceText == "" {
+		if localBundleCommandVals.inputFilePath != "" {
+			localBundleCommandVals.inputSourceText = "file"
+		} else if localBundleCommandVals.inputDir != "" {
+			localBundleCommandVals.inputSourceText = "dirs"
+		} else if localBundleCommandVals.inputDescriptorPath != "" {
+			localBundleCommandVals.inputSourceText = "dirs"
+		}
 	}
 
 	if localBundleCommandVals.outputTargetText == "" && localBundleCommandVals.outputFile != "" {
@@ -134,6 +151,7 @@ func bundleData() {
 		localBundleCommandVals.outputTargetText = "path"
 	}
 
+	// do this check after the other inference checks above relating to no supplied value for inputSourceText
 	if localBundleCommandVals.inputSourceText == "" && helpers.CheckIsPiped() {
 		localBundleCommandVals.inputSourceText = "piped"
 	}
@@ -169,6 +187,15 @@ func bundleData() {
 		}
 	}
 
+	if localBundleCommandVals.inputSource == keystore.InputSourceDirs {
+		err = validateInputDirs()
+		if err != nil {
+			fmt.Printf("Input dirs invalid: %s\n", err)
+			helpers.ExitCode = helpers.ExitCodeInvalidInput
+			return
+		}
+	}
+
 	if localBundleCommandVals.outputTargetText == "" {
 		if !inferOutputTargetForBundle() {
 			fmt.Println("Unable to infer output-target based on input-source.  You must provide a value for --output-target.")
@@ -178,10 +205,17 @@ func bundleData() {
 	} else {
 		localBundleCommandVals.outputTarget = keystore.TextToOutputTarget(localBundleCommandVals.outputTargetText)
 		if localBundleCommandVals.outputTarget == keystore.OutputTargetUnknown {
-			fmt.Printf("Unknown output-targete: \"%s\"\n", localBundleCommandVals.outputTargetText)
+			fmt.Printf("Unknown output-target: \"%s\"\n", localBundleCommandVals.outputTargetText)
 			helpers.ExitCode = helpers.ExitCodeInvalidInput
 			return
 		}
+	}
+
+	if localBundleCommandVals.inputSource == keystore.InputSourceDirs &&
+		localBundleCommandVals.outputTarget != keystore.OutputTargetFile {
+		fmt.Println("Incorrect output target for input source DIRS.  Output target MUST BE of type FILE.")
+		helpers.ExitCode = helpers.ExitCodeInvalidInput
+		return
 	}
 
 	if localBundleCommandVals.outputTarget == keystore.OutputTargetFile {
@@ -374,7 +408,7 @@ func inferOutputTargetForBundle() (outputTargetWasInferred bool) {
 	case keystore.InputSourceFile:
 		cwd, err := os.Getwd()
 		if err != nil {
-			logger.Errorf("unable to determine the current working directory: %s", err)
+			logger.Errorfln("unable to determine the current working directory: %s", err)
 			return false
 		}
 
@@ -382,8 +416,11 @@ func inferOutputTargetForBundle() (outputTargetWasInferred bool) {
 		localBundleCommandVals.outputPath = cwd
 
 		return true
+	case keystore.InputSourceDirs:
+		logger.Errorfln("Input-source DIRS requires output target of type FILE")
+		return false
 	default:
-		logger.Errorf("Unsupported input source detected: %d", int(localBundleCommandVals.inputSource))
+		logger.Errorfln("Unsupported input source detected: %d\n", int(localBundleCommandVals.inputSource))
 		return false
 	}
 }
@@ -398,6 +435,81 @@ func validateInputFile() error {
 	}
 
 	return nil
+}
+
+func validateInputDirs() error {
+	if localBundleCommandVals.inputDir != "" {
+		isFound, isDir, err := helpers.FileExistsWithDetails(localBundleCommandVals.inputDir)
+		if !isFound {
+			return fmt.Errorf("input-dir does not exist: %s", localBundleCommandVals.inputDir)
+		}
+
+		if !isDir {
+			return fmt.Errorf("input-dir is a file.  For input-source type DIRS, it must refer to a directory: %s", localBundleCommandVals.inputDir)
+		}
+
+		if err != nil {
+			return fmt.Errorf("an error occured trying to obtain info for input-dir \"%s\": %s",
+				localBundleCommandVals.inputDir, err)
+		}
+
+		return nil
+	}
+
+	if localBundleCommandVals.inputDescriptorPath == "" {
+		return errors.New("no value supplied for input-dir or input-descriptor.  For input-source type DIRS, you must supply one of these")
+	}
+
+	if !helpers.FileExists(localBundleCommandVals.inputDescriptorPath) {
+		return fmt.Errorf("input-descriptor not found: %s", localBundleCommandVals.inputDescriptorPath)
+	}
+
+	pathList, err := getDescriptorPaths(localBundleCommandVals.inputDescriptorPath)
+	if err != nil {
+		return fmt.Errorf("error reading descriptor: %s", err)
+	}
+
+	for _, path := range pathList {
+		if path == "" {
+			continue
+		}
+
+		isFound, isDir, err := helpers.FileExistsWithDetails(path)
+		if !isFound {
+			return fmt.Errorf("descriptor path reference does not exist: \"%s\"", path)
+		}
+
+		if !isDir {
+			return fmt.Errorf("descriptor reference is a file.  All descriptor refs must refer to a directory: %s", path)
+		}
+
+		if err != nil {
+			return fmt.Errorf("an error occured trying to obtain info for descriptor reference \"%s\": %s",
+				path, err)
+		}
+	}
+
+	return nil
+}
+
+func getDescriptorPaths(filePath string) ([]string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	var paths []string
+	for scanner.Scan() {
+		paths = append(paths, scanner.Text())
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return paths, nil
 }
 
 func validateOutputFile() error {
@@ -487,6 +599,8 @@ func getInputReader() (io.Reader, error) {
 		return getFileReader()
 	case keystore.InputSourcePiped:
 		return getPipedReader()
+	case keystore.InputSourceDirs:
+		return getDirsReader()
 	}
 
 	return nil, errors.New("unknown input source obtaining stream reader")
@@ -575,6 +689,56 @@ func getFileReader() (io.Reader, error) {
 
 	localBundleSettings.inputFile = file
 	return file, nil
+}
+
+func getDirsReader() (io.Reader, error) {
+	var err error
+	localBundleSettings.mdsr, err = streams.NewMultiDirectoryStreamReader(streams.WithCompression())
+	if err != nil {
+		return nil, fmt.Errorf("unable to create multi directory input stream: %w", err)
+	}
+
+	localBundleSettings.cipherWriter.OutputBundleInfo.InputSource = cipherio.BundleInputSourceMultiDir
+
+	if localBundleCommandVals.inputDir != "" {
+		// Everything has already been validated, no need to do checks again, we'll assume all is good
+		_, err := localBundleSettings.mdsr.AddDir(
+			localBundleCommandVals.inputDir,
+			streams.WithEmptyPaths())
+
+		if err != nil {
+			return nil, fmt.Errorf("unable to add directory \"%s\" to input stream: %w",
+				localBundleCommandVals.inputDir,
+				err)
+		}
+	} else {
+		// Due to prior validations, we can assume the descriptor path is what we want to use now
+		// Everything has already been validated, no need to do checks again, we'll assume all is good
+
+		pathList, err := getDescriptorPaths(localBundleCommandVals.inputDescriptorPath)
+		if err != nil {
+			return nil, fmt.Errorf("unable to add descriptor paths: %w", err)
+		}
+
+		for _, path := range pathList {
+			_, err := localBundleSettings.mdsr.AddDir(
+				path,
+				streams.WithEmptyPaths())
+
+			if err != nil {
+				return nil, fmt.Errorf("unable to add directory \"%s\" to input stream: %w",
+					path,
+					err)
+			}
+		}
+	}
+
+	streamReader, err := localBundleSettings.mdsr.StartStream()
+	if err != nil {
+		return nil, fmt.Errorf("unable to start multi directory stream: %w", err)
+	}
+
+	return streamReader, nil
 }
 
 func writeToConsole(reader io.Reader) (err error) {

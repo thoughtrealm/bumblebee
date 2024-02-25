@@ -20,6 +20,7 @@ import (
 type StreamReader interface {
 	io.Reader
 	AddDir(dir string, options ...DirectoryOption) (newTree Tree, err error)
+	GetTotalBytesRead() int64
 	StartStream() (io.Reader, error)
 }
 
@@ -63,7 +64,7 @@ type StreamBlockDescriptor struct {
 	Version  uint8
 	Flags    uint8
 	DataType StreamBlockType
-	Len      uint32
+	Length   uint32
 }
 
 func NewStreamBlockDescriptorFromBytes(input []byte) *StreamBlockDescriptor {
@@ -78,7 +79,7 @@ func NewStreamBlockDescriptorFromBytes(input []byte) *StreamBlockDescriptor {
 		Version:  input[0],
 		Flags:    input[1],
 		DataType: StreamBlockType(input[2]),
-		Len:      binary.BigEndian.Uint32(input[3:]),
+		Length:   binary.BigEndian.Uint32(input[3:]),
 	}
 }
 
@@ -87,7 +88,7 @@ func (sbd *StreamBlockDescriptor) ToBytes() []byte {
 	descBytes[0] = sbd.Version
 	descBytes[1] = sbd.Flags
 	descBytes[2] = uint8(sbd.DataType)
-	binary.BigEndian.PutUint32(descBytes[3:], sbd.Len)
+	binary.BigEndian.PutUint32(descBytes[3:], sbd.Length)
 	return descBytes
 }
 
@@ -211,6 +212,10 @@ func NewMultiDirectoryStreamReaderFromDirs(dirs []string, dirOptions []Directory
 	return mdsr, nil
 }
 
+func (mdsr *MultiDirectoryStreamReader) GetTotalBytesRead() int64 {
+	return mdsr.totalBytesRead
+}
+
 func (mdsr *MultiDirectoryStreamReader) AddDir(dir string, options ...DirectoryOption) (newTree Tree, err error) {
 	newTree, err = NewDirectoryTreeFromPath(dir, options...)
 	if err != nil {
@@ -264,7 +269,7 @@ func (mdsr *MultiDirectoryStreamReader) Iterator(chanCollectorSync CollectorSync
 		blockHeader := &StreamBlockDescriptor{
 			Version:  StreamBlockDescriptorCurrentVersion,
 			DataType: StreamBlockTypeTreeData,
-			Len:      uint32(len(treeAsBytes)),
+			Length:   uint32(len(treeAsBytes)),
 		}
 		blockHeaderBytes := blockHeader.ToBytes()
 
@@ -281,11 +286,15 @@ func (mdsr *MultiDirectoryStreamReader) Iterator(chanCollectorSync CollectorSync
 		}
 
 		rootPath := tree.GetRootPath()
+		var (
+			itemNode *ItemNode
+			file     *os.File
+		)
 
 		for itemIndex := 0; itemIndex < tree.ItemCount(); itemIndex++ {
 			// encapsulate in block to allow for defer to close file when done with reading
 			func() {
-				itemNode, err := tree.GetItemNodeByIndex(itemIndex)
+				itemNode, err = tree.GetItemNodeByIndex(itemIndex)
 				if err != nil {
 					chanCollectorSync <- &iteratorSendInfo{
 						err: fmt.Errorf("failed retrieving tree node: %w", err),
@@ -301,7 +310,7 @@ func (mdsr *MultiDirectoryStreamReader) Iterator(chanCollectorSync CollectorSync
 					return
 				}
 
-				file, err := os.Open(filepath.Join(rootPath, dirNode.Path, itemNode.Name))
+				file, err = os.Open(filepath.Join(rootPath, dirNode.Path, itemNode.Name))
 				if err != nil {
 					chanCollectorSync <- &iteratorSendInfo{
 						err: fmt.Errorf("failed opening itemNode related file: %w", err),
@@ -326,7 +335,7 @@ func (mdsr *MultiDirectoryStreamReader) Iterator(chanCollectorSync CollectorSync
 				blockHeader = &StreamBlockDescriptor{
 					Version:  StreamBlockDescriptorCurrentVersion,
 					DataType: StreamBlockTypeItemHeader,
-					Len:      uint32(len(ihBytes)),
+					Length:   uint32(len(ihBytes)),
 				}
 				blockHeaderBytes = blockHeader.ToBytes()
 
@@ -341,32 +350,40 @@ func (mdsr *MultiDirectoryStreamReader) Iterator(chanCollectorSync CollectorSync
 					// ignore this
 				}
 
-				done := false
-				fileBytes := make([]byte, StreamFileReadBlockSize)
-				isCompressed := false
-				dataLen := 0
-				var errCompression error
+				var (
+					bytesIn        = make([]byte, StreamFileReadBlockSize)
+					done           bool
+					isCompressed   bool
+					bytesOut       []byte
+					errCompression error
+					bytesRead      int
+				)
+
 				for done == false {
-					bytesRead, err := file.Read(fileBytes)
+					bytesRead, err = file.Read(bytesIn)
+					bytesOut = bytesIn[:bytesRead]
 
-					if mdsr.compressionEnabled {
-						dataLen, isCompressed, errCompression = mdsr.Comp.CompressData(fileBytes, bytesRead)
-						if errCompression != nil {
-							chanCollectorSync <- &iteratorSendInfo{
-								err: fmt.Errorf("failed compressing data block: %w", errCompression),
+					if bytesRead != 0 {
+						mdsr.totalBytesRead += int64(bytesRead)
+						if mdsr.compressionEnabled {
+							bytesOut, isCompressed, errCompression = mdsr.Comp.CompressData(bytesIn[:bytesRead])
+							if errCompression != nil {
+								chanCollectorSync <- &iteratorSendInfo{
+									err: fmt.Errorf("failed compressing data block: %w", errCompression),
+								}
+								return
 							}
-							return
-						}
 
-						if isCompressed {
-							bytesRead = dataLen
+							if isCompressed {
+								bytesRead = len(bytesOut)
+							}
 						}
 					}
 
 					blockHeader = &StreamBlockDescriptor{
 						Version:  StreamBlockDescriptorCurrentVersion,
 						DataType: StreamBlockTypeItemData,
-						Len:      uint32(bytesRead),
+						Length:   uint32(bytesRead),
 					}
 
 					if isCompressed {
@@ -381,7 +398,7 @@ func (mdsr *MultiDirectoryStreamReader) Iterator(chanCollectorSync CollectorSync
 
 					// build byte stream with the block header followed by the block's data bytes
 					sendInfo := &iteratorSendInfo{}
-					sendInfo.data = append(blockHeaderBytes, fileBytes[:bytesRead]...)
+					sendInfo.data = append(blockHeaderBytes, bytesOut...)
 
 					if err != nil && err != io.EOF {
 						sendInfo.err = err

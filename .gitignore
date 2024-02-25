@@ -9,3 +9,4 @@ tests/distributions/distributions
 archives/*
 testdata
 testdir_out/
+testpath/

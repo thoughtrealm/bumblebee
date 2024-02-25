@@ -17,7 +17,7 @@ import (
 */
 
 type Compressor interface {
-	CompressData(inputData []byte, inputLen int) (dataLen int, isCompressed bool, err error)
+	CompressData(inputData []byte) (newData []byte, isCompressed bool, err error)
 }
 
 type BeeCompressor struct {
@@ -35,14 +35,11 @@ func NewCompressor() (Compressor, error) {
 	return beecomp, nil
 }
 
-func (bc *BeeCompressor) CompressData(inputData []byte, inputLen int) (dataLen int, isCompressed bool, err error) {
-	encodedBytes := make([]byte, 0, inputLen)
-	newData := bc.compressor.EncodeAll(inputData, encodedBytes)
-
-	if len(newData) >= inputLen {
-		return inputLen, false, nil
+func (bc *BeeCompressor) CompressData(inputData []byte) (newData []byte, isCompressed bool, err error) {
+	newData = bc.compressor.EncodeAll(inputData, nil)
+	if len(newData) >= len(inputData) {
+		return inputData, false, nil
 	}
 
-	bytesCopied := copy(inputData, newData)
-	return bytesCopied, true, nil
+	return newData, true, nil
 }

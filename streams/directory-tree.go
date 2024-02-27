@@ -34,6 +34,10 @@ type ItemNode struct {
 	PropsIncluded bool
 }
 
+func (itemNode *ItemNode) NodeToTime() (time.Time, error) {
+	return time.Parse(time.RFC3339, itemNode.NodeTime)
+}
+
 func (itemNode *ItemNode) Clone() *ItemNode {
 	return &ItemNode{
 		DirID:         itemNode.DirID,
@@ -77,6 +81,10 @@ type DirNode struct {
 	NodeTime      string
 	PermBits      uint16
 	PropsIncluded bool
+}
+
+func (dirNode *DirNode) NodeToTime() (time.Time, error) {
+	return time.Parse(time.RFC3339, dirNode.NodeTime)
 }
 
 func (dirNode *DirNode) Clone() *DirNode {
@@ -307,7 +315,7 @@ func (dt *DirectoryTree) doScanPath(fullPath string) (itemsAdded bool, err error
 		Path:          relativePath,
 		NodeTime:      info.ModTime().UTC().Format(time.RFC3339),
 		PermBits:      uint16(uint32(info.Mode()) & uint32(0x1FF)),
-		PropsIncluded: false,
+		PropsIncluded: true,
 	}
 
 	if relativePath == "" {

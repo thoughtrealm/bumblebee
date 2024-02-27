@@ -704,6 +704,7 @@ func getDirsReader() (io.Reader, error) {
 		// Everything has already been validated, no need to do checks again, we'll assume all is good
 		_, err := localBundleSettings.mdsr.AddDir(
 			localBundleCommandVals.inputDir,
+			streams.WithItemDetails(),
 			streams.WithEmptyPaths())
 
 		if err != nil {
@@ -723,6 +724,7 @@ func getDirsReader() (io.Reader, error) {
 		for _, path := range pathList {
 			_, err := localBundleSettings.mdsr.AddDir(
 				path,
+				streams.WithItemDetails(),
 				streams.WithEmptyPaths())
 
 			if err != nil {

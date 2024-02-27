@@ -134,12 +134,12 @@ func GetYesNoInput(inputMessage string, nullVal InputResponseVal) (InputResponse
 	}
 }
 
-// GetInputFromList will display a list of options and allow user to select one of them or cancel
 type InputListItem struct {
 	Option string
 	Label  string
 }
 
+// GetInputFromList will display a list of options and allow user to select one of them or cancel
 func GetInputFromList(inputMessage string, listItems []InputListItem, nullOption string) (string, error) {
 	currentAttemptNumber := 0
 	for {

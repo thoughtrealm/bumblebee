@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 const WriterReceiveBuffSize = 64000
@@ -33,7 +34,10 @@ type MultiDirectoryStreamWriter struct {
 	Trees                   []Tree
 	currentBlock            *StreamBlockDescriptor
 	currentItemHeader       *ItemHeader
+	currentFilePath         string
 	currentFile             *os.File
+	currentDirNode          *DirNode
+	currentItemNode         *ItemNode
 	currentTree             Tree
 	blockBytesRead          int
 	totalBytesRead          int
@@ -227,11 +231,15 @@ func (mdsw *MultiDirectoryStreamWriter) Write(p []byte) (n int, err error) {
 					if err != nil {
 						return len(p), fmt.Errorf("failed closing item file: %w", err)
 					}
+
+					err = mdsw.applyItemAttributes()
+					if err != nil {
+						return len(p), fmt.Errorf("failed to apply item attributes: %w", err)
+					}
 				}
 
-				if mdsw.ignoreCurrentItemOutput {
-					mdsw.ignoreCurrentItemOutput = false
-				}
+				// in case we were in an ignore state, clear this flag for the next file
+				mdsw.ignoreCurrentItemOutput = false
 
 				// Reset the current file and item header
 				mdsw.currentFile = nil
@@ -261,6 +269,28 @@ func (mdsw *MultiDirectoryStreamWriter) Write(p []byte) (n int, err error) {
 	}
 }
 
+func (mdsw *MultiDirectoryStreamWriter) applyItemAttributes() error {
+	if !mdsw.currentItemNode.PropsIncluded {
+		// properties were not stored, so no info to update
+		return nil
+	}
+
+	nodeTime, err := mdsw.currentItemNode.NodeToTime()
+	if err == nil {
+		err = os.Chtimes(mdsw.currentFilePath, time.Now(), nodeTime)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = os.Chmod(mdsw.currentFilePath, os.FileMode(mdsw.currentItemNode.PermBits))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (mdsw *MultiDirectoryStreamWriter) processTreeData(tree Tree) error {
 	dirNodes := tree.GetDirNodes()
 	for _, dirNode := range dirNodes {
@@ -272,6 +302,11 @@ func (mdsw *MultiDirectoryStreamWriter) processTreeData(tree Tree) error {
 				targetPath,
 				err)
 		}
+
+		nodeTime, err := dirNode.NodeToTime()
+		if err == nil {
+			_ = os.Chtimes(targetPath, time.Now(), nodeTime)
+		}
 	}
 
 	return nil
@@ -280,32 +315,32 @@ func (mdsw *MultiDirectoryStreamWriter) processTreeData(tree Tree) error {
 func (mdsw *MultiDirectoryStreamWriter) processItemHeader() error {
 	// Open the item's file for writing
 	// Get the DirNode
-	dirNode := mdsw.currentTree.GetDirNodeByID(int(mdsw.currentItemHeader.DirID))
-	if dirNode == nil {
+	mdsw.currentDirNode = mdsw.currentTree.GetDirNodeByID(int(mdsw.currentItemHeader.DirID))
+	if mdsw.currentDirNode == nil {
 		return fmt.Errorf("could not locate directory node with DirID: %d, ItemID: %d",
 			mdsw.currentItemHeader.DirID,
 			mdsw.currentItemHeader.ItemID)
 	}
 
-	fileNode := mdsw.currentTree.GetItemNodeByID(int(mdsw.currentItemHeader.ItemID))
-	if fileNode == nil {
+	mdsw.currentItemNode = mdsw.currentTree.GetItemNodeByID(int(mdsw.currentItemHeader.ItemID))
+	if mdsw.currentItemNode == nil {
 		return fmt.Errorf("could not locate item node with ItemID: %d",
 			mdsw.currentItemHeader.ItemID)
 	}
 
-	filePath := filepath.Join(
+	mdsw.currentFilePath = filepath.Join(
 		mdsw.rootPath,
 		mdsw.currentTree.GetParentPathPrefix(),
-		dirNode.Path,
-		fileNode.Name)
+		mdsw.currentDirNode.Path,
+		mdsw.currentItemNode.Name)
 
-	if mdsw.requireConfirm && helpers.FileExists(filePath) {
+	if mdsw.requireConfirm && helpers.FileExists(mdsw.currentFilePath) {
 		if mdsw.overwriteDenyAll {
 			mdsw.ignoreCurrentItemOutput = true
 			return nil
 		}
 
-		shouldOverride, err := mdsw.confirmOverwrite(fileNode.Name, filePath)
+		shouldOverride, err := mdsw.confirmOverwrite(mdsw.currentItemNode.Name, mdsw.currentFilePath)
 		if err != nil {
 			return fmt.Errorf("failed to confirm overwrite of current file: %w", err)
 		}
@@ -316,7 +351,7 @@ func (mdsw *MultiDirectoryStreamWriter) processItemHeader() error {
 		}
 	}
 
-	file, err := os.Create(filePath)
+	file, err := os.Create(mdsw.currentFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}

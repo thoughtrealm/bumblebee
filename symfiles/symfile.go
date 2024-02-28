@@ -4,7 +4,10 @@ import (
 	beecipher "github.com/thoughtrealm/bumblebee/cipher"
 )
 
-type SymFile interface{}
+type SymFile interface {
+	WriteSymFileFromFile(key []byte, inputFilename, outputSymFileName string) (bytesWritten int, err error)
+	WriteSymFileFromDirs(key []byte, inputDirs []string, outputSymFileName string) (bytesWritten int, err error)
+}
 
 type SimpleSymFile struct {
 	sc beecipher.Cipher

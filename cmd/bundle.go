@@ -440,17 +440,17 @@ func validateInputFile() error {
 func validateInputDirs() error {
 	if localBundleCommandVals.inputDir != "" {
 		isFound, isDir, err := helpers.FileExistsWithDetails(localBundleCommandVals.inputDir)
+		if err != nil {
+			return fmt.Errorf("an error occured trying to obtain info for input-dir \"%s\": %s",
+				localBundleCommandVals.inputDir, err)
+		}
+
 		if !isFound {
 			return fmt.Errorf("input-dir does not exist: %s", localBundleCommandVals.inputDir)
 		}
 
 		if !isDir {
 			return fmt.Errorf("input-dir is a file.  For input-source type DIRS, it must refer to a directory: %s", localBundleCommandVals.inputDir)
-		}
-
-		if err != nil {
-			return fmt.Errorf("an error occured trying to obtain info for input-dir \"%s\": %s",
-				localBundleCommandVals.inputDir, err)
 		}
 
 		return nil
@@ -475,17 +475,17 @@ func validateInputDirs() error {
 		}
 
 		isFound, isDir, err := helpers.FileExistsWithDetails(path)
+		if err != nil {
+			return fmt.Errorf("an error occured trying to obtain info for descriptor reference \"%s\": %s",
+				path, err)
+		}
+
 		if !isFound {
 			return fmt.Errorf("descriptor path reference does not exist: \"%s\"", path)
 		}
 
 		if !isDir {
 			return fmt.Errorf("descriptor reference is a file.  All descriptor refs must refer to a directory: %s", path)
-		}
-
-		if err != nil {
-			return fmt.Errorf("an error occured trying to obtain info for descriptor reference \"%s\": %s",
-				path, err)
 		}
 	}
 

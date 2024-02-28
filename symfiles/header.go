@@ -2,6 +2,7 @@ package symfiles
 
 import (
 	"errors"
+	"fmt"
 	"io"
 )
 
@@ -22,12 +23,21 @@ type SymFileHeader struct {
 	Salt        [DEFAULT_SALT_SIZE]byte
 }
 
-func NewSymFileHeader(salt [DEFAULT_SALT_SIZE]byte, payloadType SymFilePayload) *SymFileHeader {
+func NewSymFileHeader(saltIn []byte, payloadType SymFilePayload) (*SymFileHeader, error) {
+	if len(saltIn) != DEFAULT_SALT_SIZE {
+		return nil, fmt.Errorf("NewSymFileHeader-> Invalid salt length: %d. Expected: %d bytes", len(saltIn), DEFAULT_SALT_SIZE)
+	}
+
+	var symSalt [DEFAULT_SALT_SIZE]byte
+	for idx := 0; idx < 32; idx++ {
+		symSalt[idx] = saltIn[idx]
+	}
+
 	return &SymFileHeader{
 		HeaderLen:   SymFileHeader_SIZE,
 		PayloadType: payloadType,
-		Salt:        salt,
-	}
+		Salt:        symSalt,
+	}, nil
 }
 
 func LoadHeader(r io.Reader) *SymFileHeader {

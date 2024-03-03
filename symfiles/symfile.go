@@ -5,6 +5,7 @@ import (
 )
 
 type SymFile interface {
+	ReadSymFile(key []byte, inputSymFilename, outputPath string) (bytesWritten int, err error)
 	WriteSymFileFromFile(key []byte, inputFilename, outputSymFileName string) (bytesWritten int, err error)
 	WriteSymFileFromDirs(key []byte, inputDirs []string, outputSymFileName string) (bytesWritten int, err error)
 }

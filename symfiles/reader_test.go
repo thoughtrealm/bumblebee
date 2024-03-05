@@ -69,11 +69,11 @@ func TestSimpleSymFile_ReadSymFile(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			symFile, err := NewSymFile(writerTestKey)
+			symFile, err := NewSymFileReader(writerTestKey)
 			assert.NotNil(t, symFile)
 			assert.Nil(t, err)
 
-			bytesWritten, err := symFile.ReadSymFile(readerTestKey, tc.inputPath, tc.outputPath)
+			bytesWritten, err := symFile.ReadSymFile(tc.inputPath, tc.outputPath)
 			assert.Nil(t, err)
 			assert.NotZero(t, bytesWritten)
 

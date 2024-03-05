@@ -13,12 +13,12 @@ func TestSimpleSymFile_WriteSymFileFromFileSmall(t *testing.T) {
 }
 
 func testHelperWriteSymFileFromFileSmall(t *testing.T) (bytesWritten int, err error) {
-	symFile, err := NewSymFile(writerTestKey)
-	assert.NotNil(t, symFile)
+	symFileWriter, err := NewSymFileWriter(writerTestKey)
+	assert.NotNil(t, symFileWriter)
 	assert.Nil(t, err)
 
 	inputFilePath := filepath.Join("..", "streams", "testdir", "Dir2", "test.rtf")
-	bytesWritten, err = symFile.WriteSymFileFromFile(writerTestKey, inputFilePath, "output_file_small.bsym")
+	bytesWritten, err = symFileWriter.WriteSymFileFromFile(inputFilePath, "output_file_small.bsym")
 	assert.Nil(t, err)
 	assert.NotZero(t, bytesWritten)
 
@@ -32,12 +32,12 @@ func TestSimpleSymFile_WriteSymFileFromFileLarge(t *testing.T) {
 }
 
 func testHelperWriteSymFileFromFileLarge(t *testing.T) (bytesWritten int, err error) {
-	symFile, err := NewSymFile(writerTestKey)
-	assert.NotNil(t, symFile)
+	symFileWriter, err := NewSymFileWriter(writerTestKey)
+	assert.NotNil(t, symFileWriter)
 	assert.Nil(t, err)
 
 	inputFilePath := filepath.Join("..", "streams", "testdir2", "test2dir1", "bumblebee_0.1.1_darwin_all.tar.gz")
-	bytesWritten, err = symFile.WriteSymFileFromFile(writerTestKey, inputFilePath, "output_file_large.bsym")
+	bytesWritten, err = symFileWriter.WriteSymFileFromFile(inputFilePath, "output_file_large.bsym")
 	assert.Nil(t, err)
 	assert.NotZero(t, bytesWritten)
 
@@ -51,13 +51,13 @@ func TestSimpleSymFile_WriteSymFileFromDirs(t *testing.T) {
 }
 
 func testHelperWriteSymFileFromDirs(t *testing.T) (bytesWritten int, err error) {
-	symFile, err := NewSymFile(writerTestKey)
-	assert.NotNil(t, symFile)
+	symFileWriter, err := NewSymFileWriter(writerTestKey)
+	assert.NotNil(t, symFileWriter)
 	assert.Nil(t, err)
 
 	inputDirPath1 := filepath.Join("..", "streams", "testdir")
 	inputDirPath2 := filepath.Join("..", "streams", "testdir2")
-	bytesWritten, err = symFile.WriteSymFileFromDirs(writerTestKey, []string{inputDirPath1, inputDirPath2}, "output_dirs.bsym")
+	bytesWritten, err = symFileWriter.WriteSymFileFromDirs([]string{inputDirPath1, inputDirPath2}, "output_dirs.bsym")
 	assert.Nil(t, err)
 	assert.NotZero(t, bytesWritten)
 

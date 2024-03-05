@@ -1,9 +1,8 @@
 package symfiles
 
 import (
-	"errors"
 	"fmt"
-	"github.com/thoughtrealm/bumblebee/cipher"
+	beecipher "github.com/thoughtrealm/bumblebee/cipher"
 	"github.com/thoughtrealm/bumblebee/helpers"
 	"github.com/thoughtrealm/bumblebee/streams"
 	"io"
@@ -11,11 +10,28 @@ import (
 	"path/filepath"
 )
 
-func (ssf *SimpleSymFile) WriteSymFileFromFile(key []byte, inputFilename, outputSymFileName string) (bytesWritten int, err error) {
-	if len(key) == 0 {
-		return 0, errors.New("no key provided.  A key is required.")
+type SymFileWriter interface {
+	WriteSymFileFromFile(inputFilename, outputSymFileName string) (bytesWritten int, err error)
+	WriteSymFileFromDirs(inputDirs []string, outputSymFileName string) (bytesWritten int, err error)
+	WriteSymFileToWriterFromReader(r io.Reader, w io.Writer, payloadType SymFilePayload) (bytesWritten int, err error)
+}
+
+type SimpleSymFileWriter struct {
+	sc beecipher.Cipher
+}
+
+func NewSymFileWriter(key []byte) (SymFileWriter, error) {
+	newCipher, err := beecipher.NewSymmetricCipher(key, DEFAULT_CHUNK_SIZE)
+	if err != nil {
+		return nil, err
 	}
 
+	return &SimpleSymFileWriter{
+		sc: newCipher,
+	}, nil
+}
+
+func (ssfw *SimpleSymFileWriter) WriteSymFileFromFile(inputFilename, outputSymFileName string) (bytesWritten int, err error) {
 	if !helpers.FileExists(inputFilename) {
 		return 0, fmt.Errorf("input file does not exist: %s", inputFilename)
 	}
@@ -26,14 +42,10 @@ func (ssf *SimpleSymFile) WriteSymFileFromFile(key []byte, inputFilename, output
 	}
 	defer inputFile.Close()
 
-	return ssf.WriteSymFileFromReader(key, inputFile, outputSymFileName, SymFilePayloadDataStream)
+	return ssfw.WriteSymFileFromReader(inputFile, outputSymFileName, SymFilePayloadDataStream)
 }
 
-func (ssf *SimpleSymFile) WriteSymFileFromDirs(key []byte, inputDirs []string, outputSymFileName string) (bytesWritten int, err error) {
-	if len(key) == 0 {
-		return 0, errors.New("no key provided.  A key is required.")
-	}
-
+func (ssfw *SimpleSymFileWriter) WriteSymFileFromDirs(inputDirs []string, outputSymFileName string) (bytesWritten int, err error) {
 	streamReader, err := streams.NewMultiDirectoryStreamReader(streams.WithCompression())
 	if err != nil {
 		return 0, fmt.Errorf("failed creating streamReader: %w", err)
@@ -64,10 +76,10 @@ func (ssf *SimpleSymFile) WriteSymFileFromDirs(key []byte, inputDirs []string, o
 		return 0, fmt.Errorf("failed initializing multi-dir stream: %w", err)
 	}
 
-	return ssf.WriteSymFileFromReader(key, r, outputSymFileName, SymFilePayloadDataMultiDir)
+	return ssfw.WriteSymFileFromReader(r, outputSymFileName, SymFilePayloadDataMultiDir)
 }
 
-func (ssf *SimpleSymFile) WriteSymFileFromReader(key []byte, r io.Reader, outputSymFileName string, payloadType SymFilePayload) (bytesWritten int, err error) {
+func (ssfw *SimpleSymFileWriter) WriteSymFileFromReader(r io.Reader, outputSymFileName string, payloadType SymFilePayload) (bytesWritten int, err error) {
 	useSynName := outputSymFileName
 	ext := filepath.Ext(useSynName)
 	if ext == "" {
@@ -81,12 +93,7 @@ func (ssf *SimpleSymFile) WriteSymFileFromReader(key []byte, r io.Reader, output
 	}
 	defer outputSymFile.Close()
 
-	chacha, err := cipher.NewChaChaCipherRandomSalt(key, DEFAULT_CHUNK_SIZE)
-	if err != nil {
-		return 0, fmt.Errorf("unable to initialize chacha cipher: %w", err)
-	}
-
-	newHeader, err := NewSymFileHeader(chacha.Salt, payloadType)
+	newHeader, err := NewSymFileHeader(ssfw.sc.GetSalt(), payloadType)
 	if err != nil {
 		return 0, fmt.Errorf("failed creating new header: %w", err)
 	}
@@ -96,7 +103,26 @@ func (ssf *SimpleSymFile) WriteSymFileFromReader(key []byte, r io.Reader, output
 		return 0, fmt.Errorf("failed writing header bytes: %w", err)
 	}
 
-	fileBytesWritten, err := chacha.Encrypt(r, outputSymFile)
+	fileBytesWritten, err := ssfw.sc.Encrypt(r, outputSymFile)
+	if err != nil {
+		return 0, fmt.Errorf("error writing symfile data: %w", err)
+	}
+
+	return int(headerBytesWritten) + fileBytesWritten, nil
+}
+
+func (ssfw *SimpleSymFileWriter) WriteSymFileToWriterFromReader(r io.Reader, w io.Writer, payloadType SymFilePayload) (bytesWritten int, err error) {
+	newHeader, err := NewSymFileHeader(ssfw.sc.GetSalt(), payloadType)
+	if err != nil {
+		return 0, fmt.Errorf("failed creating new header: %w", err)
+	}
+
+	headerBytesWritten, err := newHeader.WriteTo(w)
+	if err != nil {
+		return 0, fmt.Errorf("failed writing header bytes: %w", err)
+	}
+
+	fileBytesWritten, err := ssfw.sc.Encrypt(r, w)
 	if err != nil {
 		return 0, fmt.Errorf("error writing symfile data: %w", err)
 	}

@@ -10,3 +10,4 @@ archives/*
 testdata
 testdir_out/
 testpath/
+*.bsym

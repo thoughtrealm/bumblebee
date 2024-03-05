@@ -26,6 +26,8 @@ import (
 // or not, both scenarios will work correctly
 func ReplaceFileExt(filePath, newExt string) string {
 	if newExt == "" {
+		// An empty string means remove the file extension
+		filePath = strings.TrimSuffix(filePath, filepath.Ext(filePath))
 		return filePath
 	}
 

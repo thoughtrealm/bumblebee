@@ -1,23 +1,34 @@
 package symfiles
 
 import (
-	"errors"
 	"fmt"
-	"github.com/thoughtrealm/bumblebee/cipher"
+	beecipher "github.com/thoughtrealm/bumblebee/cipher"
 	"github.com/thoughtrealm/bumblebee/helpers"
+	"github.com/thoughtrealm/bumblebee/security"
 	"github.com/thoughtrealm/bumblebee/streams"
 	"io"
 	"os"
 	"path/filepath"
 )
 
+type SymFileReader interface {
+	ReadSymFile(inputSymFilename, outputPath string) (bytesWritten int, err error)
+	Wipe()
+}
+
+type SimpleSymFileReader struct {
+	key []byte
+}
+
+func NewSymFileReader(key []byte) (SymFileReader, error) {
+	return &SimpleSymFileReader{
+		key: key,
+	}, nil
+}
+
 // ReadSymFile reads a .bsym file.  If the sym file is of type file stream, then outputPath must be a file
 // name.  If the sym file is of type multi-dir stream, then outputPath must be a path name.
-func (ssf *SimpleSymFile) ReadSymFile(key []byte, inputSymFilename, outputPath string) (bytesWritten int, err error) {
-	if len(key) == 0 {
-		return 0, errors.New("no key provided.  A key is required.")
-	}
-
+func (ssfr *SimpleSymFileReader) ReadSymFile(inputSymFilename, outputPath string) (bytesWritten int, err error) {
 	if !helpers.FileExists(inputSymFilename) {
 		return 0, fmt.Errorf("input sym file does not exist: %s", inputSymFilename)
 	}
@@ -40,7 +51,8 @@ func (ssf *SimpleSymFile) ReadSymFile(key []byte, inputSymFilename, outputPath s
 			_, filename := filepath.Split(inputSymFilename)
 			outputFilename = filepath.Join(outputPath, filename)
 			if filepath.Ext(outputFilename) == ".bsym" {
-				outputFilename = helpers.ReplaceFileExt(outputFilename, ".output")
+				// In this case, remove extension when input file has an extension of .bsym
+				outputFilename = helpers.ReplaceFileExt(outputFilename, "")
 			}
 
 			if outputFilename == inputSymFilename {
@@ -50,7 +62,7 @@ func (ssf *SimpleSymFile) ReadSymFile(key []byte, inputSymFilename, outputPath s
 			}
 		}
 
-		return ssf.ReadSymReaderToFile(key, newHeader.Salt, inputFile, outputFilename)
+		return ssfr.ReadSymReaderToFile(newHeader.Salt, inputFile, outputFilename)
 	}
 
 	// For multi-dir streams, the outputPath MUST be a directory
@@ -64,13 +76,13 @@ func (ssf *SimpleSymFile) ReadSymFile(key []byte, inputSymFilename, outputPath s
 		return SymFileHeader_SIZE, fmt.Errorf("output path is a file.  For multi-dir input files, it must be a path: %s", outputPath)
 	}
 
-	return ssf.ReadSymReaderToPath(key, newHeader.Salt, inputFile, outputPath)
+	return ssfr.ReadSymReaderToPath(newHeader.Salt, inputFile, outputPath)
 }
 
 // ReadSymReaderToFile reads a .bsym file from the inputSymFilePath and writes it to the outputFile.
 // It returns the number of bytes written, and any error encountered.
-func (ssf *SimpleSymFile) ReadSymReaderToFile(key, salt []byte, symReader io.Reader, outputFilename string) (bytesWritten int, err error) {
-	chacha, err := cipher.NewSymmetricCipherFromSalt(key, salt, DEFAULT_CHUNK_SIZE)
+func (ssfr *SimpleSymFileReader) ReadSymReaderToFile(salt []byte, symReader io.Reader, outputFilename string) (bytesWritten int, err error) {
+	chacha, err := beecipher.NewSymmetricCipherFromSalt(ssfr.key, salt, DEFAULT_CHUNK_SIZE)
 	if err != nil {
 		return SymFileHeader_SIZE, fmt.Errorf("failed creating symmetric cipher: %w", err)
 	}
@@ -91,8 +103,8 @@ func (ssf *SimpleSymFile) ReadSymReaderToFile(key, salt []byte, symReader io.Rea
 
 // ReadSymReaderToPath reads a .bsym file with multi-dir data from the inputSymFilePath and writes it to the outputPath.
 // It returns the number of bytes written, and any error encountered.
-func (ssf *SimpleSymFile) ReadSymReaderToPath(key, salt []byte, symReader io.Reader, outputPath string) (bytesWritten int, err error) {
-	chacha, err := cipher.NewSymmetricCipherFromSalt(key, salt, DEFAULT_CHUNK_SIZE)
+func (ssfr *SimpleSymFileReader) ReadSymReaderToPath(salt []byte, symReader io.Reader, outputPath string) (bytesWritten int, err error) {
+	chacha, err := beecipher.NewSymmetricCipherFromSalt(ssfr.key, salt, DEFAULT_CHUNK_SIZE)
 	if err != nil {
 		return SymFileHeader_SIZE, fmt.Errorf("failed creating symmetric cipher: %w", err)
 	}
@@ -113,4 +125,8 @@ func (ssf *SimpleSymFile) ReadSymReaderToPath(key, salt []byte, symReader io.Rea
 	}
 
 	return SymFileHeader_SIZE + bytesWritten, nil
+}
+
+func (ssfr *SimpleSymFileReader) Wipe() {
+	security.Wipe(ssfr.key)
 }

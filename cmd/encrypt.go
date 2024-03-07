@@ -30,6 +30,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // encryptCmd represents the encrypt command
@@ -83,6 +84,9 @@ type encryptSettings struct {
 	totalBytesWritten  int
 	mdsr               streams.StreamReader
 	symFilePayloadType symfiles.SymFilePayload
+	inputFile          *os.File
+	outputFile         *os.File
+	textWriter         *helpers.TextWriter
 }
 
 var localEncryptSettings = &encryptSettings{}
@@ -248,6 +252,44 @@ func encryptData() {
 		return
 	}
 
+	var totalTime time.Duration
+
+	defer func() {
+		// If input was from a file, we need to close it now, regardless of errors
+		if localEncryptSettings.inputFile != nil {
+			_ = localEncryptSettings.inputFile.Close()
+		}
+
+		if localEncryptSettings.outputFile != nil {
+			_ = localEncryptSettings.outputFile.Close()
+		}
+
+		if localEncryptSettings.textWriter != nil {
+			var errTextWriter error
+			localEncryptSettings.totalBytesWritten, errTextWriter = localEncryptSettings.textWriter.Flush()
+			if errTextWriter != nil {
+				fmt.Printf("Error when flushing output text writer: %s\n", err)
+			}
+			fmt.Println("")
+		}
+
+		if err == nil {
+			p := message.NewPrinter(language.English)
+			_, _ = p.Printf(
+				"ENCRYPT completed. Bytes written: %d in %s.\n",
+				localEncryptSettings.totalBytesWritten,
+				helpers.FormatDuration(totalTime),
+			)
+		}
+	}()
+
+	fmt.Println("Starting ENCRYPT request...")
+	startTime := time.Now()
+
+	if localEncryptCommandVals.outputTarget == keystore.OutputTargetClipboard {
+		fmt.Println("Writing output to clipboard...")
+	}
+
 	symFileWriter, err := symfiles.NewSymFileWriter(localEncryptCommandVals.symmetricKey)
 	if err != nil {
 		fmt.Printf("Unable to initialize symFile instance: %s", err)
@@ -255,7 +297,7 @@ func encryptData() {
 		return
 	}
 
-	bytesWritten, err := symFileWriter.WriteSymFileToWriterFromReader(
+	localEncryptSettings.totalBytesWritten, err = symFileWriter.WriteSymFileToWriterFromReader(
 		inputReader, outputWriter, localEncryptSettings.symFilePayloadType)
 
 	if err != nil {
@@ -264,9 +306,8 @@ func encryptData() {
 		return
 	}
 
-	fmt.Println("Encrypt complete.")
-	p := message.NewPrinter(language.English)
-	_, _ = p.Printf("Bytes Written: %d", bytesWritten)
+	endTime := time.Now()
+	totalTime = endTime.Sub(startTime)
 }
 
 func validateInputFileForEncrypt() error {
@@ -350,7 +391,7 @@ func inferOutputTargetForEncrypt() bool {
 		logger.Errorfln("Input-source DIRS requires output target of type FILE")
 		return false
 	default:
-		logger.Errorfln("Unsupported input source detected: %d\n", int(localEncryptCommandVals.inputSource))
+		logger.Errorfln("Unable to infer output target from input source: %d\n", int(localEncryptCommandVals.inputSource))
 		return false
 	}
 }
@@ -396,12 +437,17 @@ func validateOutputFileForEncrypt() error {
 	// will return that to the user at that point.  We won't implement a bunch of code here to
 	// reproduce that os validation behavior.
 
+	// If there's no extension, let's add .bsym. Might not like this and remove it later.
+	if filepath.Ext(localEncryptCommandVals.outputFile) == "" {
+		localEncryptCommandVals.outputFile = helpers.ReplaceFileExt(localEncryptCommandVals.outputFile, ".bsym")
+	}
+
 	return nil
 }
 
 // validateOutputPathForEncrypt will do two things...
 //   - If there is no path defined yet, it will take the path from the input path.
-//   - If there is a path defined, it will throw an error if the path has a file name defined, since we only want a path
+//   - If there is a path defined, it will throw an error if the path references a file, since we only want a path
 func validateOutputPathForEncrypt() error {
 	if localEncryptCommandVals.outputPath == "" {
 		// we will attempt to infer the output file path from the input file path
@@ -519,7 +565,7 @@ func getPipedReaderForEncrypt() (io.Reader, error) {
 		// if an output target of PATH is specified, we need to add a file name if one is not specified via the inputFilePath
 		// writeToPath
 		localEncryptCommandVals.outputTarget = keystore.OutputTargetFile
-		localEncryptCommandVals.outputFile = filepath.Join(localBundleCommandVals.outputPath, "bee.piped.ext")
+		localEncryptCommandVals.outputFile = filepath.Join(localEncryptCommandVals.outputPath, "bee.piped.ext")
 	}
 
 	localEncryptSettings.symFilePayloadType = symfiles.SymFilePayloadDataStream
@@ -527,13 +573,14 @@ func getPipedReaderForEncrypt() (io.Reader, error) {
 }
 
 func getFileReaderForEncrypt() (io.Reader, error) {
-	file, err := os.Open(localEncryptCommandVals.inputFilePath)
+	var err error
+	localEncryptSettings.inputFile, err = os.Open(localEncryptCommandVals.inputFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("unable to initiate input file stream: %w", err)
 	}
 
 	localEncryptSettings.symFilePayloadType = symfiles.SymFilePayloadDataStream
-	return file, nil
+	return localEncryptSettings.inputFile, nil
 }
 
 func getDirsReaderForEncrypt() (io.Reader, error) {
@@ -589,5 +636,61 @@ func getDirsReaderForEncrypt() (io.Reader, error) {
 }
 
 func getOutputWriterForEncrypt() (w io.Writer, err error) {
-	return nil, errors.New("getOutputWriterForEncrypt not implemented")
+	switch localEncryptCommandVals.outputTarget {
+	case keystore.OutputTargetConsole:
+		return getConsoleWriterForEncrypt(), nil
+	case keystore.OutputTargetClipboard:
+		return getClipboardWriterForEncrypt(), nil
+	case keystore.OutputTargetFile:
+		// OutputFile has already been validated, so no need to re-validate here
+		localEncryptSettings.outputFile, err = os.Create(localEncryptCommandVals.outputFile)
+		return localEncryptSettings.outputFile, err
+	case keystore.OutputTargetPath:
+		return getOutputFileFromPathForEncrypt()
+	default:
+		// this should NEVER happen, but in case we add a new type, this will remind us during testing to call it here
+		return nil, errors.New("Unknown output target in getOutputWriterForEncrypt()")
+	}
+}
+
+func getConsoleWriterForEncrypt() io.Writer {
+	localEncryptSettings.textWriter = helpers.NewTextWriter(
+		helpers.TextWriterTargetConsole,
+		32,
+		helpers.TextWriterModeBinary,
+		":start :data",
+		":end",
+		helpers.NilTextWriterEventFunc, helpers.NilTextWriterEventFunc)
+
+	return localEncryptSettings.textWriter
+}
+
+func getClipboardWriterForEncrypt() io.Writer {
+	localEncryptSettings.textWriter = helpers.NewTextWriter(
+		helpers.TextWriterTargetClipboard,
+		32,
+		helpers.TextWriterModeBinary,
+		":start :data",
+		":end",
+		helpers.NilTextWriterEventFunc, helpers.NilTextWriterEventFunc)
+
+	return localEncryptSettings.textWriter
+}
+
+func getOutputFileFromPathForEncrypt() (w io.Writer, err error) {
+	var useFilename string
+	if localEncryptCommandVals.inputFilePath == "" {
+		useFilename = "encrypted_data.bsym"
+	} else {
+		_, useFilename = filepath.Split(localEncryptCommandVals.inputFilePath)
+		useFilename = helpers.ReplaceFileExt(useFilename, ".bsym")
+	}
+
+	outputFilePath := filepath.Join(localEncryptCommandVals.outputPath, useFilename)
+	localEncryptSettings.outputFile, err = os.Create(outputFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create output file: %w", err)
+	}
+
+	return localEncryptSettings.outputFile, nil
 }

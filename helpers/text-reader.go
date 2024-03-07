@@ -243,6 +243,7 @@ func (ts *TextScanner) tryParseTextEncoding(data []byte) error {
 				mode = parseModeHeader
 				continue
 			}
+
 			if isMarkerLine, markerText := ts.isDataMarkerLine(lineStrLower); isMarkerLine {
 				logger.Debugfln("text reader: data block detected by marker \"%s\"", markerText)
 				mode = parseModeData

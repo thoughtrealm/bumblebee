@@ -112,14 +112,12 @@ func encryptData() {
 
 	var err error
 
-	if localEncryptCommandVals.inputSourceText == "" {
-		if localEncryptCommandVals.inputFilePath != "" {
-			localEncryptCommandVals.inputSourceText = "file"
-		} else if localEncryptCommandVals.inputDir != "" {
-			localEncryptCommandVals.inputSourceText = "dirs"
-		} else if localEncryptCommandVals.inputDescriptorPath != "" {
-			localEncryptCommandVals.inputSourceText = "dirs"
-		}
+	if localEncryptCommandVals.inputFilePath != "" {
+		localEncryptCommandVals.inputSourceText = "file"
+	} else if localEncryptCommandVals.inputDir != "" {
+		localEncryptCommandVals.inputSourceText = "dirs"
+	} else if localEncryptCommandVals.inputDescriptorPath != "" {
+		localEncryptCommandVals.inputSourceText = "dirs"
 	}
 
 	if localEncryptCommandVals.outputTargetText == "" && localEncryptCommandVals.outputFile != "" {

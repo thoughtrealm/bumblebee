@@ -97,10 +97,10 @@ func init() {
 	encryptCmd.Flags().StringVarP(&localEncryptCommandVals.inputFilePath, "input-file", "f", "", "The name of a file to use for input. Only relevant if input-source is file.")
 	encryptCmd.Flags().StringVarP(&localEncryptCommandVals.inputDir, "input-dir", "", "", "The name of a directory to use for input. Only relevant if input-source is dirs.")
 	encryptCmd.Flags().StringVarP(&localEncryptCommandVals.inputDescriptorPath, "input-descriptor", "", "", "The name of a file that contains a list of directories for input. Only relevant if input-source is dirs.")
-	encryptCmd.Flags().StringVarP(&localEncryptCommandVals.outputTargetText, "output-target", "o", "", "The output target.  Should be one of: console, clipboard or file.")
+	encryptCmd.Flags().StringVarP(&localEncryptCommandVals.outputTargetText, "output-target", "o", "", "The output target.  Should be one of: console, clipboard, file or path.")
 	encryptCmd.Flags().StringVarP(&localEncryptCommandVals.outputFile, "output-file", "y", "", "The file name to use for output. Only relevant if output-target is FILE.")
-	encryptCmd.Flags().StringVarP(&localEncryptCommandVals.outputPath, "output-path", "p", "", "The path name to use for output. Only relevant if output-target is PATH.")
-	encryptCmd.Flags().StringVarP(&localEncryptCommandVals.symmetricKeyInputText, "key", "", "", "The key to use for encrypted the data. Prompted for if not provided. Prompt entry is recommended.")
+	encryptCmd.Flags().StringVarP(&localEncryptCommandVals.outputPath, "output-path", "p", "", "The path name to use for output. Only relevant if output-target is FILE or PATH.")
+	encryptCmd.Flags().StringVarP(&localEncryptCommandVals.symmetricKeyInputText, "key", "", "", "The key for encrypting the data. Prompted for if not provided. Prompt entry is recommended.")
 }
 
 func encryptData() {
@@ -136,13 +136,14 @@ func encryptData() {
 	if localEncryptCommandVals.inputSourceText == "" {
 		localEncryptCommandVals.inputSourceText = "console"
 	}
+
 	if localEncryptCommandVals.outputTargetText == "" {
 		localEncryptCommandVals.outputTargetText = "console"
 	}
 
 	localEncryptCommandVals.inputSource = keystore.TextToInputSource(localEncryptCommandVals.inputSourceText)
 	if localEncryptCommandVals.inputSource == keystore.InputSourceUnknown {
-		fmt.Println("No input-source or invalid input-source provided.  --input-source is required.")
+		fmt.Println("Missing or invalid input source details.  Input details are required")
 		helpers.ExitCode = helpers.ExitCodeInvalidInput
 		return
 	}
@@ -153,7 +154,7 @@ func encryptData() {
 
 	localEncryptCommandVals.outputTarget = keystore.TextToOutputTarget(localEncryptCommandVals.outputTargetText)
 	if localEncryptCommandVals.outputTarget == keystore.OutputTargetUnknown {
-		fmt.Println("No output-target or invalid output-target provided.  --output-target is required.")
+		fmt.Println("Missing or invalid output details provided and none could be inferred from the input details.  Please provide output details.")
 		helpers.ExitCode = helpers.ExitCodeInvalidInput
 		return
 	}
@@ -219,7 +220,7 @@ func encryptData() {
 	if localEncryptCommandVals.symmetricKeyInputText != "" {
 		localEncryptCommandVals.symmetricKey = []byte(localEncryptCommandVals.symmetricKeyInputText)
 	} else {
-		err = getEncryptKey()
+		err = getKeyForEncrypt()
 		if err != nil {
 			fmt.Printf("Unable to acquire data key: %s\n", err)
 			helpers.ExitCode = helpers.ExitCodeInvalidInput
@@ -476,9 +477,9 @@ func validateOutputPathForEncrypt() error {
 	return nil
 }
 
-func getEncryptKey() error {
+func getKeyForEncrypt() error {
 	fmt.Printf("\nEnter a password/key for the encryted data: ")
-	key, err := helpers.GetPasswordWithConfirm("Enter password for encrypted data")
+	key, err := helpers.GetPasswordWithConfirm("Enter password for encrypting the data")
 	if err != nil {
 		return fmt.Errorf("Unable to acquire key for data: %w", err)
 	}

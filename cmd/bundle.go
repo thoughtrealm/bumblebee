@@ -574,11 +574,11 @@ func getInputReader() (io.Reader, error) {
 	case keystore.InputSourceConsole:
 		return getConsoleReader()
 	case keystore.InputSourceClipboard:
-		return getClipboardReader()
+		return getClipboardReaderForBundle()
 	case keystore.InputSourceFile:
 		return getFileReader()
 	case keystore.InputSourcePiped:
-		return getPipedReader()
+		return getPipedReaderForBundle()
 	case keystore.InputSourceDirs:
 		return getDirsReader()
 	}
@@ -605,7 +605,7 @@ func getConsoleReader() (io.Reader, error) {
 	return inputBuff, nil
 }
 
-func getClipboardReader() (io.Reader, error) {
+func getClipboardReaderForBundle() (io.Reader, error) {
 	data, err := helpers.ReadFromClipboard()
 	if err != nil {
 		return nil, fmt.Errorf("unable to read from clipboard: %w", err)
@@ -627,7 +627,7 @@ func getClipboardReader() (io.Reader, error) {
 	return reader, nil
 }
 
-func getPipedReader() (io.Reader, error) {
+func getPipedReaderForBundle() (io.Reader, error) {
 	pipeBuffer := bytes.NewBuffer(nil)
 	_, err := pipeBuffer.ReadFrom(os.Stdin)
 	if err != nil {

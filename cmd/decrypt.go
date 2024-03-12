@@ -1,28 +1,32 @@
-/*
-Copyright © 2024 Hoby Smith <hoby@thoughtrealm.com>
+// Copyright 2023 The Bumblebee Authors
+//
+// Use of this source code is governed by an MIT license that is located
+// in this project's root folder, and can also be found online at:
+//
+// https://github.com/thoughtrealm/bumblebee/LICENSE
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-*/
 package cmd
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/thoughtrealm/bumblebee/helpers"
+	"github.com/thoughtrealm/bumblebee/keystore"
+	"github.com/thoughtrealm/bumblebee/security"
+	"github.com/thoughtrealm/bumblebee/streams"
+	"github.com/thoughtrealm/bumblebee/symfiles"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
+	"io"
+	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -30,28 +34,374 @@ import (
 // decryptCmd represents the decrypt command
 var decryptCmd = &cobra.Command{
 	Use:   "decrypt",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Decrypts a file or input that was encrypted using the encrypt command and a user supplied key",
+	Long:  "Decrypts a file or input that was encrypted using the encrypt command and a user supplied key",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("decrypt called")
+		decryptData()
 	},
 }
 
+type decryptCommandVals struct {
+	// The user supplied key to decrypt the input with
+	symmetricKey []byte
+
+	// Commande line provided symmetric key
+	symmetricKeyInputText string
+
+	// inputSourceText should be console, clipboard, file or dirs
+	inputSourceText string
+
+	// inputSource is transformed from inputSourceText
+	inputSource keystore.InputSource
+
+	// inputFilePath is the name of a file to use as input.  Only relevant for inputSourceText=file.
+	inputFilePath string
+
+	// outputTargetText should be console, clipboard or file
+	outputTargetText string
+
+	// outputTarget is transformed from outputTargetText
+	outputTarget keystore.OutputTarget
+
+	// outputFile is the name of a file to use as output.  Only relevant for outputTargetText=file.
+	outputFile string
+
+	// outputPath is the name of a path to use for output.  Only relevant for outputTargetText=path.
+	outputPath string
+}
+
+var localDecryptCommandVals = &decryptCommandVals{}
+
+type decryptSettings struct {
+	totalBytesWritten  int
+	mdsr               streams.StreamReader
+	symFilePayloadType symfiles.SymFilePayload
+	outputFile         *os.File
+	textWriter         *helpers.TextWriter
+	symFileReader      symfiles.SymFileReader
+}
+
+var localDecryptSettings = &decryptSettings{}
+
 func init() {
 	rootCmd.AddCommand(decryptCmd)
+	decryptCmd.Flags().StringVarP(&localDecryptCommandVals.inputSourceText, "input-source", "i", "", "The type of the input source.  Should be one of: clipboard, file or dirs.")
+	decryptCmd.Flags().StringVarP(&localDecryptCommandVals.inputFilePath, "input-file", "f", "", "The name of a file for input. Only relevant if input-source is file.")
+	decryptCmd.Flags().StringVarP(&localDecryptCommandVals.outputTargetText, "output-target", "o", "", "The output target.  Should be one of: console, clipboard, file or path.")
+	decryptCmd.Flags().StringVarP(&localDecryptCommandVals.outputFile, "output-file", "y", "", "The file name for output. Only relevant if output-target is FILE.")
+	decryptCmd.Flags().StringVarP(&localDecryptCommandVals.outputPath, "output-path", "p", "", "The path name for output. Only relevant if output-target is FILE or PATH.")
+	decryptCmd.Flags().StringVarP(&localDecryptCommandVals.symmetricKeyInputText, "key", "", "", "The key for the encrypted data. Prompted for if not provided. Prompt entry is recommended.")
+}
 
-	// Here you will define your flags and configuration settings.
+func decryptData() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("Panic recovered in decryptData(): %s\n", r)
+		}
+	}()
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// decryptCmd.PersistentFlags().String("foo", "", "A help for foo")
+	if localDecryptCommandVals.inputFilePath != "" {
+		localDecryptCommandVals.inputSourceText = "file"
+	}
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// decryptCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	if localDecryptCommandVals.outputTargetText == "" && localDecryptCommandVals.outputFile != "" {
+		localDecryptCommandVals.outputTargetText = "file"
+	}
+
+	if localDecryptCommandVals.outputTargetText == "" && localDecryptCommandVals.outputPath != "" {
+		localDecryptCommandVals.outputTargetText = "path"
+	}
+
+	// do this check after the other inference checks above relating to no supplied value for inputSourceText
+	if localDecryptCommandVals.inputSourceText == "" && helpers.CheckIsPiped() {
+		localDecryptCommandVals.inputSourceText = "piped"
+	}
+
+	localDecryptCommandVals.inputSource = keystore.TextToInputSource(localDecryptCommandVals.inputSourceText)
+	if localDecryptCommandVals.inputSource == keystore.InputSourceUnknown {
+		fmt.Println("Missing or invalid input source details.  Input details are required")
+		helpers.ExitCode = helpers.ExitCodeInvalidInput
+		return
+	}
+
+	if localDecryptCommandVals.outputTargetText == "" {
+		if !inferOutputTargetFromInputForDecrypt() {
+			fmt.Println("No input-source provided and one could not be inferred from the input-source.  Please provide more explicit input details.")
+			helpers.ExitCode = helpers.ExitCodeInvalidInput
+			return
+		}
+	}
+
+	if localDecryptCommandVals.inputSource == keystore.InputSourceConsole {
+		fmt.Println("Console is not a valid input target for command DECRYPT")
+		helpers.ExitCode = helpers.ExitCodeInvalidInput
+		return
+	}
+
+	localDecryptCommandVals.outputTarget = keystore.TextToOutputTarget(localDecryptCommandVals.outputTargetText)
+	if localDecryptCommandVals.outputTarget == keystore.OutputTargetUnknown {
+		fmt.Println("Missing or invalid output details provided and none could be inferred from the input details.  Please provide output details.")
+		helpers.ExitCode = helpers.ExitCodeInvalidInput
+		return
+	}
+
+	if localDecryptCommandVals.symmetricKeyInputText != "" {
+		localDecryptCommandVals.symmetricKey = []byte(localDecryptCommandVals.symmetricKeyInputText)
+	} else {
+		err := getKeyForDecrypt()
+		if err != nil {
+			fmt.Printf("Unable to acquire data key: %s\n", err)
+			helpers.ExitCode = helpers.ExitCodeInvalidInput
+			return
+		}
+	}
+
+	if len(localDecryptCommandVals.symmetricKey) == 0 {
+		// This can't really happen, but check in case anyway
+		fmt.Println("No data key provided")
+		helpers.ExitCode = helpers.ExitCodeInvalidInput
+		return
+	}
+
+	defer security.Wipe(localDecryptCommandVals.symmetricKey)
+
+	var err error
+
+	fmt.Println("Starting Decrypt request...")
+	startTime := time.Now()
+
+	localDecryptSettings.symFileReader, err = symfiles.NewSymFileReader(localDecryptCommandVals.symmetricKey)
+	defer localDecryptSettings.symFileReader.Wipe()
+
+	var totalBytesWritten int
+	switch localDecryptCommandVals.inputSource {
+	case keystore.InputSourceFile:
+		totalBytesWritten, err = decryptInputFile()
+	case keystore.InputSourceConsole:
+		fmt.Println("Console is not a valid input for command DECRYPT")
+		helpers.ExitCode = helpers.ExitCodeInvalidInput
+		return
+	case keystore.InputSourceClipboard:
+		totalBytesWritten, err = decryptClipboardInput()
+	case keystore.InputSourcePiped:
+		totalBytesWritten, err = decryptPipedInput()
+	default:
+		fmt.Printf("Unknown or invalid input source: %d", int(localDecryptCommandVals.inputSource))
+		helpers.ExitCode = helpers.ExitCodeInvalidInput
+		return
+	}
+
+	if err != nil {
+		fmt.Printf("Error decrypting data: %s", err)
+		helpers.ExitCode = helpers.ExitCodeInvalidInput
+		return
+	}
+
+	endTime := time.Now()
+	totalTime := endTime.Sub(startTime)
+
+	p := message.NewPrinter(language.English)
+	_, _ = p.Printf(
+		"DECRYPT completed. Bytes written: %d in %s.\n",
+		totalBytesWritten,
+		helpers.FormatDuration(totalTime),
+	)
+}
+
+func inferOutputTargetFromInputForDecrypt() bool {
+	if localDecryptCommandVals.inputFilePath != "" {
+		_, fileName := filepath.Split(localDecryptCommandVals.inputFilePath)
+		if fileName == "" {
+			return false
+		}
+
+		if filepath.Ext(fileName) == ".bsym" {
+			fileName = helpers.ReplaceFileExt(fileName, ".decrypted")
+		}
+
+		localDecryptCommandVals.outputTarget = keystore.OutputTargetFile
+		localDecryptCommandVals.outputTargetText = "file"
+		localDecryptCommandVals.outputFile = fileName
+
+		return true
+	}
+
+	// if we couldn't infer the output target from an input file reference, then we have nothing else to go off of
+	return false
+}
+
+func getKeyForDecrypt() error {
+	fmt.Printf("\nEnter a key for the encrypted data: ")
+	key, err := helpers.GetPassword()
+	if err != nil {
+		return fmt.Errorf("unable to acquire a key for decrypting the data: %w", err)
+	}
+
+	localDecryptCommandVals.symmetricKey = bytes.Clone(key)
+	security.Wipe(key)
+
+	return nil
+}
+
+func decryptInputFile() (bytesWritten int, err error) {
+	switch localDecryptCommandVals.outputTarget {
+	case keystore.OutputTargetFile:
+		return localDecryptSettings.symFileReader.ReadSymFile(localDecryptCommandVals.inputFilePath, localDecryptCommandVals.outputFile)
+	case keystore.OutputTargetPath:
+		return localDecryptSettings.symFileReader.ReadSymFile(localDecryptCommandVals.inputFilePath, localDecryptCommandVals.outputPath)
+	case keystore.OutputTargetConsole:
+		inputFile, err := os.Open(localDecryptCommandVals.inputFilePath)
+		if err != nil {
+			return 0, fmt.Errorf("unable to initialize input file: %w", err)
+		}
+		defer inputFile.Close()
+
+		textWriter := helpers.NewTextWriter(
+			helpers.TextWriterTargetConsole,
+			32,
+			helpers.TextWriterModeText,
+			"",
+			"",
+			helpers.NilTextWriterEventFunc, helpers.NilTextWriterEventFunc)
+
+		bytesWritten, err = localDecryptSettings.symFileReader.ReadSymReaderToWriter(inputFile, textWriter)
+		if err != nil {
+			return bytesWritten, fmt.Errorf("error writing sym file output to stream: %w", err)
+		}
+
+		bytesWritten, err = textWriter.Flush()
+		if err != nil {
+			return bytesWritten, fmt.Errorf("error finalizing output: %w", err)
+		}
+
+		return bytesWritten, err
+
+	case keystore.OutputTargetClipboard:
+		inputFile, err := os.Open(localDecryptCommandVals.inputFilePath)
+		if err != nil {
+			return 0, fmt.Errorf("unable to initialize input file: %w", err)
+		}
+		defer inputFile.Close()
+
+		textWriter := helpers.NewTextWriter(
+			helpers.TextWriterTargetClipboard,
+			32,
+			helpers.TextWriterModeText,
+			"",
+			"",
+			helpers.NilTextWriterEventFunc, helpers.NilTextWriterEventFunc)
+
+		bytesWritten, err = localDecryptSettings.symFileReader.ReadSymReaderToWriter(inputFile, textWriter)
+		if err != nil {
+			return bytesWritten, fmt.Errorf("error writing sym file output to stream: %w", err)
+		}
+
+		bytesWritten, err = textWriter.Flush()
+		if err != nil {
+			return bytesWritten, fmt.Errorf("error finalizing output: %w", err)
+		}
+
+		return bytesWritten, err
+	default:
+		return 0, fmt.Errorf("invalid or unknown output target: %d", err)
+	}
+}
+
+func decryptClipboardInput() (bytesWritten int, err error) {
+	clipboardReader, err := getClipboardReaderForDecrypt()
+	if err != nil {
+		return 0, fmt.Errorf("unable to initialize clipboard reader: %w", err)
+	}
+
+	return decryptReaderInput(clipboardReader)
+}
+
+func decryptPipedInput() (bytesWritten int, err error) {
+	pipeReader, err := getPipedReaderForDecrypt()
+	if err != nil {
+		return 0, fmt.Errorf("unable to initialize pipe reader: %w", err)
+	}
+
+	return decryptReaderInput(pipeReader)
+}
+
+func decryptReaderInput(inputReader io.Reader) (bytesWritten int, err error) {
+	switch localDecryptCommandVals.outputTarget {
+	case keystore.OutputTargetFile:
+		return localDecryptSettings.symFileReader.ReadSymReaderToFile(inputReader, localDecryptCommandVals.outputFile)
+	case keystore.OutputTargetPath:
+		return localDecryptSettings.symFileReader.ReadSymReaderToPath(inputReader, localDecryptCommandVals.outputPath)
+	case keystore.OutputTargetConsole:
+		textWriter := helpers.NewTextWriter(
+			helpers.TextWriterTargetConsole,
+			32,
+			helpers.TextWriterModeText,
+			"",
+			"",
+			helpers.NilTextWriterEventFunc, helpers.NilTextWriterEventFunc)
+
+		bytesWritten, err = localDecryptSettings.symFileReader.ReadSymReaderToWriter(inputReader, textWriter)
+		if err != nil {
+			return bytesWritten, fmt.Errorf("error writing sym stream output to console: %w", err)
+		}
+
+		bytesWritten, err = textWriter.Flush()
+		if err != nil {
+			return bytesWritten, fmt.Errorf("error finalizing output: %w", err)
+		}
+
+		return bytesWritten, err
+
+	case keystore.OutputTargetClipboard:
+		textWriter := helpers.NewTextWriter(
+			helpers.TextWriterTargetClipboard,
+			32,
+			helpers.TextWriterModeText,
+			"",
+			"",
+			helpers.NilTextWriterEventFunc, helpers.NilTextWriterEventFunc)
+
+		bytesWritten, err = localDecryptSettings.symFileReader.ReadSymReaderToWriter(inputReader, textWriter)
+		if err != nil {
+			return bytesWritten, fmt.Errorf("error writing sym stream output to clipboard: %w", err)
+		}
+
+		bytesWritten, err = textWriter.Flush()
+		if err != nil {
+			return bytesWritten, fmt.Errorf("error finalizing output: %w", err)
+		}
+
+		return bytesWritten, err
+	default:
+		return 0, fmt.Errorf("invalid or unknown output target: %d", err)
+	}
+}
+
+func getClipboardReaderForDecrypt() (io.Reader, error) {
+	data, err := helpers.ReadFromClipboard()
+	if err != nil {
+		return nil, fmt.Errorf("unable to read from clipboard: %w", err)
+	}
+
+	reader, err := helpers.NewTextScanner(data)
+	if err != nil {
+		return nil, fmt.Errorf("unable to initialize text scanner from clipboard input: %s", err)
+	}
+
+	return reader, nil
+}
+
+func getPipedReaderForDecrypt() (io.Reader, error) {
+	pipeBuffer := bytes.NewBuffer(nil)
+	_, err := pipeBuffer.ReadFrom(os.Stdin)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read piped input from stdin: %s", err)
+	}
+
+	reader, err := helpers.NewTextScanner(pipeBuffer.Bytes())
+	if err != nil {
+		return nil, fmt.Errorf("unable to initialize pipe text scanner from pipe input: %s", err)
+	}
+
+	return reader, nil
 }

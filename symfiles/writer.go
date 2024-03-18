@@ -6,18 +6,37 @@ import (
 	"github.com/thoughtrealm/bumblebee/helpers"
 	"github.com/thoughtrealm/bumblebee/streams"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 type SymFileWriter interface {
+	SetSourceFileInfoFromStat(fi fs.FileInfo)
 	WriteSymFileFromFile(inputFilename, outputSymFileName string) (bytesWritten int, err error)
 	WriteSymFileFromDirs(inputDirs []string, outputSymFileName string) (bytesWritten int, err error)
 	WriteSymFileToWriterFromReader(r io.Reader, w io.Writer, payloadType SymFilePayload) (bytesWritten int, err error)
 }
 
+type SourceFileInfo struct {
+	Filename  string
+	Filedate  string // in time.RFC3339 format
+	Fileperms uint16
+}
+
+func NewSourceFileInfoFromStat(fi fs.FileInfo) *SourceFileInfo {
+	return &SourceFileInfo{
+		Filename:  fi.Name(),
+		Filedate:  fi.ModTime().UTC().Format(time.RFC3339),
+		Fileperms: uint16(uint32(fi.Mode()) & uint32(0x1FF)),
+	}
+}
+
 type SimpleSymFileWriter struct {
-	sc beecipher.Cipher
+	writeBuffer    []byte
+	sourceFileInfo *SourceFileInfo
+	sc             beecipher.Cipher
 }
 
 func NewSymFileWriter(key []byte) (SymFileWriter, error) {
@@ -29,6 +48,10 @@ func NewSymFileWriter(key []byte) (SymFileWriter, error) {
 	return &SimpleSymFileWriter{
 		sc: newCipher,
 	}, nil
+}
+
+func (ssfw *SimpleSymFileWriter) SetSourceFileInfoFromStat(fi fs.FileInfo) {
+	ssfw.sourceFileInfo = NewSourceFileInfoFromStat(fi)
 }
 
 func (ssfw *SimpleSymFileWriter) WriteSymFileFromFile(inputFilename, outputSymFileName string) (bytesWritten int, err error) {
@@ -93,39 +116,56 @@ func (ssfw *SimpleSymFileWriter) WriteSymFileFromReader(r io.Reader, outputSymFi
 	}
 	defer outputSymFile.Close()
 
-	newHeader, err := NewSymFileHeader(ssfw.sc.GetSalt(), payloadType)
+	newHeader, err := NewSymFileHeader(ssfw.sc.GetSalt(), payloadType, ssfw.sourceFileInfo)
 	if err != nil {
 		return 0, fmt.Errorf("failed creating new header: %w", err)
 	}
 
-	headerBytesWritten, err := newHeader.WriteTo(outputSymFile)
+	headerBytes, err := newHeader.ToBytes()
 	if err != nil {
 		return 0, fmt.Errorf("failed writing header bytes: %w", err)
 	}
 
-	fileBytesWritten, err := ssfw.sc.Encrypt(r, outputSymFile)
+	psw := newPreStreamEncoderReader(headerBytes, r)
+
+	// we first write the salt/IV directly to the output stream unencrypted/unencoded
+	saltBytesWritten, err := outputSymFile.Write(ssfw.sc.GetSalt())
+	if err != nil {
+		return 0, fmt.Errorf("error writing salt/IV: %w", err)
+	}
+
+	// Now, encrypt the input stream to the output stream
+	fileBytesWritten, err := ssfw.sc.Encrypt(psw, outputSymFile)
 	if err != nil {
 		return 0, fmt.Errorf("error writing symfile data: %w", err)
 	}
 
-	return int(headerBytesWritten) + fileBytesWritten, nil
+	return saltBytesWritten + fileBytesWritten, nil
 }
 
 func (ssfw *SimpleSymFileWriter) WriteSymFileToWriterFromReader(r io.Reader, w io.Writer, payloadType SymFilePayload) (bytesWritten int, err error) {
-	newHeader, err := NewSymFileHeader(ssfw.sc.GetSalt(), payloadType)
+	newHeader, err := NewSymFileHeader(ssfw.sc.GetSalt(), payloadType, ssfw.sourceFileInfo)
 	if err != nil {
 		return 0, fmt.Errorf("failed creating new header: %w", err)
 	}
 
-	headerBytesWritten, err := newHeader.WriteTo(w)
+	headerBytes, err := newHeader.ToBytes()
 	if err != nil {
-		return 0, fmt.Errorf("failed writing header bytes: %w", err)
+		return 0, fmt.Errorf("failed getting header bytes: %w", err)
 	}
 
-	fileBytesWritten, err := ssfw.sc.Encrypt(r, w)
+	pser := newPreStreamEncoderReader(headerBytes, r)
+
+	// we first write the salt/IV to the output stream
+	saltBytesWritten, err := w.Write(ssfw.sc.GetSalt())
+	if err != nil {
+		return 0, fmt.Errorf("error writing salt/IV: %w", err)
+	}
+
+	fileBytesWritten, err := ssfw.sc.Encrypt(pser, w)
 	if err != nil {
 		return 0, fmt.Errorf("error writing symfile data: %w", err)
 	}
 
-	return int(headerBytesWritten) + fileBytesWritten, nil
+	return saltBytesWritten + fileBytesWritten, nil
 }

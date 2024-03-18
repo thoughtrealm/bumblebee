@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/vmihailenco/msgpack/v5"
 	"io"
 )
 
 const DEFAULT_CHUNK_SIZE = 64000
 const DEFAULT_SALT_SIZE = 32
 const SymFileHeader_SIZE = 35
+const HeaderVersion = 1
 
 type SymFilePayload uint8
 
@@ -30,25 +32,27 @@ func isValidPayloadType(byteVal uint8) bool {
 }
 
 type SymFileHeader struct {
-	HeaderLen   uint16
+	Version     int16
 	PayloadType SymFilePayload
-	Salt        []byte
+	Salt        []byte `msgpack:"-"`
+	FileInfo    *SourceFileInfo
 }
 
-func NewSymFileHeader(saltIn []byte, payloadType SymFilePayload) (*SymFileHeader, error) {
+func NewSymFileHeader(saltIn []byte, payloadType SymFilePayload, sourceFileInfo *SourceFileInfo) (*SymFileHeader, error) {
 	if len(saltIn) != DEFAULT_SALT_SIZE {
 		return nil, fmt.Errorf("NewSymFileHeader-> Invalid salt length: %d. Expected: %d bytes", len(saltIn), DEFAULT_SALT_SIZE)
 	}
 
 	return &SymFileHeader{
-		HeaderLen:   SymFileHeader_SIZE,
+		Version:     HeaderVersion,
 		PayloadType: payloadType,
 		Salt:        bytes.Clone(saltIn),
+		FileInfo:    sourceFileInfo,
 	}, nil
 }
 
 func LoadSymFileHeader(r io.Reader) (*SymFileHeader, error) {
-	bytesInHeaderLen := make([]byte, 2) // length of uint64
+	bytesInHeaderLen := make([]byte, 2) // length of uint16
 	_, err := io.ReadFull(r, bytesInHeaderLen)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read HeaderLen from stream: %w", err)
@@ -71,7 +75,6 @@ func LoadSymFileHeader(r io.Reader) (*SymFileHeader, error) {
 	}
 
 	header := &SymFileHeader{
-		HeaderLen:   headerLen,
 		PayloadType: SymFilePayload(bytesInPayloadType[0]),
 		Salt:        make([]byte, DEFAULT_SALT_SIZE),
 	}
@@ -87,15 +90,24 @@ func LoadSymFileHeader(r io.Reader) (*SymFileHeader, error) {
 }
 
 func (sfh *SymFileHeader) WriteTo(w io.Writer) (bytesWritten int64, err error) {
-	var (
-		outBytes          []byte
-		localBytesWritten int
-	)
+	headerBytes, err := sfh.ToBytes()
+	if err != nil {
+		return 0, err
+	}
 
-	outBytes = binary.BigEndian.AppendUint16(outBytes, sfh.HeaderLen)
-	outBytes = append(outBytes, byte(sfh.PayloadType))
-	outBytes = append(outBytes, sfh.Salt...)
-
-	localBytesWritten, err = w.Write(outBytes)
+	localBytesWritten, err := w.Write(headerBytes)
 	return int64(localBytesWritten), err
+}
+
+func (sfh *SymFileHeader) ToBytes() ([]byte, error) {
+	msgpackBytes, err := msgpack.Marshal(sfh)
+	if err != nil {
+		return nil, fmt.Errorf("error in SymFile header ToBytes(): %w", err)
+	}
+
+	var headerLen uint16 = uint16(len(msgpackBytes))
+
+	outBytes := binary.BigEndian.AppendUint16(nil, headerLen)
+	outBytes = append(outBytes, msgpackBytes...)
+	return outBytes, nil
 }

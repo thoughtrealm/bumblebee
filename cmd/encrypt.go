@@ -87,6 +87,7 @@ type encryptSettings struct {
 	inputFile          *os.File
 	outputFile         *os.File
 	textWriter         *helpers.TextWriter
+	symFileWriter      symfiles.SymFileWriter
 }
 
 var localEncryptSettings = &encryptSettings{}
@@ -237,6 +238,13 @@ func encryptData() {
 
 	defer security.Wipe(localEncryptCommandVals.symmetricKey)
 
+	localEncryptSettings.symFileWriter, err = symfiles.NewSymFileWriter(localEncryptCommandVals.symmetricKey)
+	if err != nil {
+		fmt.Printf("Unable to initialize symFile instance: %s", err)
+		helpers.ExitCode = helpers.ExitCodeRequestFailed
+		return
+	}
+
 	inputReader, err := getInputReaderForEncrypt()
 	if err != nil {
 		fmt.Printf("Unable to acquire an input reader: %s", err)
@@ -289,14 +297,7 @@ func encryptData() {
 		fmt.Println("Writing output to clipboard...")
 	}
 
-	symFileWriter, err := symfiles.NewSymFileWriter(localEncryptCommandVals.symmetricKey)
-	if err != nil {
-		fmt.Printf("Unable to initialize symFile instance: %s", err)
-		helpers.ExitCode = helpers.ExitCodeRequestFailed
-		return
-	}
-
-	localEncryptSettings.totalBytesWritten, err = symFileWriter.WriteSymFileToWriterFromReader(
+	localEncryptSettings.totalBytesWritten, err = localEncryptSettings.symFileWriter.WriteSymFileToWriterFromReader(
 		inputReader, outputWriter, localEncryptSettings.symFilePayloadType)
 
 	if err != nil {
@@ -577,6 +578,13 @@ func getFileReaderForEncrypt() (io.Reader, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to initiate input file stream: %w", err)
 	}
+
+	fi, err := localEncryptSettings.inputFile.Stat()
+	if err != nil {
+		return nil, fmt.Errorf("failed reading os file info from input file: %w", err)
+	}
+
+	localEncryptSettings.symFileWriter.SetSourceFileInfoFromStat(fi)
 
 	localEncryptSettings.symFilePayloadType = symfiles.SymFilePayloadDataStream
 	return localEncryptSettings.inputFile, nil

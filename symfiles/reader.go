@@ -14,7 +14,6 @@ import (
 
 type SymFileReader interface {
 	ReadSymFile(inputSymFilename, outputPath string) (bytesWritten int, err error)
-	ReadSymReader(inputReader io.Reader, outputPath string) (bytesWritten int, err error)
 	ReadSymReaderToFile(symReader io.Reader, outputFilename string) (bytesWritten int, err error)
 	ReadSymReaderToPath(symReader io.Reader, outputPath string) (bytesWritten int, err error)
 	ReadSymReaderToWriter(symReader io.Reader, w io.Writer) (bytesWritten int, err error)
@@ -44,6 +43,12 @@ func (ssfr *SimpleSymFileReader) ReadSymFile(inputSymFilename, outputPath string
 	}
 	defer inputFile.Close()
 
+	salt := make([]byte, DEFAULT_SALT_SIZE)
+	_, err = io.ReadFull(inputFile, salt)
+	if err != nil {
+		return 0, fmt.Errorf("failed reading salt from input sym file: %w", err)
+	}
+
 	newHeader, err := LoadSymFileHeader(inputFile)
 	if err != nil {
 		return 0, err
@@ -67,7 +72,7 @@ func (ssfr *SimpleSymFileReader) ReadSymFile(inputSymFilename, outputPath string
 			}
 		}
 
-		return ssfr.readSymReaderToFile(newHeader.Salt, inputFile, outputFilename)
+		return ssfr.readSymReaderToFile(salt, inputFile, outputFilename)
 	}
 
 	// For multi-dir streams, the outputPath MUST be a directory
@@ -81,39 +86,7 @@ func (ssfr *SimpleSymFileReader) ReadSymFile(inputSymFilename, outputPath string
 		return 0, fmt.Errorf("output path is a file.  For multi-dir input files, it must be a path: %s", outputPath)
 	}
 
-	return ssfr.readSymReaderToPath(newHeader.Salt, inputFile, outputPath)
-}
-
-// ReadSymReader reads a .bsym file.  If the sym file is of type file stream, then outputPath must be a file
-// name.  If the sym file is of type multi-dir stream, then outputPath must be a path name.
-func (ssfr *SimpleSymFileReader) ReadSymReader(inputReader io.Reader, outputPath string) (bytesWritten int, err error) {
-	newHeader, err := LoadSymFileHeader(inputReader)
-	if err != nil {
-		return 0, err
-	}
-
-	if newHeader.PayloadType == SymFilePayloadDataStream {
-		outputFilename := outputPath
-		if helpers.DirExists(outputPath) {
-			// outputPath is a directory, so use the filename from the input path with no extension or decrypted
-			outputFilename = filepath.Join(outputPath, "bee-output.decrypted")
-		}
-
-		return ssfr.readSymReaderToFile(newHeader.Salt, inputReader, outputFilename)
-	}
-
-	// For multi-dir streams, the outputPath MUST be a directory
-	exists, isDir := helpers.PathExistsInfo(outputPath)
-	if !exists {
-		err = helpers.ForcePath(outputPath)
-		if err != nil {
-			return 0, fmt.Errorf("unable to create output path: %w", err)
-		}
-	} else if !isDir {
-		return 0, fmt.Errorf("output path is a file.  For multi-dir input streams, it must be a path: %s", outputPath)
-	}
-
-	return ssfr.readSymReaderToPath(newHeader.Salt, inputReader, outputPath)
+	return ssfr.readSymReaderToPath(salt, inputFile, outputPath)
 }
 
 // ReadSymReaderToFile reads a .bsym stream from symReader and writes it to the outputFile.  It reads the

@@ -51,44 +51,6 @@ func NewSymFileHeader(saltIn []byte, payloadType SymFilePayload, sourceFileInfo 
 	}, nil
 }
 
-func LoadSymFileHeader(r io.Reader) (*SymFileHeader, error) {
-	bytesInHeaderLen := make([]byte, 2) // length of uint16
-	_, err := io.ReadFull(r, bytesInHeaderLen)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read HeaderLen from stream: %w", err)
-	}
-
-	headerLen := binary.BigEndian.Uint16(bytesInHeaderLen)
-	if headerLen != SymFileHeader_SIZE {
-		return nil, fmt.Errorf("invalid header length.  Expected %d bytes, but header value indicated %d bytes",
-			SymFileHeader_SIZE, headerLen)
-	}
-
-	bytesInPayloadType := make([]byte, 1) // length of uint64
-	_, err = io.ReadFull(r, bytesInPayloadType)
-	if err != nil {
-		return nil, fmt.Errorf("failing reading header payload type:  %w", err)
-	}
-
-	if !isValidPayloadType(bytesInPayloadType[0]) {
-		return nil, fmt.Errorf("invalid payload type.  Expected 0 or 1, but received %d", bytesInPayloadType[0])
-	}
-
-	header := &SymFileHeader{
-		PayloadType: SymFilePayload(bytesInPayloadType[0]),
-		Salt:        make([]byte, DEFAULT_SALT_SIZE),
-	}
-
-	_, err = io.ReadFull(r, header.Salt)
-	if err != nil {
-		// this error will catch when the salt read was not able to read at least the default salt size,
-		// so no need to explicitly check the read length
-		return nil, fmt.Errorf("failing reading salt sequence: %w", err)
-	}
-
-	return header, nil
-}
-
 func (sfh *SymFileHeader) WriteTo(w io.Writer) (bytesWritten int64, err error) {
 	headerBytes, err := sfh.ToBytes()
 	if err != nil {

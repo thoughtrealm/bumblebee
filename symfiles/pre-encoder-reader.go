@@ -15,25 +15,32 @@ func newPreStreamEncoderReader(preStreamBytes []byte, sourceReader io.Reader) *p
 }
 
 func (psr *preStreamEncoderReader) Read(p []byte) (n int, err error) {
-	if len(psr.preStreamEncoderBuff) > 0 {
-		bytesCopied := copy(p, psr.preStreamEncoderBuff)
+	var preStreamBytesCopied int
+	var sourceBytesCopied int
 
-		if bytesCopied < len(psr.preStreamEncoderBuff) {
-			psr.preStreamEncoderBuff = psr.preStreamEncoderBuff[bytesCopied:]
+	if len(psr.preStreamEncoderBuff) > 0 {
+		preStreamBytesCopied = copy(p, bytes.Clone(psr.preStreamEncoderBuff))
+
+		if preStreamBytesCopied < len(psr.preStreamEncoderBuff) {
+			psr.preStreamEncoderBuff = bytes.Clone(psr.preStreamEncoderBuff[preStreamBytesCopied:])
 			return
 		}
 
-		if len(p) == len(psr.preStreamEncoderBuff) {
-			psr.preStreamEncoderBuff = nil
+		preStreamEncoderBuffLen := len(psr.preStreamEncoderBuff)
+		psr.preStreamEncoderBuff = nil
+
+		if len(p) == preStreamEncoderBuffLen {
 			return
 		}
 
 		// The read requested more info than the length of the header, so fill the rest of the
 		// request buffer with data from the sourceReader
-		return psr.sourceReader.Read(p[bytesCopied:])
+		sourceBytesCopied, err = psr.sourceReader.Read(p[preStreamBytesCopied:])
+		return sourceBytesCopied + preStreamBytesCopied, err
 	}
 
 	// The header has already been read and emitted to the reader, so just pass through reads from the
 	// source reader from now on.
-	return psr.sourceReader.Read(p)
+	sourceBytesCopied, err = psr.sourceReader.Read(p)
+	return sourceBytesCopied + preStreamBytesCopied, err
 }

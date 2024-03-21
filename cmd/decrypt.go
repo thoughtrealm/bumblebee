@@ -112,6 +112,15 @@ func decryptData() {
 		localDecryptCommandVals.outputTargetText = "path"
 	}
 
+	// If we are decrypting a file and no output details are provided, then we will assume
+	// we want to output to a file as well.  This should result in writing the file to the
+	// current directory. If the file contains a source file name stored during encryption,
+	// we will use that name.  If not, we will try to derive a name from the input file name.
+	if localDecryptCommandVals.inputSourceText == "file" && localDecryptCommandVals.outputTargetText == "" {
+		// let's try to get away with not deriving a filename yet, let the read processor do that if we can.
+		localDecryptCommandVals.outputTargetText = "file"
+	}
+
 	// do this check after the other inference checks above relating to no supplied value for inputSourceText
 	if localDecryptCommandVals.inputSourceText == "" && helpers.CheckIsPiped() {
 		localDecryptCommandVals.inputSourceText = "piped"
@@ -126,7 +135,7 @@ func decryptData() {
 
 	if localDecryptCommandVals.outputTargetText == "" {
 		if !inferOutputTargetFromInputForDecrypt() {
-			fmt.Println("No input-source provided and one could not be inferred from the input-source.  Please provide more explicit input details.")
+			fmt.Println("No output target provided and one could not be inferred from the input-source.  Please provide more explicit output  details.")
 			helpers.ExitCode = helpers.ExitCodeInvalidInput
 			return
 		}
@@ -186,14 +195,14 @@ func decryptData() {
 	case keystore.InputSourcePiped:
 		totalBytesWritten, err = decryptPipedInput()
 	default:
-		fmt.Printf("Unknown or invalid input source: %d", int(localDecryptCommandVals.inputSource))
+		fmt.Printf("Unknown or invalid input source: %d\n", int(localDecryptCommandVals.inputSource))
 		helpers.ExitCode = helpers.ExitCodeInvalidInput
 		return
 	}
 
 	if err != nil {
-		fmt.Printf("Error decrypting data: %s", err)
-		helpers.ExitCode = helpers.ExitCodeInvalidInput
+		fmt.Printf("Error decrypting data: %s\n", err)
+		helpers.ExitCode = helpers.ExitCodeRequestFailed
 		return
 	}
 

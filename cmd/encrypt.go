@@ -113,6 +113,8 @@ func encryptData() {
 
 	var err error
 
+	// start check for certain patterns and infer what we can, to support simpler command patterns for the user
+
 	if localEncryptCommandVals.inputFilePath != "" {
 		localEncryptCommandVals.inputSourceText = "file"
 	} else if localEncryptCommandVals.inputDir != "" {
@@ -129,6 +131,18 @@ func encryptData() {
 		localEncryptCommandVals.outputTargetText = "path"
 	}
 
+	if localEncryptCommandVals.outputTargetText == "" && localEncryptCommandVals.inputSourceText == "dirs" {
+		localEncryptCommandVals.outputTargetText = "file"
+
+		if localEncryptCommandVals.inputDir != "" {
+			// set the output file path from the inputdir?
+		}
+
+		if localEncryptCommandVals.inputDescriptorPath != "" {
+			// set the output file path from the descriptor file name?
+		}
+	}
+
 	// do this check after the other inference checks above relating to no supplied value for inputSourceText
 	if localEncryptCommandVals.inputSourceText == "" && helpers.CheckIsPiped() {
 		localEncryptCommandVals.inputSourceText = "piped"
@@ -136,10 +150,6 @@ func encryptData() {
 
 	if localEncryptCommandVals.inputSourceText == "" {
 		localEncryptCommandVals.inputSourceText = "console"
-	}
-
-	if localEncryptCommandVals.outputTargetText == "" {
-		localEncryptCommandVals.outputTargetText = "console"
 	}
 
 	localEncryptCommandVals.inputSource = keystore.TextToInputSource(localEncryptCommandVals.inputSourceText)

@@ -39,6 +39,10 @@ func newPostStreamDecryptProcessor(targetWriter io.Writer, headerLoadProcessorFu
 	}
 }
 
+// Write traps and parses the decrypted output stream for the purpose of handling the sym file header.
+// If stream is still in a state of handling the header preamble, and no error occurs, then we must
+// always return len(p) as the byte count written out.  Otherwise, the caller can get confused by
+// what appears to be a partial write to the output.  This can be detected by some writers as an error.
 func (psdp *postStreamDecryptProcessor) Write(p []byte) (n int, err error) {
 	if psdp.processorState == ProcessStateHeaderWasRead {
 		return psdp.targetWriter.Write(p)
@@ -96,8 +100,20 @@ func (psdp *postStreamDecryptProcessor) Write(p []byte) (n int, err error) {
 			return len(p), nil
 		}
 
-		bytesIn = bytesIn[psdp.headerSize:]
-		return psdp.targetWriter.Write(bytesIn)
+		bytesToSendToWriter := bytes.Clone(bytesIn[psdp.headerSize:])
+		bytesSentToWriter, err := psdp.targetWriter.Write(bytesToSendToWriter)
+
+		// Todo: This check is tricky.  There are scenarios where the output byte count may not
+		// match the expected output, but no error has occurred or some unexpected error occurs.
+		// Practically, those scenarios should never occur.  But if they do, it should as expected,
+		// but it will likely result in confusing output messages and/or unexpected results.
+		// Might need to re-think the logic in this header handling, maybe track the output count
+		// or errors a bit differently.
+		if bytesSentToWriter != len(bytesToSendToWriter) {
+			return bytesSentToWriter, err
+		}
+
+		return len(p), err
 	}
 
 	return 0, fmt.Errorf("unknown input stream processor state: %d", psdp.processorState)

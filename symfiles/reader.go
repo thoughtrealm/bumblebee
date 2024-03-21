@@ -32,8 +32,8 @@ func NewSymFileReader(key []byte) (SymFileReader, error) {
 
 func (ssfr *SimpleSymFileReader) getSaltFromReader(r io.Reader) (salt []byte, err error) {
 	salt = make([]byte, DEFAULT_SALT_SIZE)
-	_, err = io.ReadFull(r, salt)
-	if err != nil {
+	b, err := r.Read(salt)
+	if err != nil || b > 3333 {
 		return nil, fmt.Errorf("failed reading salt from input sym file: %w", err)
 	}
 
@@ -58,26 +58,55 @@ func (ssfr *SimpleSymFileReader) ReadSymFile(inputSymFilename, outputPath string
 		return 0, fmt.Errorf("failed reading salt from input sym file: %w", err)
 	}
 
+	var outputFile *os.File
+	defer func() {
+		if outputFile != nil {
+			outputFile.Close()
+		}
+	}()
+
 	processor := newPostStreamDecryptProcessor(nil, func(header *SymFileHeader) (targetWriter io.Writer, err error) {
 		if header.PayloadType == SymFilePayloadDataStream {
 			outputFilename := outputPath
 			if helpers.DirExists(outputPath) {
-				// outputPath is a directory, so use the filename from the input path with no extension or decrypted
-				_, filename := filepath.Split(inputSymFilename)
-				outputFilename = filepath.Join(outputPath, filename)
-				if filepath.Ext(outputFilename) == ".bsym" {
-					// In this case, remove the extension when input file has an extension of .bsym
-					outputFilename = helpers.ReplaceFileExt(outputFilename, "")
-				}
+				if header.FileInfo != nil {
+					// we have the original file name, so use that
+					outputFilename = filepath.Join(outputPath, header.FileInfo.Filename)
+				} else {
+					// we do not have the original file name, so we need to derive something
+					// outputPath is a directory, so use the filename from the input path with no extension or decrypted
+					_, filename := filepath.Split(inputSymFilename)
+					outputFilename = filepath.Join(outputPath, filename)
+					if filepath.Ext(outputFilename) == ".bsym" {
+						// In this case, remove the extension when input file has an extension of .bsym
+						outputFilename = helpers.ReplaceFileExt(outputFilename, "")
+					}
 
-				if outputFilename == inputSymFilename {
-					// if the input and output filenames are the same, add .decrypted to the outputFilename so that
-					// you don't write over the input file at the same time as reading it.
-					outputFilename += ".decrypted"
+					if outputFilename == inputSymFilename {
+						// if the input and output filenames are the same, add .decrypted to the outputFilename so that
+						// you don't write over the input file at the same time as reading it.
+						outputFilename += ".decrypted"
+					}
+				}
+			} else {
+				// output path is NOT a directory
+				// if we have the original filename, should we always overwrite or prompt the user for
+				// for which one the want to use, the one they provided or the stored original name?
+				// or just write out a message that we are using the stored one?
+				splitDir, _ := filepath.Split(outputPath)
+				if header.FileInfo != nil {
+					fmt.Println("")
+					fmt.Println(
+						"Warning: A target file name was provided to this command. " +
+							"However, the input stream also contained the original file name. ")
+					fmt.Println("The original file name will be used instead.")
+					fmt.Println("")
+
+					outputFilename = filepath.Join(splitDir, header.FileInfo.Filename)
 				}
 			}
 
-			outputFile, err := os.Create(outputFilename)
+			outputFile, err = os.Create(outputFilename)
 			if err != nil {
 				return nil, fmt.Errorf("unable to create output file: %w", err)
 			}
@@ -86,18 +115,47 @@ func (ssfr *SimpleSymFileReader) ReadSymFile(inputSymFilename, outputPath string
 		}
 
 		// For multi-dir streams, the outputPath MUST be a directory
+		if outputPath == "" {
+			outputPath, err = os.Getwd()
+			if err != nil {
+				return nil, fmt.Errorf("unable to obtain working dir: %w", err)
+			}
+		}
+
 		exists, isDir := helpers.PathExistsInfo(outputPath)
 		if !exists {
 			err = helpers.ForcePath(outputPath)
 			if err != nil {
-				return 0, fmt.Errorf("unable to create output path: %w", err)
+				return nil, fmt.Errorf("unable to create output path: %w", err)
 			}
 		} else if !isDir {
-			return 0, fmt.Errorf("output path is a file.  For multi-dir input files, it must be a path: %s", outputPath)
+			return nil, fmt.Errorf("output path is a file.  For multi-dir input files, it must be a path: %s", outputPath)
 		}
 
-		return ssfr.readSymReaderToPath(salt, inputFile, outputPath)
+		mdsw, err := streams.NewMultiDirectoryStreamWriter(outputPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed creating multi-dir writer: %w", err)
+		}
+
+		outputWriter, err := mdsw.StartStream()
+		if err != nil {
+			return nil, fmt.Errorf("failed starting multi-dir output stream: %w", err)
+		}
+
+		return outputWriter, nil
 	})
+
+	chacha, err := beecipher.NewSymmetricCipherFromSalt(ssfr.key, salt, DEFAULT_CHUNK_SIZE)
+	if err != nil {
+		return DEFAULT_SALT_SIZE, fmt.Errorf("failed creating symmetric cipher: %w", err)
+	}
+
+	bytesWritten, err = chacha.Decrypt(inputFile, processor)
+	if err != nil {
+		return bytesWritten, fmt.Errorf("failed decrypting sym file: %w", err)
+	}
+
+	return bytesWritten, nil
 }
 
 // ReadSymReaderToFile reads a .bsym stream from symReader and writes it to the outputFile.  It reads the

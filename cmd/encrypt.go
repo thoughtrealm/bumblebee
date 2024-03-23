@@ -111,138 +111,10 @@ func encryptData() {
 		}
 	}()
 
-	var err error
-
-	// start check for certain patterns and infer what we can, to support simpler command patterns for the user
-
-	if localEncryptCommandVals.inputFilePath != "" {
-		localEncryptCommandVals.inputSourceText = "file"
-	} else if localEncryptCommandVals.inputDir != "" {
-		localEncryptCommandVals.inputSourceText = "dirs"
-	} else if localEncryptCommandVals.inputDescriptorPath != "" {
-		localEncryptCommandVals.inputSourceText = "dirs"
-	}
-
-	if localEncryptCommandVals.outputTargetText == "" && localEncryptCommandVals.outputFile != "" {
-		localEncryptCommandVals.outputTargetText = "file"
-	}
-
-	if localEncryptCommandVals.outputTargetText == "" && localEncryptCommandVals.outputPath != "" {
-		localEncryptCommandVals.outputTargetText = "path"
-	}
-
-	if localEncryptCommandVals.outputTargetText == "" && localEncryptCommandVals.inputSourceText == "dirs" {
-		localEncryptCommandVals.outputTargetText = "file"
-
-		if localEncryptCommandVals.inputDir != "" {
-			// set the output file path from the inputdir?
-		}
-
-		if localEncryptCommandVals.inputDescriptorPath != "" {
-			// set the output file path from the descriptor file name?
-		}
-	}
-
-	// do this check after the other inference checks above relating to no supplied value for inputSourceText
-	if localEncryptCommandVals.inputSourceText == "" && helpers.CheckIsPiped() {
-		localEncryptCommandVals.inputSourceText = "piped"
-	}
-
-	if localEncryptCommandVals.inputSourceText == "" {
-		localEncryptCommandVals.inputSourceText = "console"
-	}
-
-	localEncryptCommandVals.inputSource = keystore.TextToInputSource(localEncryptCommandVals.inputSourceText)
-	if localEncryptCommandVals.inputSource == keystore.InputSourceUnknown {
-		fmt.Println("Missing or invalid input source details.  Input details are required")
-		helpers.ExitCode = helpers.ExitCodeInvalidInput
-		return
-	}
-
-	if localEncryptCommandVals.inputSource == keystore.InputSourceConsole && localEncryptCommandVals.outputTargetText == "" {
-		localEncryptCommandVals.outputTargetText = "console"
-	}
-
-	localEncryptCommandVals.outputTarget = keystore.TextToOutputTarget(localEncryptCommandVals.outputTargetText)
-	if localEncryptCommandVals.outputTarget == keystore.OutputTargetUnknown {
-		fmt.Println("Missing or invalid output details provided and none could be inferred from the input details.  Please provide output details.")
-		helpers.ExitCode = helpers.ExitCodeInvalidInput
-		return
-	}
-
-	if localEncryptCommandVals.inputSource == keystore.InputSourceFile {
-		err = validateInputFileForEncrypt()
-		if err != nil {
-			fmt.Printf("Input file invalid: %s\n", err)
-			helpers.ExitCode = helpers.ExitCodeInvalidInput
-			return
-		}
-	}
-
-	if localEncryptCommandVals.inputSource == keystore.InputSourceDirs {
-		err = validateInputDirsForEncrypt()
-		if err != nil {
-			fmt.Printf("Input dirs invalid: %s\n", err)
-			helpers.ExitCode = helpers.ExitCodeInvalidInput
-			return
-		}
-	}
-
-	if localEncryptCommandVals.outputTargetText == "" {
-		if !inferOutputTargetForEncrypt() {
-			fmt.Println("Unable to infer output-target based on input-source.  You must provide a value for --output-target.")
-			helpers.ExitCode = helpers.ExitCodeInvalidInput
-			return
-		}
-	} else {
-		localEncryptCommandVals.outputTarget = keystore.TextToOutputTarget(localEncryptCommandVals.outputTargetText)
-		if localEncryptCommandVals.outputTarget == keystore.OutputTargetUnknown {
-			fmt.Printf("Unknown output-target: \"%s\"\n", localEncryptCommandVals.outputTargetText)
-			helpers.ExitCode = helpers.ExitCodeInvalidInput
-			return
-		}
-	}
-
-	if localEncryptCommandVals.inputSource == keystore.InputSourceDirs &&
-		localEncryptCommandVals.outputTarget != keystore.OutputTargetFile {
-		fmt.Println("Incorrect output target for input source DIRS.  Output target MUST BE of type FILE.")
-		helpers.ExitCode = helpers.ExitCodeInvalidInput
-		return
-	}
-
-	if localEncryptCommandVals.outputTarget == keystore.OutputTargetFile {
-		err = validateOutputFileForEncrypt()
-		if err != nil {
-			fmt.Printf("Output file invalid: %s\n", err)
-			helpers.ExitCode = helpers.ExitCodeInvalidInput
-			return
-		}
-	}
-
-	if localEncryptCommandVals.outputTarget == keystore.OutputTargetPath {
-		err = validateOutputPathForEncrypt()
-		if err != nil {
-			fmt.Printf("Output path invalid: %s\n", err)
-			helpers.ExitCode = helpers.ExitCodeInvalidInput
-			return
-		}
-	}
-
-	if localEncryptCommandVals.symmetricKeyInputText != "" {
-		localEncryptCommandVals.symmetricKey = []byte(localEncryptCommandVals.symmetricKeyInputText)
-	} else {
-		err = getKeyForEncrypt()
-		if err != nil {
-			fmt.Printf("Unable to acquire data key: %s\n", err)
-			helpers.ExitCode = helpers.ExitCodeInvalidInput
-			return
-		}
-	}
-
-	if len(localEncryptCommandVals.symmetricKey) == 0 {
-		// This can't really happen, but check in case anyway
-		fmt.Println("No key provided")
-		helpers.ExitCode = helpers.ExitCodeInvalidInput
+	exitCode, err := validateEncryptInputs()
+	if err != nil {
+		fmt.Printf("Error validating input: : %s\n", err)
+		helpers.ExitCode = exitCode
 		return
 	}
 
@@ -318,6 +190,170 @@ func encryptData() {
 
 	endTime := time.Now()
 	totalTime = endTime.Sub(startTime)
+}
+
+func validateEncryptInputs() (exitCode int, err error) {
+	// start check for certain patterns and infer what we can, to support simpler command patterns for the user
+
+	if localEncryptCommandVals.inputFilePath != "" {
+		localEncryptCommandVals.inputSourceText = "file"
+	} else if localEncryptCommandVals.inputDir != "" {
+		localEncryptCommandVals.inputSourceText = "dirs"
+	} else if localEncryptCommandVals.inputDescriptorPath != "" {
+		localEncryptCommandVals.inputSourceText = "dirs"
+	}
+
+	if localEncryptCommandVals.outputTargetText == "" && localEncryptCommandVals.outputFile != "" {
+		localEncryptCommandVals.outputTargetText = "file"
+	}
+
+	if localEncryptCommandVals.outputTargetText == "" && localEncryptCommandVals.outputPath != "" {
+		localEncryptCommandVals.outputTargetText = "path"
+	}
+
+	// at this point, we have no output details, since we have already checked output file and output path settings
+	// if we can, we'll try to derive output details from the input details
+
+	if localEncryptCommandVals.outputTargetText == "" && localEncryptCommandVals.inputSourceText == "file" {
+		localEncryptCommandVals.outputTargetText = "file"
+
+		outputPath, err := os.Getwd()
+		if err != nil {
+			return helpers.ExitCodeRequestFailed,
+				fmt.Errorf("failed getting current working directory: %w", err)
+		}
+
+		if localEncryptCommandVals.inputFilePath != "" {
+			_, splitFilename := filepath.Split(localEncryptCommandVals.inputFilePath)
+			localEncryptCommandVals.outputFile = filepath.Join(outputPath, splitFilename)
+		}
+
+		if localEncryptCommandVals.outputFile == "" {
+			localEncryptCommandVals.outputFile = "filedata"
+		}
+
+		localEncryptCommandVals.outputFile = helpers.ReplaceFileExt(localEncryptCommandVals.outputFile, ".bsym")
+	}
+
+	// input of dirs requires an output referencing a file
+	if localEncryptCommandVals.outputTargetText == "" && localEncryptCommandVals.inputSourceText == "dirs" {
+		localEncryptCommandVals.outputTargetText = "file"
+
+		outputPath, err := os.Getwd()
+		if err != nil {
+			return helpers.ExitCodeRequestFailed,
+				fmt.Errorf("failed getting current working directory: %w", err)
+		}
+
+		if localEncryptCommandVals.inputDir != "" {
+			basePath := filepath.Base(localEncryptCommandVals.inputDir)
+			localEncryptCommandVals.outputFile = filepath.Join(outputPath, basePath+"-bbdirs")
+		}
+
+		if localEncryptCommandVals.inputDescriptorPath != "" {
+			_, splitFilename := filepath.Split(localEncryptCommandVals.inputDescriptorPath)
+			localEncryptCommandVals.outputFile = filepath.Join(outputPath, splitFilename+"-bbdirs")
+		}
+
+		if localEncryptCommandVals.outputFile == "" {
+			localEncryptCommandVals.outputFile = "bdirs"
+		}
+
+		localEncryptCommandVals.outputFile = helpers.ReplaceFileExt(localEncryptCommandVals.outputFile, ".bsym")
+	}
+
+	// do this check after the other inference checks above relating to no supplied value for inputSourceText
+	if localEncryptCommandVals.inputSourceText == "" && helpers.CheckIsPiped() {
+		localEncryptCommandVals.inputSourceText = "piped"
+	}
+
+	if localEncryptCommandVals.inputSourceText == "" {
+		localEncryptCommandVals.inputSourceText = "console"
+	}
+
+	localEncryptCommandVals.inputSource = keystore.TextToInputSource(localEncryptCommandVals.inputSourceText)
+	if localEncryptCommandVals.inputSource == keystore.InputSourceUnknown {
+		return helpers.ExitCodeInvalidInput,
+			errors.New("missing or invalid input source details.  Input details are required")
+	}
+
+	if localEncryptCommandVals.inputSource == keystore.InputSourceConsole && localEncryptCommandVals.outputTargetText == "" {
+		localEncryptCommandVals.outputTargetText = "console"
+	}
+
+	localEncryptCommandVals.outputTarget = keystore.TextToOutputTarget(localEncryptCommandVals.outputTargetText)
+	if localEncryptCommandVals.outputTarget == keystore.OutputTargetUnknown {
+		return helpers.ExitCodeInvalidInput,
+			errors.New("missing or invalid output details provided and none could be inferred from the input details.  Please provide output details.")
+	}
+
+	if localEncryptCommandVals.inputSource == keystore.InputSourceFile {
+		err = validateInputFileForEncrypt()
+		if err != nil {
+			return helpers.ExitCodeInvalidInput,
+				fmt.Errorf("input file invalid: %w", err)
+		}
+	}
+
+	if localEncryptCommandVals.inputSource == keystore.InputSourceDirs {
+		err = validateInputDirsForEncrypt()
+		if err != nil {
+			return helpers.ExitCodeInvalidInput, fmt.Errorf("input dirs invalid: %w", err)
+		}
+	}
+
+	if localEncryptCommandVals.outputTargetText == "" {
+		if !inferOutputTargetForEncrypt() {
+			return helpers.ExitCodeInvalidInput,
+				errors.New("unable to infer output-target based on input-source.  You must provide a value for --output-target.")
+		}
+	} else {
+		localEncryptCommandVals.outputTarget = keystore.TextToOutputTarget(localEncryptCommandVals.outputTargetText)
+		if localEncryptCommandVals.outputTarget == keystore.OutputTargetUnknown {
+			return helpers.ExitCodeInvalidInput,
+				fmt.Errorf("unknown output-target: \"%s\"", localEncryptCommandVals.outputTargetText)
+		}
+	}
+
+	if localEncryptCommandVals.inputSource == keystore.InputSourceDirs &&
+		localEncryptCommandVals.outputTarget != keystore.OutputTargetFile {
+		return helpers.ExitCodeInvalidInput, errors.New("incorrect output target for input source DIRS.  Output target MUST BE of type FILE.")
+	}
+
+	if localEncryptCommandVals.inputFilePath != "" &&
+		(localEncryptCommandVals.inputFilePath == localEncryptCommandVals.outputFile) {
+		localEncryptCommandVals.outputFile = helpers.ReplaceFileExt(localEncryptCommandVals.outputFile, ".encrypted.bsym")
+	}
+
+	if localEncryptCommandVals.outputTarget == keystore.OutputTargetFile {
+		err = validateOutputFileForEncrypt()
+		if err != nil {
+			return helpers.ExitCodeInvalidInput, fmt.Errorf("output file invalid: %w", err)
+		}
+	}
+
+	if localEncryptCommandVals.outputTarget == keystore.OutputTargetPath {
+		err = validateOutputPathForEncrypt()
+		if err != nil {
+			return helpers.ExitCodeInvalidInput, fmt.Errorf("output path invalid: %w", err)
+		}
+	}
+
+	if localEncryptCommandVals.symmetricKeyInputText != "" {
+		localEncryptCommandVals.symmetricKey = []byte(localEncryptCommandVals.symmetricKeyInputText)
+	} else {
+		err = getKeyForEncrypt()
+		if err != nil {
+			return helpers.ExitCodeInvalidInput, fmt.Errorf("unable to acquire data key: %w", err)
+		}
+	}
+
+	if len(localEncryptCommandVals.symmetricKey) == 0 {
+		// This can't really happen, but check anyway
+		return helpers.ExitCodeInvalidInput, errors.New("No key provided")
+	}
+
+	return helpers.ExitCodeSuccess, nil
 }
 
 func validateInputFileForEncrypt() error {

@@ -21,12 +21,14 @@ type SymFileReader interface {
 }
 
 type SimpleSymFileReader struct {
-	key []byte
+	key                []byte
+	useDerivedFilename bool
 }
 
-func NewSymFileReader(key []byte) (SymFileReader, error) {
+func NewSymFileReader(key []byte, useDerivedFilename bool) (SymFileReader, error) {
 	return &SimpleSymFileReader{
-		key: key,
+		key:                key,
+		useDerivedFilename: useDerivedFilename,
 	}, nil
 }
 
@@ -81,12 +83,6 @@ func (ssfr *SimpleSymFileReader) ReadSymFile(inputSymFilename, outputPath string
 						// In this case, remove the extension when input file has an extension of .bsym
 						outputFilename = helpers.ReplaceFileExt(outputFilename, "")
 					}
-
-					if outputFilename == inputSymFilename {
-						// if the input and output filenames are the same, add .decrypted to the outputFilename so that
-						// you don't write over the input file at the same time as reading it.
-						outputFilename += ".decrypted"
-					}
 				}
 			} else {
 				// output path is NOT a directory
@@ -95,15 +91,26 @@ func (ssfr *SimpleSymFileReader) ReadSymFile(inputSymFilename, outputPath string
 				// or just write out a message that we are using the stored one?
 				splitDir, _ := filepath.Split(outputPath)
 				if header.FileInfo != nil {
-					fmt.Println("")
-					fmt.Println(
-						"Warning: A target file name was provided to this command. " +
-							"However, the input stream also contained the original file name. ")
-					fmt.Println("The original file name will be used instead.")
-					fmt.Println("")
+					if !ssfr.useDerivedFilename {
+						// We only print this message if useDerivedFilename is indicated.
+						// If not indicated, we still use the header's filename, we just need to
+						// display a warning that we are doing so.
+						fmt.Println("")
+						fmt.Println(
+							"Warning: A target file name was provided to this command. " +
+								"However, the input stream also contained the original file name. ")
+						fmt.Println("The original file name will be used instead.")
+						fmt.Println("")
+					}
 
 					outputFilename = filepath.Join(splitDir, header.FileInfo.Filename)
 				}
+			}
+
+			if outputFilename == inputSymFilename {
+				// if the input and output filenames are the same, add .decrypted to the outputFilename so that
+				// you don't write over the input file at the same time as reading it.
+				outputFilename += ".decrypted"
 			}
 
 			outputFile, err = os.Create(outputFilename)
@@ -158,6 +165,55 @@ func (ssfr *SimpleSymFileReader) ReadSymFile(inputSymFilename, outputPath string
 	return bytesWritten, nil
 }
 
+// getFilenameFromReaderHeader is called from readSymReaderToFile and just makes that funcs code a bit cleaner.
+func (ssfr *SimpleSymFileReader) getFilenameFromReaderHeader(defaultOutputFilename string, header *SymFileHeader) string {
+	if header.PayloadType != SymFilePayloadDataStream {
+		return defaultOutputFilename
+	}
+
+	// For reader-based funcs, the defaultOutputFilename can contain an entire path and name
+	var outputFilename string
+
+	outputFilename = defaultOutputFilename
+	outputPathSplit, _ := filepath.Split(defaultOutputFilename)
+	if helpers.DirExists(outputPathSplit) {
+		if header.FileInfo != nil && header.FileInfo.Filename != "" {
+			// we have the original file name, so use that
+			outputFilename = filepath.Join(outputPathSplit, header.FileInfo.Filename)
+		} else {
+			// we do not have the original file name, so we need to derive something
+			// outputPath is a directory, so use the filename from the input path with no extension or decrypted
+			if filepath.Ext(outputFilename) == ".bsym" {
+				// In this case, replace the extension when using the name of the input file and
+				// it has an extension of .bsym.
+				outputFilename = helpers.ReplaceFileExt(outputFilename, "")
+			}
+		}
+	} else {
+		// output path is NOT a directory
+		// if we have the original filename, should we always overwrite or prompt the user for
+		// for which one the want to use, the one they provided or the stored original name?
+		// or just write out a message that we are using the stored one?
+		splitDir, _ := filepath.Split(outputPathSplit)
+		if header.FileInfo != nil {
+			if !ssfr.useDerivedFilename {
+				// We only print this message if useDerivedFilename is indicated.
+				// If not indicated, we still use the header's filename, we just need to
+				// display a warning that we are doing so.
+				fmt.Println("")
+				fmt.Println(
+					"Warning: A target file name was provided to this command. " +
+						"However, the input stream also contained the original file name. ")
+				fmt.Println("The original file name will be used instead.")
+				fmt.Println("")
+			}
+			outputFilename = filepath.Join(splitDir, header.FileInfo.Filename)
+		}
+	}
+
+	return outputFilename
+}
+
 // ReadSymReaderToFile reads a .bsym stream from symReader and writes it to the outputFile.  It reads the
 // stream header, then passes the salt info to the readSymReaderToFile completion func.
 // It returns the number of bytes written, and any error encountered.
@@ -173,11 +229,13 @@ func (ssfr *SimpleSymFileReader) ReadSymReaderToFile(symReader io.Reader, output
 // readSymReaderToFile reads a .bsym stream from symReader and writes it to the outputFile.
 // It returns the number of bytes written, and any error encountered.
 func (ssfr *SimpleSymFileReader) readSymReaderToFile(salt []byte, symReader io.Reader, outputFilename string) (bytesWritten int, err error) {
-	outputFile, err := os.Create(outputFilename)
-	if err != nil {
-		return SymFileHeader_SIZE, fmt.Errorf("unable to create output file: %w", err)
-	}
-	defer outputFile.Close()
+	var outputFile *os.File
+
+	defer func() {
+		if outputFile != nil {
+			outputFile.Close()
+		}
+	}()
 
 	chacha, err := beecipher.NewSymmetricCipherFromSalt(ssfr.key, salt, DEFAULT_CHUNK_SIZE)
 	if err != nil {
@@ -189,6 +247,13 @@ func (ssfr *SimpleSymFileReader) readSymReaderToFile(salt []byte, symReader io.R
 	processor := newPostStreamDecryptProcessor(nil, func(header *SymFileHeader) (targetWriter io.Writer, err error) {
 		if header.PayloadType == SymFilePayloadDataMultiDir {
 			return nil, errors.New("invalid payload type for file stream writer: payload must be type DataStream")
+		}
+
+		outputFilenameDerived := ssfr.getFilenameFromReaderHeader(outputFilename, header)
+
+		outputFile, err = os.Create(outputFilenameDerived)
+		if err != nil {
+			return nil, fmt.Errorf("unable to create output file: %w", err)
 		}
 
 		return outputFile, nil

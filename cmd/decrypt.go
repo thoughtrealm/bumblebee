@@ -79,6 +79,7 @@ type decryptSettings struct {
 	outputFile         *os.File
 	textWriter         *helpers.TextWriter
 	symFileReader      symfiles.SymFileReader
+	useDerivedFilename bool
 }
 
 var localDecryptSettings = &decryptSettings{}
@@ -92,6 +93,8 @@ func init() {
 	decryptCmd.Flags().StringVarP(&localDecryptCommandVals.outputPath, "output-path", "p", "", "The path name for output. Only relevant if output-target is FILE or PATH.")
 	decryptCmd.Flags().StringVarP(&localDecryptCommandVals.symmetricKeyInputText, "key", "", "", "The key for the encrypted data. Prompted for if not provided. Prompt entry is recommended.")
 }
+
+// Todo: need to move all the validation code into a separate validateInput() func.  Same for all other relevant commands.
 
 func decryptData() {
 	defer func() {
@@ -110,6 +113,28 @@ func decryptData() {
 
 	if localDecryptCommandVals.outputTargetText == "" && localDecryptCommandVals.outputPath != "" {
 		localDecryptCommandVals.outputTargetText = "path"
+		found, isDir := helpers.PathExistsInfo(localDecryptCommandVals.outputPath)
+		if found && isDir == false {
+			fmt.Printf(
+				"Provided output path \"%s\" exists, but is a file, not a path\n",
+				localDecryptCommandVals.outputPath)
+			helpers.ExitCode = helpers.ExitCodeInvalidInput
+			return
+		}
+
+		if !found {
+			err := helpers.ForcePath(localDecryptCommandVals.outputPath)
+			if err != nil {
+				fmt.Printf(
+					"Provided output path \"%s\" does not exist. An attempt to create it failed: %s\n",
+					localDecryptCommandVals.outputPath,
+					err)
+				helpers.ExitCode = helpers.ExitCodeInvalidInput
+				return
+			}
+
+			fmt.Printf("Created path \"%s\"\n", localDecryptCommandVals.outputPath)
+		}
 	}
 
 	// If we are decrypting a file and no output details are provided, then we will assume
@@ -119,6 +144,7 @@ func decryptData() {
 	if localDecryptCommandVals.inputSourceText == "file" && localDecryptCommandVals.outputTargetText == "" {
 		// let's try to get away with not deriving a filename yet, let the read processor do that if we can.
 		localDecryptCommandVals.outputTargetText = "file"
+		localDecryptSettings.useDerivedFilename = true
 	}
 
 	// do this check after the other inference checks above relating to no supplied value for inputSourceText
@@ -145,6 +171,11 @@ func decryptData() {
 		fmt.Println("Console is not a valid input target for command DECRYPT")
 		helpers.ExitCode = helpers.ExitCodeInvalidInput
 		return
+	}
+
+	if localDecryptCommandVals.inputFilePath != "" &&
+		(localDecryptCommandVals.inputFilePath == localDecryptCommandVals.outputFile) {
+		localDecryptCommandVals.outputFile = helpers.ReplaceFileExt(localDecryptCommandVals.outputFile, ".decrypted")
 	}
 
 	localDecryptCommandVals.outputTarget = keystore.TextToOutputTarget(localDecryptCommandVals.outputTargetText)
@@ -179,7 +210,10 @@ func decryptData() {
 	fmt.Println("Starting Decrypt request...")
 	startTime := time.Now()
 
-	localDecryptSettings.symFileReader, err = symfiles.NewSymFileReader(localDecryptCommandVals.symmetricKey)
+	localDecryptSettings.symFileReader, err = symfiles.NewSymFileReader(
+		localDecryptCommandVals.symmetricKey,
+		localDecryptSettings.useDerivedFilename)
+
 	defer localDecryptSettings.symFileReader.Wipe()
 
 	var totalBytesWritten int

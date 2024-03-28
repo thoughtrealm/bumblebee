@@ -15,7 +15,7 @@ import (
 type SymFileWriter interface {
 	SetSourceFileInfoFromStat(fi fs.FileInfo)
 	WriteSymFileFromFile(inputFilename, outputSymFileName string) (bytesWritten int, err error)
-	WriteSymFileFromDirs(inputDirs []string, outputSymFileName string) (bytesWritten int, err error)
+	WriteSymFileFromDirs(inputDirs []string, outputSymFileName string, metadata []*streams.MetadataItem) (bytesWritten int, err error)
 	WriteSymFileToWriterFromReader(r io.Reader, w io.Writer, payloadType SymFilePayload) (bytesWritten int, err error)
 }
 
@@ -68,10 +68,20 @@ func (ssfw *SimpleSymFileWriter) WriteSymFileFromFile(inputFilename, outputSymFi
 	return ssfw.WriteSymFileFromReader(inputFile, outputSymFileName, SymFilePayloadDataStream)
 }
 
-func (ssfw *SimpleSymFileWriter) WriteSymFileFromDirs(inputDirs []string, outputSymFileName string) (bytesWritten int, err error) {
+func (ssfw *SimpleSymFileWriter) WriteSymFileFromDirs(inputDirs []string, outputSymFileName string, metadata []*streams.MetadataItem) (bytesWritten int, err error) {
 	streamReader, err := streams.NewMultiDirectoryStreamReader(streams.WithCompression())
 	if err != nil {
 		return 0, fmt.Errorf("failed creating streamReader: %w", err)
+	}
+
+	if metadata != nil {
+		mc := streamReader.GetMetadataCollection()
+		for _, item := range metadata {
+			err = mc.AddMetadataItem(item)
+			if err != nil {
+				return 0, fmt.Errorf("failed adding stream metadata: %w", err)
+			}
+		}
 	}
 
 	for _, dir := range inputDirs {

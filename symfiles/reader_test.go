@@ -2,6 +2,7 @@ package symfiles
 
 import (
 	"github.com/stretchr/testify/assert"
+	"github.com/thoughtrealm/bumblebee/streams"
 	"os"
 	"testing"
 )
@@ -13,6 +14,7 @@ func TestSimpleSymFile_ReadSymFile(t *testing.T) {
 		name       string
 		inputPath  string
 		outputPath string
+		metadata   []*streams.MetadataItem
 	}
 
 	tests := []test{
@@ -30,6 +32,20 @@ func TestSimpleSymFile_ReadSymFile(t *testing.T) {
 			name:       "Dirs",
 			inputPath:  "output_dirs.bsym",
 			outputPath: "testdir_out",
+			metadata: []*streams.MetadataItem{
+				{
+					Name: "test1",
+					Data: []byte("datatest1"),
+				},
+				{
+					Name: "test2",
+					Data: []byte("datatest2"),
+				},
+				{
+					Name: "test3",
+					Data: []byte("datatest3"),
+				},
+			},
 		},
 	}
 
@@ -69,7 +85,27 @@ func TestSimpleSymFile_ReadSymFile(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			symFile, err := NewSymFileReader(writerTestKey)
+			if tc.metadata != nil {
+				// If metadata is provided, first check the metadata, then flow through
+				// to check the file itself after this block.
+				symFile, err := NewSymFileReader(writerTestKey, true)
+				assert.NotNil(t, symFile)
+				assert.Nil(t, err)
+
+				mc, err := symFile.ReadSymFileMetadata(tc.inputPath, tc.outputPath)
+				assert.Nil(t, err)
+				assert.NotNil(t, mc)
+
+				for _, item := range tc.metadata {
+					mcItem := mc.GetMetadataItem(item.Name)
+					assert.Equal(t, item.Name, mcItem.Name)
+					assert.Equal(t, item.Data, mcItem.Data)
+				}
+
+				t.Log("Metadata confirmed")
+			}
+
+			symFile, err := NewSymFileReader(writerTestKey, true)
 			assert.NotNil(t, symFile)
 			assert.Nil(t, err)
 

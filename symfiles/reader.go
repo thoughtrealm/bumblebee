@@ -14,6 +14,7 @@ import (
 
 type SymFileReader interface {
 	ReadSymFile(inputSymFilename, outputPath string) (bytesWritten int, err error)
+	ReadSymFileMetadata(inputSymFilename, outputPath string) (metadataCollection streams.MetadataCollection, err error)
 	ReadSymReaderToFile(symReader io.Reader, outputFilename string) (bytesWritten int, err error)
 	ReadSymReaderToPath(symReader io.Reader, outputPath string) (bytesWritten int, err error)
 	ReadSymReaderToWriter(symReader io.Reader, w io.Writer) (bytesWritten int, err error)
@@ -139,7 +140,7 @@ func (ssfr *SimpleSymFileReader) ReadSymFile(inputSymFilename, outputPath string
 			return nil, fmt.Errorf("output path is a file.  For multi-dir input files, it must be a path: %s", outputPath)
 		}
 
-		mdsw, err := streams.NewMultiDirectoryStreamWriter(outputPath)
+		mdsw, err := streams.NewMultiDirectoryStreamWriter(outputPath, false)
 		if err != nil {
 			return nil, fmt.Errorf("failed creating multi-dir writer: %w", err)
 		}
@@ -163,6 +164,65 @@ func (ssfr *SimpleSymFileReader) ReadSymFile(inputSymFilename, outputPath string
 	}
 
 	return bytesWritten, nil
+}
+
+// ReadSymFileMetadata reads the metadata from a .bsym file.  The sym file MUST be of type multi-dir.
+// If it is not a multi-dir, it will fail
+func (ssfr *SimpleSymFileReader) ReadSymFileMetadata(inputSymFilename, outputPath string) (metadataCollection streams.MetadataCollection, err error) {
+	if !helpers.FileExists(inputSymFilename) {
+		return nil, fmt.Errorf("input sym file does not exist: %s", inputSymFilename)
+	}
+
+	inputFile, err := os.Open(inputSymFilename)
+	if err != nil {
+		return nil, fmt.Errorf("unable to open input sym file: %w", err)
+	}
+	defer inputFile.Close()
+
+	salt, err := ssfr.getSaltFromReader(inputFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed reading salt from input sym file: %w", err)
+	}
+
+	var mdsw streams.StreamWriter
+	processor := newPostStreamDecryptProcessor(nil, func(header *SymFileHeader) (targetWriter io.Writer, err error) {
+		if header.PayloadType == SymFilePayloadDataStream {
+			return nil, errors.New("file is of type DataStream.  For ReadSymMetadata, the file must be of type MultiDir.")
+		}
+
+		mdsw, err = streams.NewMultiDirectoryStreamWriter("", true)
+		if err != nil {
+			return nil, fmt.Errorf("failed creating multi-dir writer: %w", err)
+		}
+
+		outputWriter, err := mdsw.StartStream()
+		if err != nil {
+			return nil, fmt.Errorf("failed starting multi-dir output stream: %w", err)
+		}
+
+		return outputWriter, nil
+	})
+
+	chacha, err := beecipher.NewSymmetricCipherFromSalt(ssfr.key, salt, DEFAULT_CHUNK_SIZE)
+	if err != nil {
+		return nil, fmt.Errorf("failed creating symmetric cipher: %w", err)
+	}
+
+	_, err = chacha.Decrypt(inputFile, processor)
+
+	// When using the stream's metadataReadMode process, we expect the header and metadata ONLY to be read,
+	// and the metadata completed indicator error to be returned. If anything else is returned, we did
+	// not get the metadata correctly.
+	var streamsErrorMetadataProcessingCompleted *streams.StreamsErrorMetadataProcessingCompleted
+	if errors.As(err, &streamsErrorMetadataProcessingCompleted) {
+		return mdsw.GetMetadataCollection().Clone(), nil
+	}
+
+	if err == nil {
+		return nil, errors.New("failed decrypting sym file, but no error returned from stream writer")
+	}
+
+	return nil, fmt.Errorf("failed retrieving metadata from encrypted sym file: %w", err)
 }
 
 // getFilenameFromReaderHeader is called from readSymReaderToFile and just makes that funcs code a bit cleaner.
@@ -286,7 +346,7 @@ func (ssfr *SimpleSymFileReader) readSymReaderToPath(salt []byte, symReader io.R
 		return SymFileHeader_SIZE, fmt.Errorf("failed creating symmetric cipher: %w", err)
 	}
 
-	mdsw, err := streams.NewMultiDirectoryStreamWriter(outputPath)
+	mdsw, err := streams.NewMultiDirectoryStreamWriter(outputPath, false)
 	if err != nil {
 		return SymFileHeader_SIZE, fmt.Errorf("failed creating stream writer: %w", err)
 	}

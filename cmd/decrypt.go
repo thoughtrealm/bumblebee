@@ -45,7 +45,7 @@ type decryptCommandVals struct {
 	// The user supplied key to decrypt the input with
 	symmetricKey []byte
 
-	// Commande line provided symmetric key
+	// Command line provided symmetric key
 	symmetricKeyInputText string
 
 	// inputSourceText should be console, clipboard, file or dirs

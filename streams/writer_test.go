@@ -1,6 +1,7 @@
 package streams
 
 import (
+	"errors"
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/text/language"
@@ -11,10 +12,10 @@ import (
 )
 
 func TestNewMultiDirectoryStreamWriter(t *testing.T) {
-	testHelperMultiDirectoryStreamWriter(t, nil, nil)
+	testHelperMultiDirectoryStreamWriter(t, nil, nil, nil, false)
 }
 
-func testHelperMultiDirectoryStreamWriter(t *testing.T, preProcessFilter PreProcessFilter, preWriteFilter PreWriteFilter) (err error, bytesRead, bytesWritten int) {
+func testHelperMultiDirectoryStreamWriter(t *testing.T, preProcessFilter PreProcessFilter, preWriteFilter PreWriteFilter, testMetadataValues []testMetadataValue, metadataReadMode bool) (err error, bytesRead, bytesWritten int) {
 	// remove the current test path if it exists
 	err = os.RemoveAll("testdir_out")
 	if err != nil {
@@ -22,7 +23,7 @@ func testHelperMultiDirectoryStreamWriter(t *testing.T, preProcessFilter PreProc
 		return err, 0, 0
 	}
 
-	mdsw, err := NewMultiDirectoryStreamWriter("testdir_out")
+	mdsw, err := NewMultiDirectoryStreamWriter("testdir_out", metadataReadMode)
 	assert.NotNil(t, mdsw)
 	assert.Nil(t, err)
 
@@ -62,6 +63,12 @@ func testHelperMultiDirectoryStreamWriter(t *testing.T, preProcessFilter PreProc
 
 		writeCount += 1
 		nWrite, writeErr = w.Write(readBuff[:nRead])
+		if errors.Is(writeErr, &StreamsErrorMetadataProcessingCompleted{}) {
+			validateMetadata(t, testMetadataValues, mdsw)
+			t.Log("Metadata Readmode Complete")
+			return writeErr, mdsw.TotalBytesRead(), mdsw.TotalBytesWritten()
+		}
+
 		if writeErr != nil {
 			t.Logf("error writing output file: %s", writeErr)
 			return writeErr, mdsw.TotalBytesRead(), mdsw.TotalBytesWritten()
@@ -81,6 +88,10 @@ func testHelperMultiDirectoryStreamWriter(t *testing.T, preProcessFilter PreProc
 	err = inputFile.Close()
 	assert.Nil(t, err)
 
+	if testMetadataValues != nil {
+		validateMetadata(t, testMetadataValues, mdsw)
+	}
+
 	p := message.NewPrinter(language.English)
 
 	t.Logf("Last write count   : %d", writeCount)
@@ -89,4 +100,19 @@ func testHelperMultiDirectoryStreamWriter(t *testing.T, preProcessFilter PreProc
 	t.Log(p.Sprintf("Total bytes written: %d", mdsw.TotalBytesWritten()))
 
 	return nil, mdsw.TotalBytesRead(), mdsw.TotalBytesWritten()
+}
+
+func validateMetadata(t *testing.T, testMetadataValues []testMetadataValue, sr StreamWriter) {
+	if len(testMetadataValues) > 0 {
+		mc := sr.GetMetadataCollection()
+		assert.NotNil(t, mc)
+
+		for _, value := range testMetadataValues {
+			mv := mc.GetMetadataItem(value.name)
+			assert.NotNil(t, mv)
+			assert.Equal(t, value.data, mv.Data)
+		}
+
+		t.Log("testMetadataValues validated")
+	}
 }

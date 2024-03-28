@@ -19,19 +19,28 @@ type PreProcessFilter func(dataIn []byte) (dataOut []byte)
 // PreWriteFilter is a testing mechanism that allows for altering the output stream before it is written out
 type PreWriteFilter func(dataIn []byte) (dataOut []byte)
 
+type StreamsErrorMetadataProcessingCompleted struct{}
+
+func (mcc *StreamsErrorMetadataProcessingCompleted) Error() string {
+	return "metadata collection complete"
+}
+
 type StreamWriter interface {
 	io.Writer
-	StartStream() (io.Writer, error)
-	TotalBytesRead() int
-	TotalBytesWritten() int
+	GetMetadataCollection() MetadataCollection
+	GetMetadataReadMode() bool
 	SetPreProcessFilter(preProcessFilter PreProcessFilter)
 	SetPreWriteFilter(preWriteFilter PreWriteFilter)
+	TotalBytesRead() int
+	TotalBytesWritten() int
+	StartStream() (io.Writer, error)
 }
 
 type MultiDirectoryStreamWriter struct {
 	rootPath                string
 	decomp                  Decompressor
 	Trees                   []Tree
+	Metadata                MetadataCollection
 	currentBlock            *StreamBlockDescriptor
 	currentItemHeader       *ItemHeader
 	currentFilePath         string
@@ -49,17 +58,28 @@ type MultiDirectoryStreamWriter struct {
 	requireConfirm          bool
 	overwriteDenyAll        bool
 	ignoreCurrentItemOutput bool
+	metadataReadMode        bool
+	metadataReadComplete    bool
 }
 
-func NewMultiDirectoryStreamWriter(rootPath string) (StreamWriter, error) {
+func NewMultiDirectoryStreamWriter(rootPath string, metadataReadMode bool) (StreamWriter, error) {
 	decomp := NewDecompressor()
 
 	return &MultiDirectoryStreamWriter{
-		rootPath:       rootPath,
-		decomp:         decomp,
-		Trees:          make([]Tree, 0),
-		requireConfirm: true,
+		rootPath:         rootPath,
+		decomp:           decomp,
+		Trees:            make([]Tree, 0),
+		requireConfirm:   true,
+		metadataReadMode: metadataReadMode,
 	}, nil
+}
+
+func (mdsw *MultiDirectoryStreamWriter) GetMetadataCollection() MetadataCollection {
+	return mdsw.Metadata
+}
+
+func (mdsw *MultiDirectoryStreamWriter) GetMetadataReadMode() bool {
+	return mdsw.metadataReadMode
 }
 
 func (mdsw *MultiDirectoryStreamWriter) SetPreWriteFilter(preWriteFilter PreWriteFilter) {
@@ -105,6 +125,10 @@ func (mdsw *MultiDirectoryStreamWriter) Write(p []byte) (n int, err error) {
 		return
 	}
 
+	if mdsw.metadataReadMode && mdsw.metadataReadComplete {
+		return 0, &StreamsErrorMetadataProcessingCompleted{}
+	}
+
 	mdsw.recvBuff = append(mdsw.recvBuff, p...)
 	mdsw.totalBytesRead += len(p)
 
@@ -118,6 +142,39 @@ func (mdsw *MultiDirectoryStreamWriter) Write(p []byte) (n int, err error) {
 			mdsw.currentBlock = NewStreamBlockDescriptorFromBytes(mdsw.recvBuff[:StreamBlockDescriptorLength])
 			mdsw.recvBuff = mdsw.recvBuff[StreamBlockDescriptorLength:]
 			mdsw.blockBytesRead = 0
+		}
+
+		if mdsw.currentBlock.DataType == StreamBlockTypeMetadata {
+			if uint32(len(mdsw.recvBuff)) < mdsw.currentBlock.Length {
+				// Not all tree data received yet, so return for now
+				return len(p), nil
+			}
+
+			mdsw.Metadata, err = NewMetaDataCollectionFromBytes(mdsw.recvBuff[:mdsw.currentBlock.Length])
+			if err != nil {
+				return len(p), fmt.Errorf("failed loading metadata: %w", err)
+			}
+
+			mdsw.metadataReadComplete = true
+
+			if mdsw.metadataReadMode {
+				return len(p), &StreamsErrorMetadataProcessingCompleted{}
+			}
+
+			blockLen := mdsw.currentBlock.Length
+
+			mdsw.currentBlock = nil
+			if uint32(len(mdsw.recvBuff)) == blockLen {
+				// The buffer was exactly the length of the metadata, so reset recvBuff, return
+				// and wait for more data
+				mdsw.recvBuff = []byte{}
+				return len(p), nil
+			}
+
+			// There is more data in the recvBuff than the metadata, so remove it from
+			// the recvBuff and continue to the next block check
+			mdsw.recvBuff = mdsw.recvBuff[blockLen:]
+			continue
 		}
 
 		if mdsw.currentBlock.DataType == StreamBlockTypeTreeData {

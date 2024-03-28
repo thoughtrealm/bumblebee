@@ -227,7 +227,7 @@ func (cfr *CipherReader) ReadCombinedFileToPath(combinedFilePath, outputPath str
 	var mdsw streams.StreamWriter
 	if bundleInfo.InputSource == BundleInputSourceMultiDir {
 		// For multi dir streams, we just need to initialize the stream writer with the output path
-		mdsw, err = streams.NewMultiDirectoryStreamWriter(outputPath)
+		mdsw, err = streams.NewMultiDirectoryStreamWriter(outputPath, false)
 		if err != nil {
 			return 0, fmt.Errorf("unable to initialize multi directory stream writer: %w", err)
 		}
@@ -409,7 +409,7 @@ func (cfr *CipherReader) ReadSplitFilesToPath(bundleHeaderFilePath, bundleDataFi
 	var mdsw streams.StreamWriter
 	if bundleInfo.InputSource == BundleInputSourceMultiDir {
 		// For multi dir streams, we just need to initialize the stream writer with the output path
-		mdsw, err = streams.NewMultiDirectoryStreamWriter(outputPath)
+		mdsw, err = streams.NewMultiDirectoryStreamWriter(outputPath, false)
 		if err != nil {
 			return 0, fmt.Errorf("unable to initialize multi directory stream writer: %w", err)
 		}

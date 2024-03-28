@@ -3,6 +3,7 @@ package streams
 import (
 	"bytes"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/thoughtrealm/bumblebee/helpers"
@@ -14,6 +15,11 @@ import (
 	"testing"
 )
 
+type testMetadataValue struct {
+	name string
+	data []byte
+}
+
 type testInfo struct {
 	name             string
 	dirs             []string
@@ -23,6 +29,8 @@ type testInfo struct {
 	preWriteFilter   PreWriteFilter
 	validateError    bool
 	writeError       bool
+	metadataValues   []testMetadataValue
+	readMetadataMode bool
 }
 
 func TestRunAllTests(t *testing.T) {
@@ -32,6 +40,32 @@ func TestRunAllTests(t *testing.T) {
 			dirs:          []string{"testdir"},
 			dirOptions:    []DirectoryOption{WithEmptyPaths()},
 			streamOptions: []StreamOption{},
+		},
+		{
+			name: "SingleDirWithEmptyPathsNoCompressionWithSingleMetadata",
+			metadataValues: []testMetadataValue{
+				{
+					name: "test",
+					data: []byte("datatest"),
+				},
+			},
+			dirs:          []string{"testdir"},
+			dirOptions:    []DirectoryOption{WithEmptyPaths()},
+			streamOptions: []StreamOption{},
+		},
+		{
+			name:             "SingleDirWithEmptyPathsNoCompressionWithSingleMetadataAndReadMetadataMode",
+			dirs:             []string{"testdir"},
+			dirOptions:       []DirectoryOption{WithEmptyPaths()},
+			streamOptions:    []StreamOption{},
+			readMetadataMode: true,
+			metadataValues: []testMetadataValue{
+				{
+					name: "test",
+					data: []byte("datatest"),
+				},
+			},
+			writeError: true, // the readmode complete error will be returned
 		},
 		{
 			name:          "SingleDirWithEmptyPathsWithCompression",
@@ -44,6 +78,48 @@ func TestRunAllTests(t *testing.T) {
 			dirs:          []string{"testdir", "testdir2"},
 			dirOptions:    []DirectoryOption{WithEmptyPaths()},
 			streamOptions: []StreamOption{},
+		},
+		{
+			name:          "MultipleDirsWithEmptyPathsNoCompressionWithMultipleMetadata",
+			dirs:          []string{"testdir", "testdir2"},
+			dirOptions:    []DirectoryOption{WithEmptyPaths()},
+			streamOptions: []StreamOption{},
+			metadataValues: []testMetadataValue{
+				{
+					name: "test1",
+					data: []byte("datatest1"),
+				},
+				{
+					name: "test2",
+					data: []byte("datatest2"),
+				},
+				{
+					name: "test3",
+					data: []byte("datatest3"),
+				},
+			},
+		},
+		{
+			name:             "MultipleDirsWithEmptyPathsNoCompressionWithMultipleMetadataAndReadMetadataMode",
+			dirs:             []string{"testdir", "testdir2"},
+			dirOptions:       []DirectoryOption{WithEmptyPaths()},
+			streamOptions:    []StreamOption{},
+			readMetadataMode: true,
+			metadataValues: []testMetadataValue{
+				{
+					name: "test1",
+					data: []byte("datatest1"),
+				},
+				{
+					name: "test2",
+					data: []byte("datatest2"),
+				},
+				{
+					name: "test3",
+					data: []byte("datatest3"),
+				},
+			},
+			writeError: true, // the readmode complete error will be returned
 		},
 		{
 			name:          "MultipleDirsWithEmptyPathsWithCompression",
@@ -116,19 +192,21 @@ func TestRunAllTests(t *testing.T) {
 
 			var err error
 			err, writerBytesRead, writerBytesWritten = testHelperMultiDirectoryStreamWriter(
-				t, test.preProcessFilter, test.preWriteFilter)
+				t, test.preProcessFilter, test.preWriteFilter, test.metadataValues, test.readMetadataMode)
 
 			allBytesRead += readerBytesRead + writerBytesRead
 			allBytesWritten += readerBytesWritten + writerBytesWritten
 
-			if test.writeError {
+			if test.readMetadataMode {
+				assert.True(t, errors.Is(err, &StreamsErrorMetadataProcessingCompleted{}))
+			} else if test.writeError {
 				assert.NotNil(t, err)
 			} else {
 				assert.Nil(t, err)
 			}
 
 			if err != nil {
-				// No need to check for correct output writes if writer returned an error
+				// No need to check for correct output writes if the writer returned an error
 				return
 			}
 
@@ -137,10 +215,10 @@ func TestRunAllTests(t *testing.T) {
 				t.Logf("validate: Dirs, item sizes and hashes matched")
 			}
 
-			if !test.validateError {
-				assert.True(t, outputCorrect)
-			} else {
+			if test.validateError {
 				assert.False(t, outputCorrect)
+			} else {
+				assert.True(t, outputCorrect)
 			}
 		})
 	}
@@ -155,6 +233,20 @@ func testHelperMultiDirectoryStreamReader(test testInfo, t *testing.T) (returnBy
 	mdsr, err := NewMultiDirectoryStreamReader(test.streamOptions...)
 	assert.NotNil(t, mdsr)
 	assert.Nil(t, err)
+
+	metadata := mdsr.GetMetadataCollection()
+	if len(test.metadataValues) > 0 {
+		for _, metadataValue := range test.metadataValues {
+			err = metadata.AddMetadataItem(
+				&MetadataItem{
+					Name: metadataValue.name,
+					Data: metadataValue.data,
+				},
+			)
+
+			assert.Nil(t, err)
+		}
+	}
 
 	for _, dir := range test.dirs {
 		newTree, err := mdsr.AddDir(dir, test.dirOptions...)

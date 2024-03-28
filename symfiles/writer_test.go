@@ -2,6 +2,7 @@ package symfiles
 
 import (
 	"github.com/stretchr/testify/assert"
+	"github.com/thoughtrealm/bumblebee/streams"
 	"path/filepath"
 	"testing"
 )
@@ -55,9 +56,24 @@ func testHelperWriteSymFileFromDirs(t *testing.T) (bytesWritten int, err error) 
 	assert.NotNil(t, symFileWriter)
 	assert.Nil(t, err)
 
+	var metadata = []*streams.MetadataItem{
+		{
+			Name: "test1",
+			Data: []byte("datatest1"),
+		},
+		{
+			Name: "test2",
+			Data: []byte("datatest2"),
+		},
+		{
+			Name: "test3",
+			Data: []byte("datatest3"),
+		},
+	}
+
 	inputDirPath1 := filepath.Join("..", "streams", "testdir")
 	inputDirPath2 := filepath.Join("..", "streams", "testdir2")
-	bytesWritten, err = symFileWriter.WriteSymFileFromDirs([]string{inputDirPath1, inputDirPath2}, "output_dirs.bsym")
+	bytesWritten, err = symFileWriter.WriteSymFileFromDirs([]string{inputDirPath1, inputDirPath2}, "output_dirs.bsym", metadata)
 	assert.Nil(t, err)
 	assert.NotZero(t, bytesWritten)
 

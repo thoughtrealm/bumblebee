@@ -143,7 +143,7 @@ func (c *ChachaCipher) Decrypt(r io.Reader, w io.Writer) (int, error) {
 
 			outputBytesWritten, outputErr := w.Write(msgBytesDecrypted)
 			if outputErr != nil {
-				return c.BytesWritten, fmt.Errorf("error writing chunk %d to output: %s", chunkCount, outputErr)
+				return c.BytesWritten, fmt.Errorf("error writing chunk %d to output: %w", chunkCount, outputErr)
 			}
 
 			c.BytesWritten += outputBytesWritten

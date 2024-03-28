@@ -10,16 +10,10 @@ import (
 	"time"
 )
 
-// Todo: This read pattern is really inefficient.  The temp cache write ahead approach will work, but
-// way over complicates the requisite functionality for stream writing. It requires too much state
-// management to track the oputput states between requested Read() calls.
-// A much better approach would be to make this a WriteTo() pattern, passing in some target writer,
-// perhaps the cipher writer. In that pattern, the stream writing functionality could be reduced to
-// a simple set of nested for loops that emit the output to the target writer.
-
 type StreamReader interface {
 	io.Reader
 	AddDir(dir string, options ...DirectoryOption) (newTree Tree, err error)
+	GetMetadataCollection() MetadataCollection
 	GetTotalBytesRead() int64
 	StartStream() (io.Reader, error)
 }
@@ -35,6 +29,7 @@ const (
 	StreamBlockTypeTreeData   StreamBlockType = 1
 	StreamBlockTypeItemHeader StreamBlockType = 2
 	StreamBlockTypeItemData   StreamBlockType = 3
+	StreamBlockTypeMetadata   StreamBlockType = 4
 )
 
 // StreamBlockFlag indicates various properties of the block
@@ -169,11 +164,13 @@ type MultiDirectoryStreamReader struct {
 	startTime             time.Time
 	chanRequestForData    RequestForDataChannel
 	chanResponseData      ResponseDataChannel
+	Metadata              MetadataCollection
 }
 
 func NewMultiDirectoryStreamReader(options ...StreamOption) (StreamReader, error) {
 	streamReader := &MultiDirectoryStreamReader{
-		Trees: make([]Tree, 0),
+		Trees:    make([]Tree, 0),
+		Metadata: NewMetadataCollection(),
 	}
 
 	for _, option := range options {
@@ -214,6 +211,10 @@ func NewMultiDirectoryStreamReaderFromDirs(dirs []string, dirOptions []Directory
 
 func (mdsr *MultiDirectoryStreamReader) GetTotalBytesRead() int64 {
 	return mdsr.totalBytesRead
+}
+
+func (mdsr *MultiDirectoryStreamReader) GetMetadataCollection() MetadataCollection {
+	return mdsr.Metadata
 }
 
 func (mdsr *MultiDirectoryStreamReader) AddDir(dir string, options ...DirectoryOption) (newTree Tree, err error) {
@@ -257,6 +258,38 @@ func (mdsr *MultiDirectoryStreamReader) Controller() {
 }
 
 func (mdsr *MultiDirectoryStreamReader) Iterator(chanCollectorSync CollectorSyncChannel, chanAbortStream AbortStreamChannel) {
+	var (
+		metadataBytes []byte
+		err           error
+	)
+
+	metadataBytes, err = mdsr.Metadata.ToBytes()
+	if err != nil {
+		chanCollectorSync <- &iteratorSendInfo{
+			err: fmt.Errorf("failed serializing stream metadata: %w", err),
+		}
+		return
+	}
+
+	blockHeader := &StreamBlockDescriptor{
+		Version:  StreamBlockDescriptorCurrentVersion,
+		DataType: StreamBlockTypeMetadata,
+		Length:   uint32(len(metadataBytes)),
+	}
+	blockHeaderBytes := blockHeader.ToBytes()
+
+	chanCollectorSync <- &iteratorSendInfo{
+		data: append(blockHeaderBytes, metadataBytes...),
+	}
+
+	// check for abort
+	select {
+	case <-chanAbortStream:
+		return
+	default:
+		// ignore this
+	}
+
 	for treeIdx, tree := range mdsr.Trees {
 		treeAsBytes, err := tree.ToBytes()
 		if err != nil {

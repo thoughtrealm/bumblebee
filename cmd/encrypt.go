@@ -47,7 +47,7 @@ type encryptCommandVals struct {
 	// The user supplied key to encrypt the input with
 	symmetricKey []byte
 
-	// Commande line provided symmetric key
+	// Command line provided symmetric key
 	symmetricKeyInputText string
 
 	// inputSourceText should be console, clipboard, file or dirs
@@ -136,7 +136,7 @@ func encryptData() {
 
 	outputWriter, err := getOutputWriterForEncrypt()
 	if err != nil {
-		fmt.Printf("Unable to acquire an output writer: %s", err)
+		fmt.Printf("Unable to acquire an output writer: %s\n", err)
 		helpers.ExitCode = helpers.ExitCodeRequestFailed
 		return
 	}

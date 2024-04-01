@@ -14,7 +14,7 @@ import (
 
 type SymFileReader interface {
 	ReadSymFile(inputSymFilename, outputPath string) (bytesWritten int, err error)
-	ReadSymFileMetadata(inputSymFilename, outputPath string) (metadataCollection streams.MetadataCollection, err error)
+	ReadSymFileMetadata(inputSymFilename string) (metadataCollection streams.MetadataCollection, err error)
 	ReadSymReaderToFile(symReader io.Reader, outputFilename string) (bytesWritten int, err error)
 	ReadSymReaderToPath(symReader io.Reader, outputPath string) (bytesWritten int, err error)
 	ReadSymReaderToWriter(symReader io.Reader, w io.Writer) (bytesWritten int, err error)
@@ -24,12 +24,14 @@ type SymFileReader interface {
 type SimpleSymFileReader struct {
 	key                []byte
 	useDerivedFilename bool
+	includePaths       []string
 }
 
-func NewSymFileReader(key []byte, useDerivedFilename bool) (SymFileReader, error) {
+func NewSymFileReader(key []byte, useDerivedFilename bool, includePaths []string) (SymFileReader, error) {
 	return &SimpleSymFileReader{
 		key:                key,
 		useDerivedFilename: useDerivedFilename,
+		includePaths:       includePaths,
 	}, nil
 }
 
@@ -140,7 +142,7 @@ func (ssfr *SimpleSymFileReader) ReadSymFile(inputSymFilename, outputPath string
 			return nil, fmt.Errorf("output path is a file.  For multi-dir input files, it must be a path: %s", outputPath)
 		}
 
-		mdsw, err := streams.NewMultiDirectoryStreamWriter(outputPath, false)
+		mdsw, err := streams.NewMultiDirectoryStreamWriter(outputPath, false, ssfr.includePaths)
 		if err != nil {
 			return nil, fmt.Errorf("failed creating multi-dir writer: %w", err)
 		}
@@ -168,7 +170,7 @@ func (ssfr *SimpleSymFileReader) ReadSymFile(inputSymFilename, outputPath string
 
 // ReadSymFileMetadata reads the metadata from a .bsym file.  The sym file MUST be of type multi-dir.
 // If it is not a multi-dir, it will fail
-func (ssfr *SimpleSymFileReader) ReadSymFileMetadata(inputSymFilename, outputPath string) (metadataCollection streams.MetadataCollection, err error) {
+func (ssfr *SimpleSymFileReader) ReadSymFileMetadata(inputSymFilename string) (metadataCollection streams.MetadataCollection, err error) {
 	if !helpers.FileExists(inputSymFilename) {
 		return nil, fmt.Errorf("input sym file does not exist: %s", inputSymFilename)
 	}
@@ -190,7 +192,7 @@ func (ssfr *SimpleSymFileReader) ReadSymFileMetadata(inputSymFilename, outputPat
 			return nil, errors.New("file is of type DataStream.  For ReadSymMetadata, the file must be of type MultiDir.")
 		}
 
-		mdsw, err = streams.NewMultiDirectoryStreamWriter("", true)
+		mdsw, err = streams.NewMultiDirectoryStreamWriter("", true, ssfr.includePaths)
 		if err != nil {
 			return nil, fmt.Errorf("failed creating multi-dir writer: %w", err)
 		}
@@ -346,7 +348,7 @@ func (ssfr *SimpleSymFileReader) readSymReaderToPath(salt []byte, symReader io.R
 		return SymFileHeader_SIZE, fmt.Errorf("failed creating symmetric cipher: %w", err)
 	}
 
-	mdsw, err := streams.NewMultiDirectoryStreamWriter(outputPath, false)
+	mdsw, err := streams.NewMultiDirectoryStreamWriter(outputPath, false, ssfr.includePaths)
 	if err != nil {
 		return SymFileHeader_SIZE, fmt.Errorf("failed creating stream writer: %w", err)
 	}

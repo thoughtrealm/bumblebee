@@ -2,8 +2,15 @@ package cmd
 
 import (
 	"bufio"
+	"github.com/thoughtrealm/bumblebee/helpers"
 	"os"
 )
+
+const BACKUP_FILE_METADATA_NAME = "backup-details"
+
+type BackupDetailsMetadata struct {
+	Profiles []*helpers.Profile
+}
 
 func getDescriptorPaths(filePath string) ([]string, error) {
 	file, err := os.Open(filePath)

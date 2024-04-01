@@ -26,6 +26,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -68,6 +69,12 @@ type decryptCommandVals struct {
 
 	// outputPath is the name of a path to use for output.  Only relevant for outputTargetText=path.
 	outputPath string
+
+	// includePaths is a list of parent path prefix/roots that will limit the output to only those paths
+	includePaths []string
+
+	// includePathsText is the command line input for includePaths
+	includePathsText string
 }
 
 var localDecryptCommandVals = &decryptCommandVals{}
@@ -92,6 +99,7 @@ func init() {
 	decryptCmd.Flags().StringVarP(&localDecryptCommandVals.outputFile, "output-file", "y", "", "The file name for output. Only relevant if output-target is FILE.")
 	decryptCmd.Flags().StringVarP(&localDecryptCommandVals.outputPath, "output-path", "p", "", "The path name for output. Only relevant if output-target is FILE or PATH.")
 	decryptCmd.Flags().StringVarP(&localDecryptCommandVals.symmetricKeyInputText, "key", "", "", "The key for the encrypted data. Prompted for if not provided. Prompt entry is recommended.")
+	decryptCmd.Flags().StringVarP(&localDecryptCommandVals.includePathsText, "include-paths", "", "", "A command seperated list of paths that will limit output by parent path roots")
 }
 
 // Todo: need to move all the validation code into a separate validateInput() func.  Same for all other relevant commands.
@@ -185,6 +193,10 @@ func decryptData() {
 		return
 	}
 
+	if localDecryptCommandVals.includePathsText != "" {
+		localDecryptCommandVals.includePaths = strings.Split(localDecryptCommandVals.includePathsText, ",")
+	}
+
 	if localDecryptCommandVals.symmetricKeyInputText != "" {
 		localDecryptCommandVals.symmetricKey = []byte(localDecryptCommandVals.symmetricKeyInputText)
 	} else {
@@ -212,7 +224,8 @@ func decryptData() {
 
 	localDecryptSettings.symFileReader, err = symfiles.NewSymFileReader(
 		localDecryptCommandVals.symmetricKey,
-		localDecryptSettings.useDerivedFilename)
+		localDecryptSettings.useDerivedFilename,
+		localDecryptCommandVals.includePaths)
 
 	defer localDecryptSettings.symFileReader.Wipe()
 

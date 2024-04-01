@@ -92,7 +92,7 @@ func TestSimpleSymFile_ReadSymFile(t *testing.T) {
 				assert.NotNil(t, symFile)
 				assert.Nil(t, err)
 
-				mc, err := symFile.ReadSymFileMetadata(tc.inputPath, tc.outputPath)
+				mc, err := symFile.ReadSymFileMetadata(tc.inputPath)
 				assert.Nil(t, err)
 				assert.NotNil(t, mc)
 

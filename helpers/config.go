@@ -303,7 +303,12 @@ func (ch *ConfigHelper) GetCurrentProfile() *Profile {
 func (ch *ConfigHelper) GetProfile(name string) *Profile {
 	nameUpper := strings.ToUpper(name)
 	for _, profile := range ch.Config.Profiles {
-		if strings.ToUpper(profile.Name) == strings.ToUpper(nameUpper) {
+		if strings.ToUpper(profile.Name) == nameUpper {
+			return profile
+		}
+
+		// check the alias as well
+		if strings.ToUpper(profile.DefaultKeypairName) == nameUpper {
 			return profile
 		}
 	}

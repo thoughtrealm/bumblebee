@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -60,9 +61,10 @@ type MultiDirectoryStreamWriter struct {
 	ignoreCurrentItemOutput bool
 	metadataReadMode        bool
 	metadataReadComplete    bool
+	includePaths            []string
 }
 
-func NewMultiDirectoryStreamWriter(rootPath string, metadataReadMode bool) (StreamWriter, error) {
+func NewMultiDirectoryStreamWriter(rootPath string, metadataReadMode bool, includePaths []string) (StreamWriter, error) {
 	decomp := NewDecompressor()
 
 	return &MultiDirectoryStreamWriter{
@@ -71,6 +73,7 @@ func NewMultiDirectoryStreamWriter(rootPath string, metadataReadMode bool) (Stre
 		Trees:            make([]Tree, 0),
 		requireConfirm:   true,
 		metadataReadMode: metadataReadMode,
+		includePaths:     includePaths,
 	}, nil
 }
 
@@ -351,6 +354,20 @@ func (mdsw *MultiDirectoryStreamWriter) applyItemAttributes() error {
 func (mdsw *MultiDirectoryStreamWriter) processTreeData(tree Tree) error {
 	dirNodes := tree.GetDirNodes()
 	for _, dirNode := range dirNodes {
+		if len(mdsw.includePaths) > 0 {
+			parentPathPrefixLower := strings.ToLower(tree.GetParentPathPrefix())
+			isIncluded := false
+			for _, includePath := range mdsw.includePaths {
+				if strings.Contains(parentPathPrefixLower, strings.ToLower(includePath)) {
+					isIncluded = true
+					break
+				}
+			}
+			if !isIncluded {
+				continue
+			}
+		}
+
 		targetPath := filepath.Join(mdsw.rootPath, tree.GetParentPathPrefix(), dirNode.Path)
 		err := helpers.ForcePath(targetPath)
 		if err != nil {
@@ -383,6 +400,29 @@ func (mdsw *MultiDirectoryStreamWriter) processItemHeader() error {
 	if mdsw.currentItemNode == nil {
 		return fmt.Errorf("could not locate item node with ItemID: %d",
 			mdsw.currentItemHeader.ItemID)
+	}
+
+	// Here, we check to see if the parent path prefix is a root path referenced in the
+	// includePaths list.  If there is an active include list and the parent path prefix is not
+	// in it, then we will ignore this item.
+	// This was original added to support backup/restore and the ability to target specific restore
+	// paths in backup files.
+
+	parentPathPrefix := strings.ToLower(mdsw.currentTree.GetParentPathPrefix())
+
+	if len(mdsw.includePaths) > 0 {
+		isIncluded := false
+		for _, includePath := range mdsw.includePaths {
+			if strings.Contains(parentPathPrefix, strings.ToLower(includePath)) {
+				isIncluded = true
+				break
+			}
+		}
+
+		if !isIncluded {
+			mdsw.ignoreCurrentItemOutput = true
+			return nil
+		}
 	}
 
 	mdsw.currentFilePath = filepath.Join(

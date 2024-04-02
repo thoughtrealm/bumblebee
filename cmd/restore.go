@@ -20,6 +20,7 @@ import (
 	"github.com/thoughtrealm/bumblebee/helpers"
 	"github.com/thoughtrealm/bumblebee/symfiles"
 	"github.com/vmihailenco/msgpack/v5"
+	"os"
 	"strings"
 )
 
@@ -54,6 +55,9 @@ type restoreCommandVals struct {
 
 	// The BackupDetailsMetadata struct read from the backup file
 	backupDetailsMetadata *BackupDetailsMetadata
+
+	// The totalBytesWritten returned from the symFile reader/writer
+	totalByteswritten int
 }
 
 var localRestoreCommandVals = &restoreCommandVals{}
@@ -121,7 +125,7 @@ func restoreProfiles(args []string) {
 		return
 	}
 
-	fmt.Println("Restore completed")
+	fmt.Printf("Restore completed. Total bytes written: %d\n", localRestoreCommandVals.totalByteswritten)
 }
 
 func restoreValidateInputFile() error {
@@ -260,45 +264,105 @@ func backupRetrieveBackupMetadata() error {
 	return nil
 }
 
+// backupExecuteRestore will execute the restore functionality.  By the time this is called,
+// all required validations and initializations are complete.
 func backupExecuteRestore() error {
+	/*
+		Pseudologic...
+		** Note: We will only support local profile environment first.  Later, we will support remote or custom paths.
+		1- Iterate through the profiles in the backup file.
+		2- Ignore ones that are not selected and do not add them to the includePaths list.
+		3- Selected profiles should be added to the includePaths list.
+		4- If already exists in the local setup, then remove the local profile path and let the restore recreate it.
+		5- If doesn't exist locally, add the new profile to the config and store the changed yaml file.
+		6- Run the symfile to path functionality, passing in the includePaths to only restore selected profiles.
+	*/
+
 	var (
 		includePaths     []string
 		profilesSelected bool
 		err              error
 	)
 
-	// ** Get the target path here?
+	configPath, err := helpers.GetConfigPath()
+	if err != nil {
+		return fmt.Errorf("failed retrieving local config path: %w", err)
+	}
 
 	for _, profileFromBackup := range localRestoreCommandVals.backupDetailsMetadata.Profiles {
 		if !backupProfileIsSelected(profileFromBackup) {
 			continue
 		}
 
-		includePaths, err = backupAddIncludePathFromProfile(profileFromBackup, includePaths)
+		var profileDirName, profilePath, profileKeystorePath, profileKeypairStorePath string
+		profileDirName, profilePath, profileKeystorePath, profileKeypairStorePath, err = helpers.GetNewProfilePaths(profileFromBackup.Name)
 		if err != nil {
-			return fmt.Errorf("failed adding include path from profile: %w", err)
+			return fmt.Errorf("failed building profile paths: %w", err)
 		}
 
+		includePaths = append(includePaths, profileDirName)
 		profilesSelected = true
+
 		if backupProfileExistsLocally(profileFromBackup) {
-			err = backupEmptyProfilePath(profileFromBackup)
+			err = os.RemoveAll(profilePath)
 			if err != nil {
-				return fmt.Errorf("failed emptying local profile path: %w", err)
+				return fmt.Errorf("failed removing current local path")
 			}
+
+			//
+			continue
+		}
+
+		// This is a new profile, so create a new profile and add it to the config
+		newProfile := &helpers.Profile{
+			Name:                  profileFromBackup.Name,
+			Path:                  profilePath,
+			KeyStorePath:          profileKeystorePath,
+			KeyPairStorePath:      profileKeypairStorePath,
+			KeyPairStoreEncrypted: profileFromBackup.KeyPairStoreEncrypted,
+			DefaultKeypairName:    profileFromBackup.DefaultKeypairName,
+		}
+
+		configHelper := helpers.NewConfigHelper()
+		err = configHelper.LoadConfig()
+		if err != nil {
+			return fmt.Errorf("failed loading config defs: %w", err)
+		}
+
+		err = configHelper.NewProfile(newProfile)
+		if err != nil {
+			return fmt.Errorf("failed adding new profile to config: %w", err)
+		}
+
+		err = configHelper.WriteConfig()
+		if err != nil {
+			return fmt.Errorf("failed writing profile config file: %w", err)
 		}
 	}
 
-	if !profilesSelected {
+	if !profilesSelected || len(includePaths) == 0 {
 		return errors.New("no profiles in the backup were selected for restoring.  Nothing to restore.")
 	}
 
+	symFileReader, err := symfiles.NewSymFileReader(
+		localRestoreCommandVals.symmetricKey, false, includePaths)
+	if err != nil {
+		return fmt.Errorf("error creating symFileReader: %w", err)
+	}
+
+	file, err := os.Open(localRestoreCommandVals.inputFile)
+	if err != nil {
+		return fmt.Errorf("failed opening backup file: %w", err)
+	}
+
+	defer func() {
+		_ = file.Close()
+	}()
+
+	localRestoreCommandVals.totalByteswritten, err = symFileReader.ReadSymReaderToPath(file, configPath)
+	if err != nil {
+		return fmt.Errorf("failed restoring profiles: %w", err)
+	}
+
 	return nil
-}
-
-func backupEmptyProfilePath(profile *helpers.Profile) error {
-
-}
-
-func backupAddIncludePathFromProfile(profile *helpers.Profile, includePaths []string) ([]string, error) {
-
 }

@@ -121,6 +121,21 @@ func BuildProfilePath(name string) (string, error) {
 	return profilePath, nil
 }
 
+func GetNewProfilePaths(profileName string) (profileDirName, profilePath, profileKeystorePath, profileKeypairStorePath string, err error) {
+	profileDirName = GetFileSafeName(profileName)
+	profilePath, err = BuildProfilePath(profileDirName)
+	if err != nil {
+		// BuildProfilePath constructs the full error message so just return that here
+		return "", "", "", "", err
+	}
+	fmt.Println()
+
+	profileKeystorePath = filepath.Join(profilePath, profileDirName+".keystore")
+	profileKeypairStorePath = filepath.Join(profilePath, profileDirName+".keypairs")
+
+	return profileDirName, profilePath, profileKeystorePath, profileKeypairStorePath, nil
+}
+
 func (ch *ConfigHelper) LoadConfig() error {
 	configPath, err := GetConfigPath()
 	if err != nil {

@@ -23,7 +23,6 @@ import (
 	"github.com/thoughtrealm/bumblebee/logger"
 	"io/fs"
 	"os"
-	"path/filepath"
 )
 
 // InitializeEnvironment should...
@@ -91,18 +90,14 @@ func CreateNewProfile(profileName string) error {
 //   - Create the profile keypair and store it in a keypairs file, get an optional symmetric password for it.
 //   - Create an empty keystore and save it, as a combined file bundle.
 func buildNewProfile(profileName string) error {
-	safeProfileName := helpers.GetFileSafeName(profileName)
+	fmt.Println("Constructing profile paths and new path directory...")
 
-	fmt.Println("Constructing profile path...")
-	profilePath, err := helpers.BuildProfilePath(safeProfileName)
+	_, profilePath, profileKeystorePath, profileKeypairStorePath, err := helpers.GetNewProfilePaths(profileName)
 	if err != nil {
 		// BuildProfilePath constructs the full error message so just return that here
 		return err
 	}
 	fmt.Println()
-
-	profileKeystorePath := filepath.Join(profilePath, safeProfileName+".keystore")
-	profileKeypairStorePath := filepath.Join(profilePath, safeProfileName+".keypairs")
 
 	fmt.Println(`Enter a password/key to encrypt the keypair store file for this profile. You may leave this value blank
 if you do not want the keypair file encrypted.  The file is stored in your personal user config space and

@@ -35,7 +35,7 @@ func Run(loadKeystore, loadKeypairStore bool) error {
 
 	loader := &BootstrapLoader{}
 
-	if err := loader.loadConfig(); err != nil {
+	if err := loader.loadConfig(loadKeypairStore); err != nil {
 		return err
 	}
 
@@ -60,16 +60,18 @@ func Run(loadKeystore, loadKeypairStore bool) error {
 	return nil
 }
 
-func (bsl *BootstrapLoader) loadConfig() error {
+func (bsl *BootstrapLoader) loadConfig(loadActiveProfile bool) error {
 	helpers.GlobalConfig = helpers.NewConfigHelper()
 	err := helpers.GlobalConfig.LoadConfig()
 	if err != nil {
 		return fmt.Errorf("unable to load config during startup: %w", err)
 	}
 
-	bsl.ActiveProfile = helpers.GlobalConfig.GetCurrentProfile()
-	if bsl.ActiveProfile == nil {
-		return errors.New("current profile was not located")
+	if loadActiveProfile {
+		bsl.ActiveProfile = helpers.GlobalConfig.GetCurrentProfile()
+		if bsl.ActiveProfile == nil {
+			return errors.New("current profile was not located")
+		}
 	}
 
 	return nil

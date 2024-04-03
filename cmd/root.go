@@ -100,7 +100,7 @@ func GetRootCmd() *cobra.Command {
 func startBootStrap(loadKeystore, loadKeypairStore bool) error {
 	err := bootstrap.Run(loadKeystore, loadKeypairStore)
 	if err != nil {
-		fmt.Printf("Error loading bee: unable to load stores: %s\n", err)
+		fmt.Printf("Failure loading bumblebee%s\n", helpers.FormatErrorOutputs(err))
 		return err
 	}
 

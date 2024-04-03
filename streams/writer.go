@@ -405,7 +405,7 @@ func (mdsw *MultiDirectoryStreamWriter) processItemHeader() error {
 	// Here, we check to see if the parent path prefix is a root path referenced in the
 	// includePaths list.  If there is an active include list and the parent path prefix is not
 	// in it, then we will ignore this item.
-	// This was original added to support backup/restore and the ability to target specific restore
+	// This was originally added to support backup/restore and the ability to target specific restore
 	// paths in backup files.
 
 	parentPathPrefix := strings.ToLower(mdsw.currentTree.GetParentPathPrefix())

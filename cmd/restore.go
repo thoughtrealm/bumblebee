@@ -17,10 +17,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/spf13/cobra"
+	"github.com/thoughtrealm/bumblebee/bootstrap"
 	"github.com/thoughtrealm/bumblebee/helpers"
 	"github.com/thoughtrealm/bumblebee/symfiles"
 	"github.com/vmihailenco/msgpack/v5"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -30,12 +32,6 @@ var restoreCmd = &cobra.Command{
 	Short: "Restores profiles from a backup file",
 	Long:  "Restores profiles from a backup file",
 	Run: func(cmd *cobra.Command, args []string) {
-		err := startBootStrap(false, false)
-		if err != nil {
-			// startBootstrap prints messages, so nothing to print here, just bail
-			return
-		}
-
 		restoreProfiles(args)
 	},
 }
@@ -83,21 +79,65 @@ func init() {
 }
 
 func restoreProfiles(args []string) {
-	err := restoreValidateInputFile()
+	fmt.Println("It is recommended that you backup your local environment before restoring profiles.")
+	fmt.Println("")
+
+	response, err := helpers.GetInputFromList(
+		"Stop this restore request and backup your environment first?",
+		[]helpers.InputListItem{
+			{
+				Option: "Y",
+				Label:  "Yes, stop this restore so I can backup first",
+			},
+			{
+				Option: "N",
+				Label:  "No, do not stop. I have already backed up or do not need to do so",
+			},
+			{
+				Option: "C",
+				Label:  "Cancel this abort request",
+			},
+		},
+		"Y",
+	)
+
+	if err != nil {
+		fmt.Printf("Failure confirming backup request%s\n", helpers.FormatErrorOutputs(err))
+		helpers.ExitCode = helpers.ExitCodeRequestFailed
+		return
+	}
+
+	if response != "N" {
+		fmt.Println("User requested to stop restore request")
+		helpers.ExitCode = helpers.ExitCodeRequestFailed
+		return
+	}
+
+	// First, let's determine the state of our config path.  It could be empty with no
+	// metadata yaml file.  We want to provide the ability to do a restore, even if that file does
+	// not exist.
+	err = validateConfigEnvironment()
+	if err != nil {
+		fmt.Printf("Failure validating local config environment%s\n", helpers.FormatErrorOutputs(err))
+		helpers.ExitCode = helpers.ExitCodeRequestFailed
+		return
+	}
+
+	err = restoreValidateInputFile()
 	if err != nil {
 		fmt.Printf("Failure validating input file%s\n", helpers.FormatErrorOutputs(err))
 		helpers.ExitCode = helpers.ExitCodeRequestFailed
 		return
 	}
 
-	err = backupRestoreValidateKey()
+	err = restoreValidateKey()
 	if err != nil {
 		fmt.Printf("Failure validating password for backup file: %s\n", helpers.FormatErrorOutputs(err))
 		helpers.ExitCode = helpers.ExitCodeRequestFailed
 		return
 	}
 
-	err = backupRetrieveBackupMetadata()
+	err = restoreRetrieveBackupMetadata()
 	if err != nil {
 		fmt.Printf("Failure retrieving metadata from backup file: %s\n", helpers.FormatErrorOutputs(err))
 		helpers.ExitCode = helpers.ExitCodeRequestFailed
@@ -109,7 +149,6 @@ func restoreProfiles(args []string) {
 	for idx, profile := range localRestoreCommandVals.backupDetailsMetadata.Profiles {
 		fmt.Printf("%02d: %s\n", idx+1, profile.Name)
 	}
-	fmt.Println("")
 
 	err = restoreValidateInputProfiles(args)
 	if err != nil {
@@ -126,6 +165,41 @@ func restoreProfiles(args []string) {
 	}
 
 	fmt.Printf("Restore completed. Total bytes written: %d\n", localRestoreCommandVals.totalByteswritten)
+
+	err = updateCurrentProfile()
+	if err != nil {
+		fmt.Printf("Failed setting active profile%s\n", helpers.FormatErrorOutputs(err))
+		helpers.ExitCode = helpers.ExitCodeRequestFailed
+		return
+	}
+}
+
+func validateConfigEnvironment() error {
+	configPath, err := helpers.GetConfigPath()
+	if err != nil {
+		return fmt.Errorf("failed obtaining config path: %w", err)
+	}
+
+	configFilePath := filepath.Join(configPath, helpers.BBConfigFileName)
+
+	if !helpers.FileExists(configFilePath) {
+		err = initializeBasicConfigFile()
+		if err != nil {
+			return fmt.Errorf("failed creating a new config file: %w", err)
+		}
+	}
+
+	return startBootStrap(false, false)
+}
+
+func initializeBasicConfigFile() error {
+	config := &helpers.ConfigInfo{
+		Profiles:       []*helpers.Profile{},
+		CurrentProfile: "",
+	}
+
+	newHelper := helpers.NewConfigHelperFromConfig(config)
+	return newHelper.WriteConfig()
 }
 
 func restoreValidateInputFile() error {
@@ -163,7 +237,11 @@ func restoreValidateInputProfiles(args []string) error {
 		return errors.New("No requested profiles exist in the backup.  Nothing to restore.")
 	}
 
+	fmt.Println("")
+
 	if len(existingProfiles) == 0 {
+		fmt.Println("None of the profiles in the backup exist locally.  They will be added as new profiles.")
+		fmt.Println("Proceeding with restore...")
 		return nil
 	}
 
@@ -177,7 +255,6 @@ func restoreValidateInputProfiles(args []string) error {
 	fmt.Println("")
 
 	response, err := helpers.GetYesNoInput("Overwrite the listed profiles?", helpers.InputResponseValNo)
-	fmt.Println("")
 	if err != nil {
 		return err
 	}
@@ -221,7 +298,7 @@ func backupProfileExistsLocally(inputProfile *helpers.Profile) bool {
 	return false
 }
 
-func backupRestoreValidateKey() (err error) {
+func restoreValidateKey() (err error) {
 	if localRestoreCommandVals.symmetricKeyInputText != "" {
 		localRestoreCommandVals.symmetricKey = []byte(localRestoreCommandVals.symmetricKeyInputText)
 		return nil
@@ -240,7 +317,7 @@ func backupRestoreValidateKey() (err error) {
 	return nil
 }
 
-func backupRetrieveBackupMetadata() error {
+func restoreRetrieveBackupMetadata() error {
 	symFileReader, err := symfiles.NewSymFileReader(localRestoreCommandVals.symmetricKey, false, nil)
 	if err != nil {
 		return fmt.Errorf("failure initializing symfile reader: %w\n", err)
@@ -309,7 +386,6 @@ func backupExecuteRestore() error {
 				return fmt.Errorf("failed removing current local path")
 			}
 
-			//
 			continue
 		}
 
@@ -362,6 +438,43 @@ func backupExecuteRestore() error {
 	localRestoreCommandVals.totalByteswritten, err = symFileReader.ReadSymReaderToPath(file, configPath)
 	if err != nil {
 		return fmt.Errorf("failed restoring profiles: %w", err)
+	}
+
+	return nil
+}
+
+func updateCurrentProfile() error {
+	err := bootstrap.Run(false, false)
+	if err != nil {
+		return fmt.Errorf("error refreshing config data: %w", err)
+	}
+
+	if helpers.GlobalConfig.Config.CurrentProfile != "" {
+		// current profile is set, nothing to do
+		return nil
+	}
+
+	// see if we have a default profile
+	defaultProfile := helpers.GlobalConfig.GetProfile("default")
+	if defaultProfile != nil {
+		helpers.GlobalConfig.Config.CurrentProfile = defaultProfile.Name
+		err = helpers.GlobalConfig.WriteConfig()
+		if err != nil {
+			return fmt.Errorf("unable to update current profile to default: %w", err)
+		}
+
+		return nil
+	}
+
+	if len(helpers.GlobalConfig.Config.Profiles) == 0 {
+		return errors.New("No profiles exist in config data.  Unable to set active profile.")
+	}
+
+	newCurrentProfile := helpers.GlobalConfig.Config.Profiles[0]
+	helpers.GlobalConfig.Config.CurrentProfile = newCurrentProfile.Name
+	err = helpers.GlobalConfig.WriteConfig()
+	if err != nil {
+		return fmt.Errorf("unable to update current profile to first item: %w", err)
 	}
 
 	return nil

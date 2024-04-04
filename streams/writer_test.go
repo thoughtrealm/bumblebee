@@ -23,7 +23,7 @@ func testHelperMultiDirectoryStreamWriter(t *testing.T, preProcessFilter PreProc
 		return err, 0, 0
 	}
 
-	mdsw, err := NewMultiDirectoryStreamWriter("testdir_out", metadataReadMode)
+	mdsw, err := NewMultiDirectoryStreamWriter("testdir_out", metadataReadMode, nil)
 	assert.NotNil(t, mdsw)
 	assert.Nil(t, err)
 

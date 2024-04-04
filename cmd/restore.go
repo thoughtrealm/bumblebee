@@ -220,10 +220,39 @@ func restoreValidateInputProfiles(args []string) error {
 		localRestoreCommandVals.profileNames = strings.Split(inputProfileNamesText, ",")
 	}
 
+	fmt.Println("")
+	fmt.Println("Profiles requested for restore...")
+	if len(localRestoreCommandVals.profileNames) == 0 {
+		fmt.Println("** All profiles in backup file requested for restore **")
+	} else {
+		var missingProfileNames []string
+		for idx, profileName := range localRestoreCommandVals.profileNames {
+			fmt.Printf("%02d: %s\n", idx+1, profileName)
+
+			if !restoreIsSelectedProfileInBackup(profileName) {
+				missingProfileNames = append(missingProfileNames, profileName)
+			}
+		}
+
+		if len(missingProfileNames) > 0 {
+			fmt.Println("")
+			fmt.Println("The following profiles were selected for restore, but were not found in the backup file...")
+			for idx, profileName := range missingProfileNames {
+				fmt.Printf("%02d: %s\n", idx+1, profileName)
+			}
+
+			fmt.Println("")
+
+			return errors.New("some requested profiles were not found in the backup file")
+		}
+	}
+
+	fmt.Println("")
+
 	var existingProfiles []*helpers.Profile
 	var profilesSelected bool
 	for _, profileFromBackup := range localRestoreCommandVals.backupDetailsMetadata.Profiles {
-		if !backupProfileIsSelected(profileFromBackup) {
+		if !restoreIsProfileSelected(profileFromBackup) {
 			continue
 		}
 
@@ -245,7 +274,7 @@ func restoreValidateInputProfiles(args []string) error {
 		return nil
 	}
 
-	fmt.Println("The following profiles will be restored and currently exist in the local environment...")
+	fmt.Println("The following profiles were requested for restore and currently exist in the local environment...")
 	for idx, profile := range existingProfiles {
 		fmt.Printf("%02d: %s\n", idx+1, profile.Name)
 	}
@@ -266,10 +295,21 @@ func restoreValidateInputProfiles(args []string) error {
 	return nil
 }
 
-// backupProfileIsSelected() returns true when the inputProfile exists in the list of profiles provided via
+// restoreIsSelectedProfileInBackup will return true if the indicated profile exists in the backup file
+func restoreIsSelectedProfileInBackup(profileName string) (profileExistsInBackup bool) {
+	for _, profile := range localRestoreCommandVals.backupDetailsMetadata.Profiles {
+		if strings.ToUpper(profile.Name) == strings.ToUpper(profileName) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// restoreIsProfileSelected() returns true when the inputProfile exists in the list of profiles provided via
 // the command line, or if no profiles are provided via the command line which indicates to restore all profiles
 // that are contained in the backup file
-func backupProfileIsSelected(inputProfile *helpers.Profile) bool {
+func restoreIsProfileSelected(inputProfile *helpers.Profile) bool {
 	if inputProfile == nil {
 		return false
 	}
@@ -367,7 +407,7 @@ func backupExecuteRestore() error {
 	}
 
 	for _, profileFromBackup := range localRestoreCommandVals.backupDetailsMetadata.Profiles {
-		if !backupProfileIsSelected(profileFromBackup) {
+		if !restoreIsProfileSelected(profileFromBackup) {
 			continue
 		}
 

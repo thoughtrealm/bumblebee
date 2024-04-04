@@ -88,7 +88,7 @@ func TestSimpleSymFile_ReadSymFile(t *testing.T) {
 			if tc.metadata != nil {
 				// If metadata is provided, first check the metadata, then flow through
 				// to check the file itself after this block.
-				symFile, err := NewSymFileReader(writerTestKey, true)
+				symFile, err := NewSymFileReader(writerTestKey, true, nil)
 				assert.NotNil(t, symFile)
 				assert.Nil(t, err)
 
@@ -105,7 +105,7 @@ func TestSimpleSymFile_ReadSymFile(t *testing.T) {
 				t.Log("Metadata confirmed")
 			}
 
-			symFile, err := NewSymFileReader(writerTestKey, true)
+			symFile, err := NewSymFileReader(writerTestKey, true, nil)
 			assert.NotNil(t, symFile)
 			assert.Nil(t, err)
 

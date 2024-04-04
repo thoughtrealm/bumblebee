@@ -143,6 +143,12 @@ func (ch *ConfigHelper) LoadConfig() error {
 	}
 
 	configFilePath := filepath.Join(configPath, BBConfigFileName)
+
+	if !FileExists(configFilePath) {
+		return fmt.Errorf("failed reading config data: %w",
+			errors.New("config metadata not found.  You may need to run init to setup your environment."))
+	}
+
 	configBytes, err := os.ReadFile(configFilePath)
 	if err != nil {
 		return fmt.Errorf("failed config file: %w", err)

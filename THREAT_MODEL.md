@@ -288,8 +288,8 @@ similar in nature to _Bumblebee_.
 
 ### **A. PKI Private/Public Relationship Deconstruction**
 _Bumblebee_ uses ***hybrid crypography***, which means it employs both **asymmetric** and **symmetric**
-cryptographic technology to achieve its goals.  The **asymmetric** functionality relies on theories
-of key pair systems, where two keys are used to accomplish encrypting and decrypting of data.
+cryptographic technology to achieve its goals.  The **asymmetric** functionality relies on
+key pair systems, where two keys are used to achieve encrypting and decrypting of data.
 
 In this system, one key is designated as the **private key** and one is designated as the **public key**.
 You provide your **public key** to other users so that they can exchange messages and data with you.

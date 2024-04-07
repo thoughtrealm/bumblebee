@@ -61,8 +61,16 @@ To accomplish this, a profile contains two separate ***stores***.
 
 The profile consists of these two store files, plus some metadata stored in YAML files.
 
-To back up these profiles, their stores and all their data, you only need to archive and/or copy the
-config path to some backup path or container.
+You can back up these profiles and their stores in two ways:
+
+1. **Use Bumblebee's _Backup_ and _Restore_ commands**<br>
+    Bumblebee provides two commands **Backup** and **Restore**.  These allow you to create symmetrically
+    encrypted backup files by providing a password/key when using the **backup** and **restore** commands.
+    These commands allow you to back up all or selected profiles.
+ 
+2. **Use Any Archiving Tool**<br>
+    The profiles are just files and paths, so you can use any archiving tool to create archives from those
+    paths.  It is recommended to create encrypted archives.
 
 ## Cryptographic code used and the related origins
 1. Bumblebee is written in the **Go** language.  All functionality is contained in **Go** code.

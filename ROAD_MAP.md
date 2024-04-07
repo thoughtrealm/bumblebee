@@ -1,11 +1,11 @@
 # Road Map Of Bumblebee Project
-Last updated Nov 2, 2023
+Last updated April 6, 2024
 
 This is a rough idea of possible future work priorities.  It is possible that
 priorities may shift, which would mean the ordering of these phases could change.
 
-## Phase 1 - CLI (Command Line Interpreter)
-_Phase 1 is approximately 85% all feature complete.  It is 100% MVP feature complete._
+## Phase 1 - CLI (Command Line Interpreter) - COMPLETED 2024-04-05!
+### *** _*Phase 1 is now feature complete.*_ ***
 
 **The primary goal of Phase 1 is to deliver a CLI application that provides at least 
 the following functionality:**
@@ -64,8 +64,11 @@ key store, then it would request the key from the server.
 to local key stores for any updates that occur on the server, like the user changed their key, etc.
 
 ### The Unique Issues In Supporting A "User Groups" Feature:
-DISCUSS THIS USE CASE HERE AND THE POSSIBLE CONCERNS IT WOULD CREATE, POSSIBLE WAYS TO SOLVE THIS
-BY SWAPPING STREAM HEADERS, ETC.
+There is a goal to support user groups, such as a group named "Support", where anyone associated with that
+group could send and receive messages.  However, the technical requirements for this feature are rather
+complicated and a weak design or weak implementation could result in compromising secure usage or
+messaging patterns. As a result, this feature needs to be considered deeply and may ultimately be more
+risky or complex than is appropriate for this tool. 
 
 ## Phase 3 - Service For Distribution Of Secrets
 The goal of Phase 3 is to provide a service that can easily distribute secrets between

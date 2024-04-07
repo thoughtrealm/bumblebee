@@ -21,7 +21,7 @@ Status  Command                           Notes
  [ X ]  Remove profile
  [ X ]  Remove user
  [ X ]  Rename keypair
- [   ]  Remove profile                    There are many things to change to accopmlish this.  Might be more fragile than we want.  
+ [ X ]  Remove profile                      
  [ X ]  Remove user                       
  [ X ]  Update user                       
  [ X ]  Bundle                       
@@ -32,9 +32,11 @@ Status  Command                           Notes
  [   ]  Refresh                           Server feature
  [ X ]  Export user
  [   ]  Export keypair
- [   ]  Export profile
- [ X ]  Import                            Supports user exports only.  Will need keypair and profile when those are supported by export.
- [   ]  Backup
+ [ X ]  Import                            Supports user exports.  
+ [ X ]  Backup
+ [ X ]  Restore
+ [ X ]  Encrypt
+ [ X ]  Decrypt
  [ X ]  -- Pipe support                   Completed for relevant commands
- [   ]  Refresh                           An ability to initialize new keypairs - how to re-key bundles and local-keys assets?
+ [   ]  Refresh                           An ability to initialize new keypairs - how to re-key bundles and local-keys assets?  Why not remove and recreate identity?
 ```
